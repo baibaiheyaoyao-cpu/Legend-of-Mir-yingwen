@@ -155,7 +155,7 @@ namespace Server.MirForms.DropBuilder
 
             tabControlSeperateItems_SelectedIndexChanged(tabControlSeperateItems, null);
             listBoxMonsters.SelectedIndex = 0;
-            labelMonsterList.Text = $"Monster Count: {Envir.MonsterInfoList.Count}";
+            labelMonsterList.Text = $"怪物数量：{Envir.MonsterInfoList.Count}";
         }
 
         // Gets server data
@@ -358,7 +358,7 @@ namespace Server.MirForms.DropBuilder
                     }
                     catch (Exception)
                     {
-                        MessageBox.Show("Unreadable level filters.");
+                        MessageBox.Show("等级过滤条件无法读取。");
                         break;
                     }
                 }
@@ -675,7 +675,7 @@ namespace Server.MirForms.DropBuilder
             checkBoxCap.Checked = false;
 
             labelMobLevel.Text =
-                $"Currently Editing: {((MonsterDropInfo)listBoxMonsters.SelectedItem).Name} - Level: {Envir.MonsterInfoList[listBoxMonsters.SelectedIndices[0]].Level}";
+                $"当前编辑：{((MonsterDropInfo)listBoxMonsters.SelectedItem).Name} - 等级：{Envir.MonsterInfoList[listBoxMonsters.SelectedIndices[0]].Level}";
         }
 
         public string GetPathOfSelectedItem()
@@ -936,11 +936,11 @@ namespace Server.MirForms.DropBuilder
         //Switch to Edit mode
         private void buttonEdit_Click(object sender, EventArgs e)
         {
-            if (buttonEdit.Text == "Accept")
+            if (buttonEdit.Text == "确认")
             {
                 textBoxDropList.ReadOnly = true;
                 textBoxDropList.BackColor = System.Drawing.Color.Cornsilk;
-                buttonEdit.Text = "Edit Drop File";
+                buttonEdit.Text = "编辑掉落文件";
                 //buttonEdit.Image = Properties.Resources.edit;
 
                 // Empty List<DropItem>'s
@@ -960,7 +960,7 @@ namespace Server.MirForms.DropBuilder
             {
                 textBoxDropList.ReadOnly = false;
                 textBoxDropList.BackColor = System.Drawing.Color.Honeydew;
-                buttonEdit.Text = "Accept";
+                buttonEdit.Text = "确认";
                 //buttonEdit.Image = Properties.Resources.accept;
 
                 buttonAdd.Enabled = false;

@@ -1,4 +1,4 @@
-﻿
+
 namespace Server.Database
 {
     partial class ItemInfoFormNew
@@ -350,7 +350,7 @@ namespace Server.Database
             Gameshop_button.Name = "Gameshop_button";
             Gameshop_button.Size = new Size(97, 27);
             Gameshop_button.TabIndex = 30;
-            Gameshop_button.Text = "+ Gameshop";
+            Gameshop_button.Text = "+ 商城";
             Gameshop_button.UseVisualStyleBackColor = true;
             Gameshop_button.Click += Gameshop_button_Click;
             // 
@@ -361,7 +361,7 @@ namespace Server.Database
             btnExport.Name = "btnExport";
             btnExport.Size = new Size(88, 27);
             btnExport.TabIndex = 6;
-            btnExport.Text = "Export";
+            btnExport.Text = "导出";
             btnExport.UseVisualStyleBackColor = true;
             btnExport.Click += btnExport_Click;
             // 
@@ -372,7 +372,7 @@ namespace Server.Database
             btnImport.Name = "btnImport";
             btnImport.Size = new Size(88, 27);
             btnImport.TabIndex = 5;
-            btnImport.Text = "Import";
+            btnImport.Text = "导入";
             btnImport.UseVisualStyleBackColor = true;
             btnImport.Click += btnImport_Click;
             // 
@@ -384,7 +384,7 @@ namespace Server.Database
             lblFilterType.Name = "lblFilterType";
             lblFilterType.Size = new Size(37, 15);
             lblFilterType.TabIndex = 3;
-            lblFilterType.Text = "Type :";
+            lblFilterType.Text = "类型:";
             // 
             // groupView
             // 
@@ -400,7 +400,7 @@ namespace Server.Database
             groupView.Size = new Size(379, 47);
             groupView.TabIndex = 4;
             groupView.TabStop = false;
-            groupView.Text = "View Mode";
+            groupView.Text = "视图模式";
             // 
             // rBtnViewSpecial
             // 
@@ -411,7 +411,7 @@ namespace Server.Database
             rBtnViewSpecial.Size = new Size(62, 19);
             rBtnViewSpecial.TabIndex = 4;
             rBtnViewSpecial.TabStop = true;
-            rBtnViewSpecial.Text = "Special";
+            rBtnViewSpecial.Text = "特殊";
             rBtnViewSpecial.UseVisualStyleBackColor = true;
             rBtnViewSpecial.CheckedChanged += rBtnViewSpecial_CheckedChanged;
             // 
@@ -425,7 +425,7 @@ namespace Server.Database
             rbtnViewAll.Size = new Size(39, 19);
             rbtnViewAll.TabIndex = 0;
             rbtnViewAll.TabStop = true;
-            rbtnViewAll.Text = "All";
+            rbtnViewAll.Text = "全部";
             rbtnViewAll.UseVisualStyleBackColor = true;
             rbtnViewAll.CheckedChanged += rbtnViewAll_CheckedChanged;
             // 
@@ -438,7 +438,7 @@ namespace Server.Database
             rbtnViewBinding.Size = new Size(66, 19);
             rbtnViewBinding.TabIndex = 3;
             rbtnViewBinding.TabStop = true;
-            rbtnViewBinding.Text = "Binding";
+            rbtnViewBinding.Text = "绑定";
             rbtnViewBinding.UseVisualStyleBackColor = true;
             rbtnViewBinding.CheckedChanged += rbtnViewBinding_CheckedChanged;
             // 
@@ -451,7 +451,7 @@ namespace Server.Database
             rbtnViewBasic.Size = new Size(52, 19);
             rbtnViewBasic.TabIndex = 1;
             rbtnViewBasic.TabStop = true;
-            rbtnViewBasic.Text = "Basic";
+            rbtnViewBasic.Text = "基础";
             rbtnViewBasic.UseVisualStyleBackColor = true;
             rbtnViewBasic.CheckedChanged += rbtnViewBasic_CheckedChanged;
             // 
@@ -464,7 +464,7 @@ namespace Server.Database
             rbtnViewStats.Size = new Size(50, 19);
             rbtnViewStats.TabIndex = 2;
             rbtnViewStats.TabStop = true;
-            rbtnViewStats.Text = "Stats";
+            rbtnViewStats.Text = "属性";
             rbtnViewStats.UseVisualStyleBackColor = true;
             rbtnViewStats.CheckedChanged += rbtnViewStats_CheckedChanged;
             // 
@@ -487,7 +487,7 @@ namespace Server.Database
             lblSearch.Name = "lblSearch";
             lblSearch.Size = new Size(45, 15);
             lblSearch.TabIndex = 1;
-            lblSearch.Text = "Search:";
+            lblSearch.Text = "搜索:";
             // 
             // txtSearch
             // 
