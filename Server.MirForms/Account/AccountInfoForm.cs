@@ -1,4 +1,4 @@
-﻿using Server.MirDatabase;
+using Server.MirDatabase;
 using Server.MirEnvir;
 using Server.MirObjects;
 using System.Globalization;
@@ -639,6 +639,79 @@ namespace Server
             else
             {
                 MessageBox.Show("Please select an account to remove.");
+            }
+        }
+
+        private void GiveCreditButton_Click(object sender, EventArgs e)
+        {
+            if (_selectedAccountInfos == null || _selectedAccountInfos.Count == 0)
+            {
+                MessageBox.Show("请先选择一个账号。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            GiveCreditToAccount(_selectedAccountInfos[0], null);
+        }
+
+        private void AccountInfoListView_DoubleClick(object sender, EventArgs e)
+        {
+            if (AccountInfoListView.SelectedItems.Count == 0) return;
+
+            GiveCreditToAccount(AccountInfoListView.SelectedItems[0].Tag as AccountInfo, null);
+        }
+
+        private void CharactersListView_DoubleClick(object sender, EventArgs e)
+        {
+            if (CharactersListView.SelectedItems.Count == 0) return;
+
+            CharacterInfo character = CharactersListView.SelectedItems[0].Tag as CharacterInfo;
+            if (character == null) return;
+
+            GiveCreditToAccount(character.AccountInfo, character.Name);
+        }
+
+        private void GiveCreditToAccount(AccountInfo account, string characterName)
+        {
+            if (account == null) return;
+
+            PlayerObject onlinePlayer = null;
+            foreach (var character in account.Characters)
+            {
+                if (character?.Player != null)
+                {
+                    onlinePlayer = character.Player;
+                    break;
+                }
+            }
+
+            using (GiveCreditDialog dialog = new GiveCreditDialog(account.AccountID, characterName, account.Credit, onlinePlayer != null))
+            {
+                if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
+                uint amount = dialog.Amount;
+                if (amount == 0) return;
+
+                if (onlinePlayer != null)
+                {
+                    onlinePlayer.GainCredit(amount);
+                }
+                else
+                {
+                    if ((ulong)account.Credit + amount > uint.MaxValue)
+                        amount = uint.MaxValue - account.Credit;
+                    account.Credit += amount;
+                }
+
+                SMain.Enqueue($"[元宝] 已向账号 {account.AccountID} 发送 {amount} 元宝,当前余额 {account.Credit}");
+
+                AccountInfoListView.BeginUpdate();
+                for (int i = 0; i < AccountInfoListView.Items.Count; i++)
+                {
+                    if (ReferenceEquals(AccountInfoListView.Items[i].Tag, account))
+                        Update(AccountInfoListView.Items[i], account);
+                }
+                AutoResize();
+                AccountInfoListView.EndUpdate();
             }
         }
     }

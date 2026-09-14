@@ -105,6 +105,9 @@
             this.listBoxPets = new System.Windows.Forms.ListBox();
             this.tabPageTransform = new System.Windows.Forms.TabPage();
             this.listBoxTransform = new System.Windows.Forms.ListBox();
+            this.tabPageAll = new System.Windows.Forms.TabPage();
+            this.listBoxAll = new System.Windows.Forms.ListBox();
+            this.textBoxAllSearch = new System.Windows.Forms.TextBox();
             this.labelItemOdds = new System.Windows.Forms.Label();
             this.textBoxMinLevel = new System.Windows.Forms.TextBox();
             this.textBoxMaxLevel = new System.Windows.Forms.TextBox();
@@ -164,6 +167,7 @@
             this.tabPageAwakening.SuspendLayout();
             this.tabPagePets.SuspendLayout();
             this.tabPageTransform.SuspendLayout();
+            this.tabPageAll.SuspendLayout();
             this.groupBoxGold.SuspendLayout();
             this.groupBoxItem.SuspendLayout();
             this.SuspendLayout();
@@ -208,6 +212,7 @@
             // 
             // tabControlSeperateItems
             // 
+            this.tabControlSeperateItems.Controls.Add(this.tabPageAll);
             this.tabControlSeperateItems.Controls.Add(this.tabPageAmulet);
             this.tabControlSeperateItems.Controls.Add(this.tabPageArmour);
             this.tabControlSeperateItems.Controls.Add(this.tabPageAwakening);
@@ -1151,7 +1156,41 @@
             this.listBoxTransform.Size = new System.Drawing.Size(462, 314);
             this.listBoxTransform.TabIndex = 1;
             this.listBoxTransform.Tag = "Transform";
-            // 
+            //
+            // tabPageAll
+            //
+            this.tabPageAll.Controls.Add(this.listBoxAll);
+            this.tabPageAll.Controls.Add(this.textBoxAllSearch);
+            this.tabPageAll.Name = "tabPageAll";
+            this.tabPageAll.Padding = new System.Windows.Forms.Padding(3);
+            this.tabPageAll.Size = new System.Drawing.Size(468, 320);
+            this.tabPageAll.TabIndex = 37;
+            this.tabPageAll.Tag = "All";
+            this.tabPageAll.Text = "全部物品";
+            this.tabPageAll.UseVisualStyleBackColor = true;
+            //
+            // textBoxAllSearch
+            //
+            this.textBoxAllSearch.BackColor = System.Drawing.Color.Ivory;
+            this.textBoxAllSearch.Dock = System.Windows.Forms.DockStyle.Top;
+            this.textBoxAllSearch.Name = "textBoxAllSearch";
+            this.textBoxAllSearch.Size = new System.Drawing.Size(462, 20);
+            this.textBoxAllSearch.TabIndex = 2;
+            this.textBoxAllSearch.TextChanged += new System.EventHandler(this.textBoxAllSearch_TextChanged);
+            //
+            // listBoxAll
+            //
+            this.listBoxAll.BackColor = System.Drawing.Color.GhostWhite;
+            this.listBoxAll.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.listBoxAll.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.listBoxAll.FormattingEnabled = true;
+            this.listBoxAll.IntegralHeight = false;
+            this.listBoxAll.Location = new System.Drawing.Point(3, 23);
+            this.listBoxAll.Name = "listBoxAll";
+            this.listBoxAll.Size = new System.Drawing.Size(462, 294);
+            this.listBoxAll.TabIndex = 1;
+            this.listBoxAll.Tag = "All";
+            //
             // labelItemOdds
             // 
             this.labelItemOdds.AutoSize = true;
@@ -1419,6 +1458,7 @@
             this.tabPageAwakening.ResumeLayout(false);
             this.tabPagePets.ResumeLayout(false);
             this.tabPageTransform.ResumeLayout(false);
+            this.tabPageAll.ResumeLayout(false);
             this.groupBoxGold.ResumeLayout(false);
             this.groupBoxGold.PerformLayout();
             this.groupBoxItem.ResumeLayout(false);
@@ -1528,6 +1568,9 @@
         private System.Windows.Forms.TabPage tabPageTransform;
         private System.Windows.Forms.ListBox listBoxPets;
         private System.Windows.Forms.ListBox listBoxTransform;
+        private System.Windows.Forms.TabPage tabPageAll;
+        private System.Windows.Forms.ListBox listBoxAll;
+        private System.Windows.Forms.TextBox textBoxAllSearch;
 
     }
 }

@@ -1,4 +1,4 @@
-﻿namespace Client
+namespace Client
 {
 
     public enum KeybindOptions : int
@@ -100,7 +100,10 @@
         HeroEquipment,
         HeroSkills,
         TargetSpellLockOn,
-        PetmodeFocusMasterTarget
+        PetmodeFocusMasterTarget,
+        Talent,     //天赋系统 - 天赋窗口开关(追加在枚举末尾, 不影响现有按键的索引值)
+        GroupHealthPanel,    //组队血条面板开关(追加在枚举末尾, 默认Ctrl+P)
+        AssistPanel          //辅助面板开关(追加在枚举末尾, 默认Ctrl+U) - 自动喝药/自动技能/挂机
     }
 
     public class KeyBind
@@ -233,6 +236,16 @@
             InputKey = new KeyBind { Group = "Dialogs", Description = GameLanguage.ClientTextMap.GetLocalization(ClientTextKeys.RankingOpenClose), function = KeybindOptions.Ranking, RequireAlt = 2, RequireShift = 2, RequireTilde = 2, RequireCtrl = 2, Key = Keys.K };
             list.Add(InputKey);
             InputKey = new KeyBind { Group = "Dialogs", Description = GameLanguage.ClientTextMap.GetLocalization(ClientTextKeys.HelpOpenClose), function = KeybindOptions.Help, RequireAlt = 2, RequireShift = 0, RequireTilde = 2, RequireCtrl = 0, Key = Keys.H };
+            list.Add(InputKey);
+            //天赋系统 - 默认 Ctrl+T 开关天赋窗口, 玩家可在按键设置里改
+            InputKey = new KeyBind { Group = "Dialogs", Description = GameLanguage.ClientTextMap.GetLocalization(ClientTextKeys.TalentOpenClose), function = KeybindOptions.Talent, RequireAlt = 2, RequireShift = 2, RequireTilde = 2, RequireCtrl = 1, Key = Keys.T };
+            list.Add(InputKey);
+            //组队血条面板 - 默认 Ctrl+P 开关, 玩家可在按键设置里改
+            InputKey = new KeyBind { Group = "Dialogs", Description = Client.MirScenes.Dialogs.GroupHealthDialog.PanelDescription, function = KeybindOptions.GroupHealthPanel, RequireAlt = 2, RequireShift = 2, RequireTilde = 2, RequireCtrl = 1, Key = Keys.P };
+            list.Add(InputKey);
+            //辅助面板 - 默认 Ctrl+W 开关(自动喝药/自动技能/挂机), 玩家可在按键设置里改
+            //注: 不能用Ctrl+U/U, 按键设置面板占了U且不区分Ctrl
+            InputKey = new KeyBind { Group = "Dialogs", Description = Client.MirScenes.Dialogs.AssistDialog.PanelDescription, function = KeybindOptions.AssistPanel, RequireAlt = 2, RequireShift = 2, RequireTilde = 2, RequireCtrl = 1, Key = Keys.W };
             list.Add(InputKey);
             InputKey = new KeyBind { Group = "Dialogs", Description = GameLanguage.ClientTextMap.GetLocalization(ClientTextKeys.KeybindsOpenClose), function = KeybindOptions.Keybind, RequireAlt = 2, RequireShift = 2, RequireTilde = 2, RequireCtrl = 2, Key = Keys.U };
             list.Add(InputKey);

@@ -25,6 +25,8 @@ namespace Server.MirDatabase
             NoThrowItem, NoDropPlayer, NoDropMonster, NoNames, NoMount, NeedBridle, Fight, NeedHole, Fire, Lightning,
             NoTownTeleport, NoReincarnation, GT, NoExperience, NoGroup = false, NoPets, NoIntelligentCreatures, NoHero, RequiredGroup = false, FireWallLimit;
 
+        public bool NoPlayerNoSpawn; //无人不刷怪: 该地图无在线玩家时停止刷新/补怪
+
         public int RequiredGroupSize = 0, FireWallCount = 0;
 
 
@@ -121,6 +123,10 @@ namespace Server.MirDatabase
                 FireWallLimit = reader.ReadBoolean();
                 FireWallCount = reader.ReadInt32();
             }
+            if (Envir.LoadVersion >= 121)
+            {
+                NoPlayerNoSpawn = reader.ReadBoolean();
+            }
         }
 
         public void Save(BinaryWriter writer)
@@ -191,11 +197,15 @@ namespace Server.MirDatabase
             writer.Write(FireWallLimit);
             writer.Write(FireWallCount);
 
+            writer.Write(NoPlayerNoSpawn);
+
         }
 
 
         public void CreateMap()
         {
+            NPCs.Clear();
+
             for (int j = 0; j < Envir.NPCInfoList.Count; j++)
             {
                 if (Envir.NPCInfoList[j].MapIndex != Index) continue;
@@ -208,10 +218,6 @@ namespace Server.MirDatabase
             if (!map.Load()) return;
 
             Envir.MapList.Add(map);
-
-            for (int i = 0; i < SafeZones.Count; i++)
-                if (SafeZones[i].StartPoint)
-                    Envir.StartPoints.Add(SafeZones[i]);
         }
 
         public void CreateSafeZone()
@@ -316,6 +322,8 @@ namespace Server.MirDatabase
                 if (!int.TryParse(data[start + 7 + (i * 7)], out temp.RespawnIndex)) return;
                 if (!bool.TryParse(data[start + 8 + (i * 7)], out temp.SaveRespawnTime)) return;
                 if (!ushort.TryParse(data[start + 9 + (i * 7)], out temp.RespawnTicks)) return;
+
+                if (data.Length > start + 10 + (i * 7) && !bool.TryParse(data[start + 10 + (i * 7)], out temp.NoPlayerNoSpawn)) return;
 
                 info.Respawns.Add(temp);
             }

@@ -1,4 +1,4 @@
-﻿using Client.MirScenes;
+using Client.MirScenes;
 using Client.MirScenes.Dialogs;
 using S = ServerPackets;
 

@@ -17,6 +17,9 @@
     {
         Move,
         InstanceMove,
+        BattleJoin,
+        BattleLeave,
+        BattleClaimReward,
         GiveGold,
         TakeGold,
         GiveGuildGold,

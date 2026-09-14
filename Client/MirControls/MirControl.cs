@@ -1,4 +1,4 @@
-﻿using Client.MirGraphics;
+using Client.MirGraphics;
 using Client.MirSounds;
 using SlimDX;
 using SlimDX.Direct3D9;
@@ -131,10 +131,17 @@ namespace Client.MirControls
         }
         protected virtual void CreateTexture()
         {
-            if (ControlTexture == null || ControlTexture.Disposed)
+            //尺寸变化时重建纹理(否则Clear的是旧尺寸纹理, DrawOpaque源矩形越界)
+            if (ControlTexture == null || ControlTexture.Disposed || TextureSize != Size)
             {
+                if (ControlTexture != null && !ControlTexture.Disposed)
+                {
+                    ControlTexture.Dispose();
+                    ControlTexture = null;
+                    DXManager.ControlList.Remove(this);
+                }
                 DXManager.ControlList.Add(this);
-                ControlTexture = new Texture(DXManager.Device, Size.Width, Size.Height, 1, Usage.RenderTarget, Format.A8R8G8B8, Pool.Default);
+                ControlTexture = new Texture(DXManager.Device, Math.Max(1, Size.Width), Math.Max(1, Size.Height), 1, Usage.RenderTarget, Format.A8R8G8B8, Pool.Default);
                 TextureSize = Size;
             }
 

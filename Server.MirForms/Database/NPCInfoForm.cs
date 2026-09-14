@@ -1,4 +1,4 @@
-﻿using Server.MirDatabase;
+using Server.MirDatabase;
 using Server.MirEnvir;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -41,6 +41,62 @@ namespace Server
             UpdateInterface();
             RefreshNPCList(); // Without this, the newly created NPC wont show on the NPCInfoListBox, not sure why?
         }
+
+        private void GmStreetButton_Click(object sender, EventArgs e)
+        {
+            //选图对话框: 默认选中 GM之家
+            using var dialog = new Form
+            {
+                Text = "生成GM测试街",
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                StartPosition = FormStartPosition.CenterParent,
+                MaximizeBox = false,
+                MinimizeBox = false,
+                ClientSize = new Size(420, 132),
+            };
+
+            var combo = new ComboBox { Location = new Point(14, 16), Size = new Size(392, 24), DropDownStyle = ComboBoxStyle.DropDownList };
+            foreach (var m in Envir.MapInfoList)
+                combo.Items.Add(new GmStreetMapItem(m));
+            int gmIdx = -1;
+            for (int i = 0; i < combo.Items.Count; i++)
+                if (combo.Items[i] is GmStreetMapItem it && it.Info.FileName == "r001") { gmIdx = i; break; }
+            if (gmIdx < 0 && combo.Items.Count > 0) gmIdx = 0;
+            combo.SelectedIndex = gmIdx;
+
+            var rebuild = new CheckBox { Location = new Point(14, 50), Text = "先删除地图上旧的'测-'NPC再生成", AutoSize = true };
+            var ok = new Button { Location = new Point(230, 88), Size = new Size(84, 30), Text = "生成" };
+            var cancel = new Button { Location = new Point(322, 88), Size = new Size(84, 30), Text = "取消" };
+            ok.DialogResult = DialogResult.OK;
+            cancel.DialogResult = DialogResult.Cancel;
+            dialog.Controls.Add(combo);
+            dialog.Controls.Add(rebuild);
+            dialog.Controls.Add(ok);
+            dialog.Controls.Add(cancel);
+            dialog.AcceptButton = ok;
+            dialog.CancelButton = cancel;
+
+            if (dialog.ShowDialog(this) != DialogResult.OK) return;
+            if (combo.SelectedItem is not GmStreetMapItem sel || sel.Info == null) return;
+
+            //数量大时给个确认
+            if (MessageBox.Show(this,
+                    $"将把全服NPC(按唯一脚本去重)复制到 '{sel.Info.Title}' 随机摆放, 生成后需重启服务器。\n继续?",
+                    "生成GM测试街", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) != DialogResult.OK)
+                return;
+
+            var summary = GmNpcBuilder.Build(Envir, sel.Info, rebuild.Checked);
+            MessageBox.Show(this, summary, "生成GM测试街", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            RefreshNPCList();
+        }
+
+        private class GmStreetMapItem
+        {
+            public readonly MapInfo Info;
+            public GmStreetMapItem(MapInfo info) { Info = info; }
+            public override string ToString() => $"{Info.Title} ({Info.FileName}) #{Info.Index}";
+        }
+
         private void RemoveButton_Click(object sender, EventArgs e)
         {
             if (_selectedNPCInfos.Count == 0) return;
@@ -85,8 +141,8 @@ namespace Server
             TimeVisible_checkbox.Checked = info.TimeVisible;
             StartHour_combo.Text = info.HourStart.ToString();
             EndHour_combo.Text = info.HourEnd.ToString();
-            StartMin_num.Value = info.MinuteStart;
-            EndMin_num.Value = info.MinuteEnd;
+            StartMin_num.Value = Math.Clamp(info.MinuteStart, (byte)StartMin_num.Minimum, (byte)StartMin_num.Maximum);
+            EndMin_num.Value = Math.Clamp(info.MinuteEnd, (byte)EndMin_num.Minimum, (byte)EndMin_num.Maximum);
             Flag_textbox.Text = info.FlagNeeded.ToString();
             ShowBigMapCheckBox.Checked = info.ShowOnBigMap;
             BigMapIconTextBox.Text = info.BigMapIcon.ToString();

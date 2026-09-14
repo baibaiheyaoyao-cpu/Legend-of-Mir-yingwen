@@ -1065,6 +1065,17 @@ public enum ClientTextKeys
     RankingOpenClose,
     HelpOpenClose,
     KeybindsOpenClose,
+
+    //天赋系统 - 客户端文案
+    TalentOpenClose,    //热键提示: 天赋 开/关
+    TalentEntry,        //主界面入口文字
+    TalentTitle,        //窗口标题
+    TalentPoints,       //剩余点数
+    TalentResetButton,  //洗点按钮
+    TalentResetConfirm, //洗点确认框
+    TalentNotOpen,      //天赋暂未开放
+    TalentRequiredLevel,//需求等级
+    TalentPreLine,      //前置行(勾/叉 名称 当前/需求)
     CloseAllWindows,
     RotateBelt,
     Logout,
@@ -1536,6 +1547,7 @@ public enum ServerTextKeys
     CongratulationsExtraDC,
     CongratulationsExtraMC,
     CongratulationsExtraSC,
+    RefineStatGained,
     ItemSmashedOnTest,
     YouNotMarried,
     ForcefullyDivorced,
@@ -1629,6 +1641,7 @@ public enum ServerTextKeys
     HeroReleasedFromService,
     YouCannotSummonMoreHeroes,
     HeroAddedToStorage,
+    HeroBelongsToAnother,
     PlayerHasDroppedItem,
     IAmStarving,
     FriendlyPickedUpItem,
@@ -1886,7 +1899,27 @@ public enum ServerTextKeys
     IntelligentCreaturesCannotBeSummonedOnMap,
     CannotSummonHeroOnMap,
     CannotFollowIntoMapWaitHere,
-    HasReturnedToYourSide
+    HasReturnedToYourSide,
+
+    //天赋系统 - 服务端文案
+    TalentsLoaded,               //天赋表加载完成提示
+    TalentsReloaded,             //@ReloadTalents 完成
+    TalentDuplicateId,           //天赋表Id重复
+    TalentBadLine,               //天赋表行格式错误
+    TalentMissingPre,            //天赋前置引用了不存在的Id
+    TalentBadStat,               //天赋属性串解析失败
+    TalentNotOpenYet,            //召唤类天赋暂未开放
+    TalentSystemLocked,          //等级未到解锁等级
+    TalentWrongClass,            //职业不符
+    TalentLowLevel,              //等级不足
+    TalentMaxLevel,              //已满级
+    TalentLowPoints,             //点数不足
+    TalentPreNotMet,             //前置未满足
+    TalentNotFound,              //找不到该天赋
+    TalentLearned,               //学习成功提示
+    TalentPointsGained,          //获得天赋点提示
+    TalentResetOk,               //洗点成功
+    TalentResetLowGold           //洗点金币不足
 }
 
 public class TextMap
@@ -2057,6 +2090,24 @@ public static class GameLanguage
             { nameof(ServerTextKeys.PetHasBeenRecalled), "Pet {0} x{1} has been recalled." },
             { nameof(ServerTextKeys.DropsReloaded), "Drops Reloaded." },
             { nameof(ServerTextKeys.NpcScriptsReloaded), "NPC Scripts Reloaded." },
+            { nameof(ServerTextKeys.TalentsLoaded), "Talents loaded: {0}" },
+            { nameof(ServerTextKeys.TalentsReloaded), "Talents Reloaded: {0}" },
+            { nameof(ServerTextKeys.TalentDuplicateId), "Talents.txt: duplicate talent Id {0}, line skipped." },
+            { nameof(ServerTextKeys.TalentBadLine), "Talents.txt: bad format on line {0} (found {1} columns), line skipped." },
+            { nameof(ServerTextKeys.TalentMissingPre), "Talents.txt: talent {0} requires missing talent Id {1}, talent skipped." },
+            { nameof(ServerTextKeys.TalentBadStat), "Talents.txt: failed to parse stat '{1}' on talent {0}, stat ignored." },
+            { nameof(ServerTextKeys.TalentNotOpenYet), "This talent is not available yet." },
+            { nameof(ServerTextKeys.TalentSystemLocked), "The talent system unlocks at level {0}." },
+            { nameof(ServerTextKeys.TalentWrongClass), "Your class cannot learn this talent." },
+            { nameof(ServerTextKeys.TalentLowLevel), "You must be level {0} to learn this talent." },
+            { nameof(ServerTextKeys.TalentMaxLevel), "This talent is already at max level." },
+            { nameof(ServerTextKeys.TalentLowPoints), "Not enough talent points." },
+            { nameof(ServerTextKeys.TalentPreNotMet), "You have not met the requirements of: {0}." },
+            { nameof(ServerTextKeys.TalentNotFound), "Talent not found." },
+            { nameof(ServerTextKeys.TalentLearned), "{0} learned. (Level {1}/{2})" },
+            { nameof(ServerTextKeys.TalentPointsGained), "You have gained {0} talent points." },
+            { nameof(ServerTextKeys.TalentResetOk), "Talents reset. {0} points returned." },
+            { nameof(ServerTextKeys.TalentResetLowGold), "Not enough gold. Talent reset costs {0}." },
             { nameof(ServerTextKeys.PlayerGivenGoldByGM), "Player {0} has been given {1} gold by GM: {2}" },
             { nameof(ServerTextKeys.PlayerGivenPearlByGM), "Player {0} has been given {1} pearl by GM: {2}" },
             { nameof(ServerTextKeys.PlayerGivenCreditByGM), "Player {0} has been given {1} credit by GM: {2}" },
@@ -2319,6 +2370,7 @@ public static class GameLanguage
             { nameof(ServerTextKeys.CongratulationsExtraDC), "Congratulations, your {0} now has +{1} extra DC." },
             { nameof(ServerTextKeys.CongratulationsExtraMC), "Congratulations, your {0} now has +{1} extra MC." },
             { nameof(ServerTextKeys.CongratulationsExtraSC), "Congratulations, your {0} now has +{1} extra SC." },
+            { nameof(ServerTextKeys.RefineStatGained), "Congratulations! {0} gained {1} +{2}." },
             { nameof(ServerTextKeys.ItemSmashedOnTest), "Your {0} smashed into a thousand pieces upon testing." },
             { nameof(ServerTextKeys.YouNotMarried), "You're not married." },
             { nameof(ServerTextKeys.ForcefullyDivorced), "You've just been forcefully divorced" },
@@ -2412,6 +2464,7 @@ public static class GameLanguage
             { nameof(ServerTextKeys.HeroReleasedFromService), "Hero has been released from service" },
             { nameof(ServerTextKeys.YouCannotSummonMoreHeroes), "You can not summon any more heroes." },
             { nameof(ServerTextKeys.HeroAddedToStorage), "Hero has been added to your hero storage." },
+            { nameof(ServerTextKeys.HeroBelongsToAnother), "This hero already belongs to another player." },
             { nameof(ServerTextKeys.PlayerHasDroppedItem), "{0} has dropped {1}." },
             { nameof(ServerTextKeys.IAmStarving), "I'm starving!!." },
             { nameof(ServerTextKeys.FriendlyPickedUpItem), "{0} Picked up: {{{1}}}" },
@@ -4055,6 +4108,15 @@ public static class GameLanguage
             { nameof(ClientTextKeys.RankingOpenClose), "Ranking Open/Close" },
             { nameof(ClientTextKeys.HelpOpenClose), "Help Open/Close" },
             { nameof(ClientTextKeys.KeybindsOpenClose), "Keybinds Open/Close" },
+            { nameof(ClientTextKeys.TalentOpenClose), "Talent Open/Close" },
+            { nameof(ClientTextKeys.TalentEntry), "Talent" },
+            { nameof(ClientTextKeys.TalentTitle), "Talents" },
+            { nameof(ClientTextKeys.TalentPoints), "Points: {0}" },
+            { nameof(ClientTextKeys.TalentResetButton), "Reset" },
+            { nameof(ClientTextKeys.TalentResetConfirm), "Reset all talents? This costs gold and returns all spent points." },
+            { nameof(ClientTextKeys.TalentNotOpen), "Not available yet" },
+            { nameof(ClientTextKeys.TalentRequiredLevel), "Required Level: {0}" },
+            { nameof(ClientTextKeys.TalentPreLine), "{0} Requires: {1} {2}/{3}" },
             { nameof(ClientTextKeys.CloseAllWindows), "Close All Windows" },
             { nameof(ClientTextKeys.RotateBelt), "Rotate Belt" },
             { nameof(ClientTextKeys.Logout), "Logout" },

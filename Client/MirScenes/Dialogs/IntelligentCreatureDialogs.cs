@@ -1,4 +1,4 @@
-﻿using Client.MirControls;
+using Client.MirControls;
 using Client.MirGraphics;
 using Client.MirNetwork;
 using Client.MirSounds;
@@ -726,8 +726,14 @@ namespace Client.MirScenes.Dialogs
 
             var rules = GameScene.User.IntelligentCreatures[selectedCreature].CreatureRules;
 
-            var semi = rules.SemiAutoPickupEnabled ? string.Format("{0}x{0} {1}{2}{3}", rules.AutoPickupRange, rules.AutoPickupEnabled ? "auto/" : "", rules.SemiAutoPickupEnabled ? "semi-auto" : "", rules.MousePickupEnabled ? ", " : "") : "";
-            var mouse = rules.SemiAutoPickupEnabled ? string.Format("{0}x{0} mouse", rules.MousePickupRange) : "";
+            var semi = "";
+            if (rules.AutoPickupEnabled)
+                semi += string.Format("{0}x{0} auto", rules.AutoPickupRange);
+            if (rules.SemiAutoPickupEnabled)
+                semi += (semi.Length > 0 ? "/" : "") + string.Format("{0}x{0} semi-auto", rules.SemiAutoPickupRange);
+            if (rules.MousePickupEnabled && semi.Length > 0)
+                semi += ", ";
+            var mouse = rules.MousePickupEnabled ? string.Format("{0}x{0} mouse", rules.MousePickupRange) : "";
 
             CreatureName.Text = GameScene.User.IntelligentCreatures[selectedCreature].CustomName;
             CreatureInfo.Text = GameLanguage.ClientTextMap.GetLocalization((ClientTextKeys.CanPickupItems), semi, mouse);
@@ -1114,6 +1120,66 @@ namespace Client.MirScenes.Dialogs
                     AnimExCount = 16;
                     AnimExDelay = 300;
                     break;
+                case IntelligentCreatureType.BabyTiger://Foxey frames
+                    AnimDefaultIdx = 1430;
+                    AnimDefaultCount = 9;
+                    AnimDefaultDelay = 300;
+                    AnimExIdx = 1439;
+                    AnimExCount = 8;
+                    AnimExDelay = 300;
+                    break;
+                case IntelligentCreatureType.JarDragon://BabyDragon frames
+                case IntelligentCreatureType.RedDragon:
+                case IntelligentCreatureType.GoldDragon:
+                case IntelligentCreatureType.GreenDragon:
+                    AnimDefaultIdx = 750;
+                    AnimDefaultCount = 6;
+                    AnimDefaultDelay = 300;
+                    AnimExIdx = 760;
+                    AnimExCount = 7;
+                    AnimExDelay = 250;
+                    break;
+                case IntelligentCreatureType.DancingSnake://Frog frames
+                case IntelligentCreatureType.BlackTortoise:
+                    AnimDefaultIdx = 840;
+                    AnimDefaultCount = 6;
+                    AnimDefaultDelay = 300;
+                    AnimExIdx = 850;
+                    AnimExCount = 6;
+                    AnimExDelay = 300;
+                    break;
+                case IntelligentCreatureType.Nezha://BabyMonkey frames
+                    AnimDefaultIdx = 870;
+                    AnimDefaultCount = 6;
+                    AnimDefaultDelay = 300;
+                    AnimExIdx = 880;
+                    AnimExCount = 9;
+                    AnimExDelay = 300;
+                    break;
+                case IntelligentCreatureType.FrostGiant://BabySnowMan frames
+                    AnimDefaultIdx = 810;
+                    AnimDefaultCount = 6;
+                    AnimDefaultDelay = 300;
+                    AnimExIdx = 820;
+                    AnimExCount = 6;
+                    AnimExDelay = 300;
+                    break;
+                case IntelligentCreatureType.WhiteTiger://Kitten frames
+                    AnimDefaultIdx = 600;
+                    AnimDefaultCount = 6;
+                    AnimDefaultDelay = 250;
+                    AnimExIdx = 610;
+                    AnimExCount = 10;
+                    AnimExDelay = 200;
+                    break;
+                case IntelligentCreatureType.VermilionBird://AngryBird frames
+                    AnimDefaultIdx = 1400;
+                    AnimDefaultCount = 12;
+                    AnimDefaultDelay = 300;
+                    AnimExIdx = 1332;
+                    AnimExCount = 12;
+                    AnimExDelay = 300;
+                    break;
                 case IntelligentCreatureType.None:
                     AnimDefaultIdx = 539;
                     AnimDefaultCount = 1;
@@ -1158,7 +1224,7 @@ namespace Client.MirScenes.Dialogs
             for (int i = 0; i < CreatureOptions.Length; i++)
             {
                 int offsetY = i * 30;
-                CreatureOptions[i] = new MirCheckBox { Index = 2086, UnTickedIndex = 2086, TickedIndex = 2087, Parent = this, Location = new Point(16, (16 + offsetY)), Library = Libraries.Prguse };
+                CreatureOptions[i] = new MirCheckBox { Index = 2086, UnTickedIndex = 2086, TickedIndex = 2087, BoxIndex = 2086, Parent = this, Location = new Point(16, (16 + offsetY)), Library = Libraries.Prguse };
                 CreatureOptions[i].LabelText = OptionNames[i];
                 CreatureOptions[i].Click += CheckBoxClick;
             }

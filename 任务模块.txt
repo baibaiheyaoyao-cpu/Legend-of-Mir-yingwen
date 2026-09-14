@@ -1,0 +1,9 @@
+任务模块
+
+Server\MirNetwork\MirConnection.cs:613-646 — 客户端任务包入口（Accept/Finish/Abandon/ShareQuest）
+Server\MirObjects\NPC\NPCScript.cs:685 — NPC脚本 [Quests] 段解析（正数=接、负数=交）
+Server\MirObjects\NPCObject.cs:39 — NPC 挂载的任务列表
+Server\MirEnvir\Envir.cs:6094 / 6495 — 每日任务重置、热重载刷新
+Server\MirDatabase\CharacterInfo.cs:93-94 — 存档字段（CurrentQuests、CompletedQuests、任务背包40格）
+
+

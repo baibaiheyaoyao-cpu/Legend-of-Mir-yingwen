@@ -1,4 +1,4 @@
-﻿using System.Text.RegularExpressions;
+using System.Text.RegularExpressions;
 
 public class ItemInfo
 {
@@ -267,6 +267,57 @@ public class ItemInfo
         return null;
     }
 
+    /// <summary>
+    /// 把 src 的全部字段(不含 Index)原地复制到本对象.
+    /// 用于把编辑库(Envir.Edit)的改动热同步到运行库(Envir.Main):
+    /// 原地更新可保证在线玩家手里的 UserItem 引用不断链.
+    /// </summary>
+    public void CopyFieldsFrom(ItemInfo src)
+    {
+        Name = src.Name;
+        Type = src.Type;
+        Grade = src.Grade;
+        RequiredType = src.RequiredType;
+        RequiredClass = src.RequiredClass;
+        RequiredGender = src.RequiredGender;
+        Set = src.Set;
+        Shape = src.Shape;
+        Weight = src.Weight;
+        Light = src.Light;
+        RequiredAmount = src.RequiredAmount;
+        Image = src.Image;
+        Durability = src.Durability;
+        Price = src.Price;
+        StackSize = src.StackSize;
+        StartItem = src.StartItem;
+        Effect = src.Effect;
+        NeedIdentify = src.NeedIdentify;
+        ShowGroupPickup = src.ShowGroupPickup;
+        GlobalDropNotify = src.GlobalDropNotify;
+        ClassBased = src.ClassBased;
+        LevelBased = src.LevelBased;
+        CanMine = src.CanMine;
+        CanFastRun = src.CanFastRun;
+        CanAwakening = src.CanAwakening;
+        Bind = src.Bind;
+        Unique = src.Unique;
+        RandomStatsId = src.RandomStatsId;
+        RandomStats = src.RandomStats;
+        ToolTip = src.ToolTip ?? string.Empty;
+        Slots = src.Slots;
+        Stats.Clear();
+        Stats.Add(src.Stats);
+    }
+
+    /// <summary>完整克隆(含 Index), 用于复制物品和热同步新增.</summary>
+    public ItemInfo CloneItemInfo()
+    {
+        var clone = new ItemInfo();
+        clone.CopyFieldsFrom(this);
+        clone.Index = Index;
+        return clone;
+    }
+
     public override string ToString()
     {
         return string.Format("{0}: {1}", Index, Name);
@@ -325,6 +376,8 @@ public class UserItem
     }
 
     public bool GMMade { get; set; }
+
+    public byte BreakthroughCount = 0; //装备突破次数(自定义字段, customVersion>=1读写)
 
     public UserItem(ItemInfo info)
     {
@@ -455,6 +508,11 @@ public class UserItem
         {
             GMMade = reader.ReadBoolean();
         }
+
+        if (customVersion >= 1)
+        {
+            BreakthroughCount = reader.ReadByte();
+        }
     }
 
     public void Save(BinaryWriter writer)
@@ -506,6 +564,8 @@ public class UserItem
         SealedInfo?.Save(writer);
 
         writer.Write(GMMade);
+
+        writer.Write(BreakthroughCount);
     }
 
     public int GetTotal(Stat type)
@@ -940,41 +1000,35 @@ public class Awake
 
         if (this.Type == AwakeType.None)
         {
-            if (item.Info.Type == ItemType.Weapon)
+            switch (item.Info.Type)
             {
-                if (type == AwakeType.DC ||
-                    type == AwakeType.MC ||
-                    type == AwakeType.SC)
-                {
-                    this.Type = type;
-                    return true;
-                }
-                else
+                case ItemType.Weapon:
+                    if (type == AwakeType.DC ||
+                        type == AwakeType.MC ||
+                        type == AwakeType.SC)
+                    {
+                        this.Type = type;
+                        return true;
+                    }
+                    return false;
+                case ItemType.Helmet:
+                    if (type == AwakeType.AC ||
+                        type == AwakeType.MAC)
+                    {
+                        this.Type = type;
+                        return true;
+                    }
+                    return false;
+                case ItemType.Armour:
+                    if (type == AwakeType.HPMP)
+                    {
+                        this.Type = type;
+                        return true;
+                    }
+                    return false;
+                default:
                     return false;
             }
-            else if (item.Info.Type == ItemType.Helmet)
-            {
-                if (type == AwakeType.AC ||
-                    type == AwakeType.MAC)
-                {
-                    this.Type = type;
-                    return true;
-                }
-                else
-                    return false;
-            }
-            else if (item.Info.Type == ItemType.Armour)
-            {
-                if (type == AwakeType.HPMP)
-                {
-                    this.Type = type;
-                    return true;
-                }
-                else
-                    return false;
-            }
-            else
-                return false;
         }
         else
         {
@@ -1004,6 +1058,34 @@ public class Awake
             isHit = MakeHit(1, out _);
             return 0;
         }
+    }
+
+    private bool[] Awakening(UserItem item)
+    {
+        int minValue = AwakeChanceMin;
+        int maxValue = (AwakeChanceMax[(int)item.Info.Grade - 1] < minValue) ? minValue : AwakeChanceMax[(int)item.Info.Grade - 1];
+
+        bool[] returnValue = MakeHit(maxValue, out int result);
+
+        switch (item.Info.Type)
+        {
+            case ItemType.Weapon:
+                result *= (int)Awake_WeaponRate;
+                break;
+            case ItemType.Armour:
+                result *= (int)Awake_ArmorRate;
+                break;
+            case ItemType.Helmet:
+                result *= (int)Awake_HelmetRate;
+                break;
+            default:
+                result = 0;
+                break;
+        }
+
+        listAwake.Add((byte)result);
+
+        return returnValue;
     }
 
     public int RemoveAwake()
@@ -1057,32 +1139,9 @@ public class Awake
         return isHit;
     }
 
-    private bool[] Awakening(UserItem item)
+    public byte GetLastAwakeValue()
     {
-        int minValue = AwakeChanceMin;
-        int maxValue = (AwakeChanceMax[(int)item.Info.Grade - 1] < minValue) ? minValue : AwakeChanceMax[(int)item.Info.Grade - 1];
-
-        bool[] returnValue = MakeHit(maxValue, out int result);
-
-        switch (item.Info.Type)
-        {
-            case ItemType.Weapon:
-                result *= (int)Awake_WeaponRate;
-                break;
-            case ItemType.Armour:
-                result *= (int)Awake_ArmorRate;
-                break;
-            case ItemType.Helmet:
-                result *= (int)Awake_HelmetRate;
-                break;
-            default:
-                result = 0;
-                break;
-        }
-
-        listAwake.Add((byte)result);
-
-        return returnValue;
+        return listAwake.Count > 0 ? listAwake[listAwake.Count - 1] : (byte)0;
     }
 }
 

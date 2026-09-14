@@ -1,4 +1,4 @@
-﻿using Client.MirControls;
+using Client.MirControls;
 using Client.MirGraphics;
 using Client.MirSounds;
 
@@ -71,6 +71,12 @@ namespace Client.MirScenes.Dialogs
                 Size = new Size(16, 12)
             };
             AllButton.Click += (o, e) => ToggleAllFilters();
+
+            AllButton.BeforeDraw += (o, e) =>
+            {
+                if (AllButton.Index == 2087)
+                    Libraries.Prguse.Draw(2086, AllButton.DisplayLocationWithoutOffSet, Color.White, false, 1F);
+            };
 
             GeneralButton = new MirButton
             {

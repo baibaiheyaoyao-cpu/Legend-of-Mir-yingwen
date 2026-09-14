@@ -595,6 +595,8 @@ namespace Server
         private void MonsterInfoForm_FormClosed(object sender, FormClosedEventArgs e)
         {
             Envir.SaveDB();
+            //怪物属于启动数据, 无热更通道; 明确提醒避免以为改完就生效
+            SMain.Enqueue("怪物编辑器: 已保存。怪物属性改动需重启服务器(控制→重启)后生效。");
         }
 
         private void PasteMButton_Click(object sender, EventArgs e)

@@ -12,7 +12,7 @@ namespace AutoPatcherAdmin
         {
             SuspendLayout();
 
-            Text = "Publish Complete";
+            Text = "发布完成";
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             MinimizeBox = false;
@@ -34,7 +34,7 @@ namespace AutoPatcherAdmin
 
             var headerLabel = new Label
             {
-                Text = "Publish Complete",
+                Text = "发布完成",
                 Font = new Font("Segoe UI", 11f, FontStyle.Bold),
                 AutoSize = true,
                 Location = new Point(52, 18),
@@ -101,13 +101,13 @@ namespace AutoPatcherAdmin
             }
 
             // Files section
-            AddRow("Files Uploaded", $"{filesUploaded:N0}",
+            AddRow("已上传文件", $"{filesUploaded:N0}",
                 boldLabel: true, boldValue: true,
                 valueFore: Color.FromArgb(0, 128, 0));
-            AddRow("  Added",   $"{added:N0}");
-            AddRow("  Changed", $"{changed:N0}");
+            AddRow("  新增",   $"{added:N0}");
+            AddRow("  变更", $"{changed:N0}");
             if (removed > 0)
-                AddRow("  Removed", $"{removed:N0}");
+                AddRow("  删除", $"{removed:N0}");
 
             AddSpacer();
 
@@ -116,17 +116,17 @@ namespace AutoPatcherAdmin
             {
                 long saved = origBytes - compBytes;
                 int pct = (int)((double)saved / origBytes * 100);
-                AddRow("Original Size",  FormatBytes(origBytes));
-                AddRow("Compressed To",  $"{FormatBytes(compBytes)}  ({pct}% saved)",
+                AddRow("原始大小",  FormatBytes(origBytes));
+                AddRow("压缩后",  $"{FormatBytes(compBytes)}  (节省 {pct}%)",
                     valueFore: Color.FromArgb(0, 128, 0));
             }
             else
             {
-                AddRow("Upload Size", FormatBytes(origBytes > 0 ? origBytes : compBytes));
+                AddRow("上传大小", FormatBytes(origBytes > 0 ? origBytes : compBytes));
             }
 
             AddSpacer();
-            AddRow("Time Taken", timeElapsed, boldLabel: true, boldValue: true);
+            AddRow("本次用时", timeElapsed, boldLabel: true, boldValue: true);
 
             // Layout sizing
             const int padding    = 16;
@@ -138,7 +138,7 @@ namespace AutoPatcherAdmin
 
             var okButton = new Button
             {
-                Text = "OK",
+                Text = "确定",
                 DialogResult = DialogResult.OK,
                 Size = new Size(80, 26),
                 FlatStyle = FlatStyle.System,

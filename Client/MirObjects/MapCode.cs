@@ -91,6 +91,29 @@
             {
                 if (!CellObjects[i].Dead) continue;
 
+                //隐藏尸体(辅助面板基本页): 跳过已死亡对象的尸体绘制(城墙等装饰物除外, 见下方switch)
+                if (AssistSettings.HideDead && CellObjects[i].DeadTime > 0)
+                {
+                    if (CellObjects[i].Race == ObjectType.Monster)
+                    {
+                        switch (((MonsterObject)CellObjects[i]).BaseImage)
+                        {
+                            case Monster.PalaceWallLeft:
+                            case Monster.PalaceWall1:
+                            case Monster.PalaceWall2:
+                            case Monster.SSabukWall1:
+                            case Monster.SSabukWall2:
+                            case Monster.SSabukWall3:
+                            case Monster.HellLord:
+                                break; //城墙类不算尸体, 照常绘制
+                            default:
+                                continue;
+                        }
+                    }
+                    else
+                        continue;
+                }
+
                 if (CellObjects[i].Race == ObjectType.Monster)
                 {
                     switch (((MonsterObject)CellObjects[i]).BaseImage)

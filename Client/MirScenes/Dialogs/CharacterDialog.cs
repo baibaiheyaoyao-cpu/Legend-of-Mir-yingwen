@@ -1,4 +1,4 @@
-﻿using Client.MirControls;
+using Client.MirControls;
 using Client.MirGraphics;
 using Client.MirObjects;
 using Client.MirSounds;
@@ -143,24 +143,28 @@ namespace Client.MirScenes.Dialogs
             };
 
 
+            // ============ 页签对位修改（适配新版Title.Lib资源）============
+            // 外框(Title 504)自带5个页签凹槽，分隔线位置 x ≈ 8 / 58 / 106 / 155 / 205 / 254
+            // 页签图标实际尺寸为 50x19（Title 499-503，499=称号暂不启用）
+            // 原代码按 62px 间距、64x20 布局，图标会压在凹槽分隔线上，视觉上"多一层"
             CharacterButton = new MirButton
             {
-                Index = 500,
+                Index = 500,                    // 人物页签图标：Title 500
                 Library = Libraries.Title,
-                Location = new Point(8, 70),
+                Location = new Point(8, 70),    // 第1凹槽 x=8（原位置不变）
                 Parent = this,
                 PressedIndex = 500,
-                Size = new Size(64, 20),
+                Size = new Size(50, 19),        // 图标实际尺寸（原 64x20）
                 Sound = SoundList.ButtonA,
             };
             CharacterButton.Click += (o, e) => ShowCharacterPage();
             StatusButton = new MirButton
             {
                 Library = Libraries.Title,
-                Location = new Point(70, 70),
+                Location = new Point(58, 70),   // 第2凹槽 x=58（原 70，偏右压分隔线）
                 Parent = this,
-                PressedIndex = 501,
-                Size = new Size(64, 20),
+                PressedIndex = 501,             // 属性页签图标：Title 501
+                Size = new Size(50, 19),        // 图标实际尺寸（原 64x20）
                 Sound = SoundList.ButtonA
             };
             StatusButton.Click += (o, e) => ShowStatusPage();
@@ -168,10 +172,10 @@ namespace Client.MirScenes.Dialogs
             StateButton = new MirButton
             {
                 Library = Libraries.Title,
-                Location = new Point(132, 70),
+                Location = new Point(106, 70),  // 第3凹槽 x=106（原 132）
                 Parent = this,
-                PressedIndex = 502,
-                Size = new Size(64, 20),
+                PressedIndex = 502,             // 状态页签图标：Title 502
+                Size = new Size(50, 19),        // 图标实际尺寸（原 64x20）
                 Sound = SoundList.ButtonA
             };
             StateButton.Click += (o, e) => ShowStatePage();
@@ -179,12 +183,14 @@ namespace Client.MirScenes.Dialogs
             SkillButton = new MirButton
             {
                 Library = Libraries.Title,
-                Location = new Point(194, 70),
+                Location = new Point(155, 70),  // 第4凹槽 x=155（原 194）
                 Parent = this,
-                PressedIndex = 503,
-                Size = new Size(64, 20),
+                PressedIndex = 503,             // 技能页签图标：Title 503
+                Size = new Size(50, 19),        // 图标实际尺寸（原 64x20）
                 Sound = SoundList.ButtonA
             };
+            // 注：第5凹槽 x≈205 为"称号"页签（资源：图标Title 499 / 底板Title 509），
+            //     游戏暂无称号系统，暂时留空不挂按钮
             SkillButton.Click += (o, e) => ShowSkillPage();
 
             CloseButton = new MirButton

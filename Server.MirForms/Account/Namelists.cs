@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -28,10 +28,10 @@ namespace Server.Account
             if (!Directory.Exists(namelistsPath))
             {
                 NamelistView.Items.Clear();
-                NamelistView.Items.Add("Namelists directory not found.");
-                NamelistCount.Text = "Namelist Count: 0";
-                TotalPlayerLabel.Text = "Total Players: 0 (In all Namelists)";
-                TotalUniquePlayerLabel.Text = "Total Unique Players: 0 (In all Namelists)";
+                NamelistView.Items.Add("未找到名单目录。");
+                NamelistCount.Text = "名单数量: 0";
+                TotalPlayerLabel.Text = "玩家总数: 0 (所有名单)";
+                TotalUniquePlayerLabel.Text = "唯一玩家总数: 0 (所有名单)";
                 return;
             }
 
@@ -70,9 +70,9 @@ namespace Server.Account
             }
 
             // Update the labels with the total and unique counts
-            NamelistCount.Text = $"Namelist Count: {namelistCount}";
-            TotalPlayerLabel.Text = $"Total Players: {totalPlayerCount} (In all Namelists)";
-            TotalUniquePlayerLabel.Text = $"Total Unique Players: {uniquePlayers.Count} (In all Namelists)";
+            NamelistCount.Text = $"名单数量: {namelistCount}";
+            TotalPlayerLabel.Text = $"玩家总数: {totalPlayerCount} (所有名单)";
+            TotalUniquePlayerLabel.Text = $"唯一玩家总数: {uniquePlayers.Count} (所有名单)";
         }
 
         private void NamelistView_SelectedIndexChanged(object sender, EventArgs e)
@@ -98,7 +98,7 @@ namespace Server.Account
                 // Check if the file is empty and display "Empty" if so, otherwise display each line as a new item
                 if (lines.Length == 0)
                 {
-                    NamelistViewBox.Items.Add("Empty");
+                    NamelistViewBox.Items.Add("空");
                 }
                 else
                 {
@@ -111,7 +111,7 @@ namespace Server.Account
             else
             {
                 // Display a message if the file is not found
-                NamelistViewBox.Items.Add("File not found.");
+                NamelistViewBox.Items.Add("未找到文件。");
             }
         }
         #endregion
@@ -126,8 +126,8 @@ namespace Server.Account
             if (!Directory.Exists(namelistsPath))
             {
                 NamelistView.Items.Clear();
-                NamelistView.Items.Add("Namelists directory not found.");
-                NamelistCountLabel.Text = "Found in: 0 Namelists";
+                NamelistView.Items.Add("未找到名单目录。");
+                NamelistCountLabel.Text = "命中的名单: 0";
                 return;
             }
 
@@ -141,7 +141,7 @@ namespace Server.Account
             if (string.IsNullOrEmpty(playerName))
             {
                 UpdateNamelists();
-                NamelistCountLabel.Text = "Found in: 0 Namelists";
+                NamelistCountLabel.Text = "命中的名单: 0";
                 return;
             }
 
@@ -172,12 +172,12 @@ namespace Server.Account
             }
 
             // Update the NamelistCountLabel with the count of namelists containing the player
-            NamelistCountLabel.Text = $"Found in: {count} Namelists";
+            NamelistCountLabel.Text = $"命中的名单: {count}";
 
             // If no files contain the player's name, add a message to the NamelistView
             if (count == 0)
             {
-                NamelistView.Items.Add("Player not found on any Namelists.");
+                NamelistView.Items.Add("在所有名单中未找到该玩家。");
             }
         }
         #endregion
@@ -213,7 +213,7 @@ namespace Server.Account
                 // If the file becomes empty, display "Empty"
                 if (lines.Count == 0)
                 {
-                    NamelistViewBox.Items.Add("Empty");
+                    NamelistViewBox.Items.Add("空");
                 }
             }
         }
@@ -225,17 +225,17 @@ namespace Server.Account
             // Ensure a namelist is selected in NamelistView
             if (NamelistView.SelectedItems.Count == 0)
             {
-                MessageBox.Show("Please select a namelist to add the player to.");
+                MessageBox.Show("请先选择一个名单，再将玩家加入。");
                 return;
             }
 
             // Prompt for the player's name
-            string playerName = Microsoft.VisualBasic.Interaction.InputBox("Enter the player's name:", "Add Player", "");
+            string playerName = Microsoft.VisualBasic.Interaction.InputBox("请输入玩家名字:", "添加玩家", "");
 
             // Check if the input was empty
             if (string.IsNullOrWhiteSpace(playerName))
             {
-                MessageBox.Show("Player name cannot be empty.");
+                MessageBox.Show("玩家名字不能为空。");
                 return;
             }
 
@@ -247,7 +247,7 @@ namespace Server.Account
             var lines = File.ReadAllLines(fullPath).ToList();
             if (lines.Contains(playerName))
             {
-                MessageBox.Show("Player is already in the selected namelist.");
+                MessageBox.Show("该玩家已在当前名单中。");
                 return;
             }
 
@@ -256,7 +256,7 @@ namespace Server.Account
             File.WriteAllLines(fullPath, lines);
 
             // Refresh NamelistViewBox to display the new player if the current namelist is selected
-            if (NamelistViewBox.Items.Contains(new ListViewItem("Empty")))
+            if (NamelistViewBox.Items.Contains(new ListViewItem("空")))
             {
                 NamelistViewBox.Items.Clear();
             }
@@ -268,12 +268,12 @@ namespace Server.Account
         private void CreateNamelistButton_Click(object sender, EventArgs e)
         {
             // Prompt for the namelist name
-            string namelistName = Microsoft.VisualBasic.Interaction.InputBox("Enter the name for the new namelist:", "Create Namelist", "");
+            string namelistName = Microsoft.VisualBasic.Interaction.InputBox("请输入新名单名称:", "创建名单", "");
 
             // Check if the input was empty
             if (string.IsNullOrWhiteSpace(namelistName))
             {
-                MessageBox.Show("Namelist name cannot be empty.");
+                MessageBox.Show("名单名称不能为空。");
                 return;
             }
 
@@ -284,7 +284,7 @@ namespace Server.Account
             // Check if the file already exists
             if (File.Exists(fullPath))
             {
-                MessageBox.Show("A namelist with this name already exists.");
+                MessageBox.Show("已存在同名名单。");
                 return;
             }
 
@@ -302,7 +302,7 @@ namespace Server.Account
             // Ensure a namelist is selected in NamelistView
             if (NamelistView.SelectedItems.Count == 0)
             {
-                MessageBox.Show("Please select a namelist to delete.");
+                MessageBox.Show("请先选择一个要删除的名单。");
                 return;
             }
 
@@ -311,8 +311,8 @@ namespace Server.Account
             string fullPath = Path.Combine("Envir", "Namelists", relativePath + ".txt");
 
             // Confirm deletion
-            var confirmResult = MessageBox.Show($"Are you sure you want to delete the namelist '{relativePath}'?",
-                                                 "Confirm Delete",
+            var confirmResult = MessageBox.Show($"确定要删除名单 '{relativePath}' 吗?",
+                                                 "确认删除",
                                                  MessageBoxButtons.YesNo,
                                                  MessageBoxIcon.Warning);
 
@@ -326,7 +326,7 @@ namespace Server.Account
                 }
                 else
                 {
-                    MessageBox.Show("Namelist file not found.");
+                    MessageBox.Show("未找到名单文件。");
                 }
             }
         }

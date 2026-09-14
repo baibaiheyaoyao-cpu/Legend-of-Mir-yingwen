@@ -1,4 +1,4 @@
-﻿using Server.MirDatabase;
+using Server.MirDatabase;
 using Server.MirEnvir;
 using System.Buffers;
 using System.Drawing;
@@ -69,15 +69,15 @@ namespace Server.MirObjects
         protected override void ProcessAttack()
         {
             if (!CanCast || Target == null || Target.Dead) return;
-            if (!HasRangedSpell) return;
             TargetDistance = Functions.MaxDistance(CurrentLocation, Target.CurrentLocation);
+            if (!HasRangedSpell) return;
             Direction = Functions.DirectionFromPoint(CurrentLocation, Target.CurrentLocation);
             UserMagic magic;
 
             if (InAttackRange())
             {
                 magic = GetMagic(Spell.PoisonShot);
-                if (CanUseMagic(magic))
+                if (CanUseMagic(magic) && HasSightOf(Target))
                 {
                     if (!Target.PoisonList.Any(p => p.PType == PoisonType.Green))
                     {
@@ -89,33 +89,24 @@ namespace Server.MirObjects
                     }
                 }
 
-                if (GetElementalOrbCount() < 1 || GetElementalOrbCount() > 3)
-                {
-                    magic = GetMagic(Spell.ElementalShot);
-                    if (CanUseMagic(magic))
-                    {
-                        BeginMagic(magic.Spell, Direction, Target.ObjectID, Target.CurrentLocation);
-                        return;
-                    }
-                }
-
-                magic = GetMagic(Spell.StraightShot);
+                magic = GetMagic(Spell.ElementalShot);
                 if (CanUseMagic(magic))
                 {
                     BeginMagic(magic.Spell, Direction, Target.ObjectID, Target.CurrentLocation);
                     return;
                 }
 
-                magic = GetMagic(Spell.None);
+                magic = GetMagic(Spell.StraightShot);
+                if (CanUseMagic(magic) && HasSightOf(Target))
                 {
+                    BeginMagic(magic.Spell, Direction, Target.ObjectID, Target.CurrentLocation);
                     return;
                 }
-            }
 
-            magic = GetMagic(Spell.None);
-            {
                 return;
             }
+
+            return;
         }
 
         protected override void ProcessTarget()
@@ -128,27 +119,34 @@ namespace Server.MirObjects
                 return;
             }
 
-            if (Target == null || !CanAttack) return;
-
-            if (HasClassWeapon && CanCast && NextMagicSpell != Spell.None)
+            if (CanCast && NextMagicSpell != Spell.None)
             {
-                Magic(NextMagicSpell, NextMagicDirection, NextMagicTargetID, NextMagicLocation);
+                if (HasClassWeapon || NextMagicSpell == Spell.Concentration)
+                {
+                    Magic(NextMagicSpell, NextMagicDirection, NextMagicTargetID, NextMagicLocation);
+                }
                 NextMagicSpell = Spell.None;
             }
 
-            if (CanMove && !CanAttack && (TargetDistance < 3 && Owner.Info.HeroBehaviour == HeroBehaviour.Attack && distanceToPlayer < 6))
+            if (Target == null) return;
+
+            if (!CanAttack)
             {
-                Point awayFromTarget = GetAdjacentPoint(CurrentLocation, Target.CurrentLocation, Owner.CurrentLocation);
-                MoveTo(awayFromTarget);
+                if (CanMove && Owner.Info.HeroBehaviour == HeroBehaviour.Attack && distanceToPlayer < 6 && TargetDistance < 3)
+                {
+                    Point awayFromTarget = GetAdjacentPoint(CurrentLocation, Target.CurrentLocation, Owner.CurrentLocation);
+                    MoveTo(awayFromTarget);
+                }
                 return;
             }
+
             if (CanMove && ((Owner.Info.HeroBehaviour == HeroBehaviour.CounterAttack && distanceToPlayer > 2) || (Owner.Info.HeroBehaviour == HeroBehaviour.Attack && distanceToPlayer > 5)))
             {
                 MoveTo(Owner.Back);
                 return;
             }
 
-            if ((CanAttack && Target != null && HasClassWeapon && (NextMagicSpell == Spell.None || !HasRangedSpell || !CanCast)))
+            if (HasClassWeapon && (NextMagicSpell == Spell.None || !HasRangedSpell || !CanCast))
             {
                 Direction = Functions.DirectionFromPoint(CurrentLocation, Target.CurrentLocation);
                 RangeAttack(Direction, Target.CurrentLocation, Target.ObjectID);
@@ -160,9 +158,13 @@ namespace Server.MirObjects
                 return;
             }
 
-            if (CanAttack && (!HasWeapon || (HasWeapon && !HasClassWeapon)))
+            if (!HasWeapon || (HasWeapon && !HasClassWeapon))
             {
-                if (TargetDistance >= 1 && InAttackRange())
+                bool adjacent = Target.CurrentMap == CurrentMap
+                    && Target.CurrentLocation != CurrentLocation
+                    && Functions.InRange(CurrentLocation, Target.CurrentLocation, 1);
+
+                if (adjacent)
                 {
                     Attack();
 

@@ -1,4 +1,4 @@
-﻿using System.Data;
+using System.Data;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -665,6 +665,82 @@ namespace Server.Database
             }
         }
 
+        private void btnClearAll_Click(object sender, EventArgs e)
+        {
+            if (Table.Rows.Count == 0 && Envir.ItemInfoList.Count == 0)
+            {
+                MessageBox.Show("没有可清空的物品。", "清空全部物品");
+                return;
+            }
+
+            if (MessageBox.Show(
+                    $"即将删除全部现有物品(表格 {Table.Rows.Count} 行 / 数据库 {Envir.ItemInfoList.Count} 件)。\n" +
+                    "清空后请立即执行导入, 关闭本窗口时才会写入数据库。\n\n确定继续?",
+                    "清空全部物品",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning) != DialogResult.Yes)
+            {
+                return;
+            }
+
+            Envir.ItemInfoList.Clear();
+            Table.Rows.Clear();
+
+            MessageBox.Show("已清空全部物品, 请立即执行导入。", "清空全部物品");
+        }
+
+        private static string[] SplitCsvLine(string line)
+        {
+            var result = new List<string>();
+            var sb = new StringBuilder();
+            bool inQuotes = false;
+
+            for (int i = 0; i < line.Length; i++)
+            {
+                char c = line[i];
+
+                if (inQuotes)
+                {
+                    if (c == '"')
+                    {
+                        if (i + 1 < line.Length && line[i + 1] == '"')
+                        {
+                            sb.Append('"');
+                            i++;
+                        }
+                        else
+                        {
+                            inQuotes = false;
+                        }
+                    }
+                    else
+                    {
+                        sb.Append(c);
+                    }
+                }
+                else
+                {
+                    if (c == '"')
+                    {
+                        inQuotes = true;
+                    }
+                    else if (c == ',')
+                    {
+                        result.Add(sb.ToString());
+                        sb.Clear();
+                    }
+                    else
+                    {
+                        sb.Append(c);
+                    }
+                }
+            }
+
+            result.Add(sb.ToString());
+
+            return result.ToArray();
+        }
+
         private async void btnImport_Click(object sender, EventArgs e)
         {
             OpenFileDialog ofd = new OpenFileDialog();
@@ -679,7 +755,7 @@ namespace Server.Database
 
                 if (rows.Length > 1)
                 {
-                    var columns = rows[0].Split(',');
+                    var columns = SplitCsvLine(rows[0]);
 
                     if (columns.Length < 2)
                     {
@@ -702,7 +778,7 @@ namespace Server.Database
                             {
                                 var row = rows[i];
 
-                                var cells = row.Split(',');
+                                var cells = SplitCsvLine(row);
 
                                 if (string.IsNullOrWhiteSpace(cells[0]))
                                 {
@@ -986,11 +1062,11 @@ namespace Server.Database
                 if (mouseOverRow >= 0 &&
                     mouseOverCol >= 0)
                 {
-                    var colName = itemInfoGridView.Rows[mouseOverRow].Cells[mouseOverCol].OwningColumn.HeaderText;
+                    var colName = itemInfoGridView.Columns[mouseOverCol].Name;
 
                     if (colName == "Modified" ||
-                        colName == "Index" ||
-                        colName == "Name" ||
+                        colName == "ItemIndex" ||
+                        colName == "ItemName" ||
                         itemInfoGridView.Rows[mouseOverRow].Cells[mouseOverCol] is DataGridViewComboBoxCell
                         )
                     {
@@ -1058,6 +1134,14 @@ namespace Server.Database
             }
 
             Envir.SaveDB();
+
+            //保存后立即热同步到运行实例, 防止周期存盘用旧数据覆盖编辑结果(上架的物品还需刷新商城表)
+            if (SMain.Envir.Running)
+            {
+                SMain.Envir.QueueItemSync(new List<int>());
+                SMain.Envir.ReloadGameShop();
+                SMain.Enqueue("物品编辑器: 已保存并热同步(物品+商城)到运行中的服务器。");
+            }
         }
 
         private void CellValueChanged(object sender, DataGridViewCellEventArgs e)
@@ -1120,6 +1204,13 @@ namespace Server.Database
 
             SaveForm();
             Envir.SaveDB();
+
+            //保存后立即热同步到运行实例, 防止周期存盘用旧数据覆盖编辑结果
+            if (SMain.Envir.Running)
+            {
+                SMain.Envir.QueueItemSync(new List<int>());
+                SMain.Enqueue("物品编辑器: 已保存并热同步到运行中的服务器。");
+            }
         }
 
         private void MapHeaderText()

@@ -1,4 +1,4 @@
-﻿using Server.MirDatabase;
+using Server.MirDatabase;
 using Server.MirEnvir;
 using System.Diagnostics;
 
@@ -284,6 +284,31 @@ namespace Server
             RefreshQuestList();
             UpdateInterface();
             MessageBox.Show("Quest Import complete");
+        }
+
+        private void ClearAllQButton_Click(object sender, EventArgs e)
+        {
+            if (Envir.QuestInfoList.Count == 0)
+            {
+                MessageBox.Show("没有可清空的任务。", "清空全部任务");
+                return;
+            }
+
+            if (MessageBox.Show(
+                    $"即将删除全部现有任务(共 {Envir.QuestInfoList.Count} 个)。\n" +
+                    "清空后请立即执行导入, 关闭本窗口时才会写入数据库。\n\n确定继续?",
+                    "清空全部任务",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning) != DialogResult.Yes)
+                return;
+
+            Envir.QuestInfoList.Clear();
+            Envir.QuestIndex = 0;
+
+            RefreshQuestList();
+            UpdateInterface();
+
+            MessageBox.Show("已清空全部任务, 请立即执行导入。", "清空全部任务");
         }
 
         private void QNameTextBox_TextChanged(object sender, EventArgs e)

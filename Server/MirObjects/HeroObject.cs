@@ -146,6 +146,12 @@ namespace Server.MirObjects
 
             Stats = new Stats();            
 
+            if (Settings.HeroExperienceList.Count > 0 && Level > Settings.HeroExperienceList.Count)
+            {
+                Level = (ushort)Settings.HeroExperienceList.Count;
+                Experience = 0;
+            }
+
             if (Level == 0) NewCharacter();
 
             RefreshStats();
@@ -181,6 +187,7 @@ namespace Server.MirObjects
                 case ServerPacketIds.MagicLeveled:
                 case ServerPacketIds.DeleteItem:
                 case ServerPacketIds.UseItem:
+                case ServerPacketIds.DuraChanged:
                     Owner.Enqueue(p);
                     break;
             }
@@ -307,6 +314,10 @@ namespace Server.MirObjects
             return true;
         }
         protected bool HasMagic(Spell spell) => Info.Magics.Any(x => x.Spell == spell);
+        protected bool HasSightOf(MapObject target)
+        {
+            return target != null && target.CurrentMap == CurrentMap && CanFly(target.CurrentLocation);
+        }
         public override bool TryMagic()
         {
             return true;
@@ -401,6 +412,15 @@ namespace Server.MirObjects
 
                                 if (item.GetTotal(Stat.BagWeight) > 0)
                                     AddBuff(BuffType.BagWeight, this, time * Settings.Minute, new Stats { [Stat.BagWeight] = item.GetTotal(Stat.BagWeight) });
+
+                                if (item.GetTotal(Stat.Luck) > 0)
+                                    AddBuff(BuffType.LuckAid, this, time * Settings.Minute, new Stats { [Stat.Luck] = item.GetTotal(Stat.Luck) });
+
+                                if (item.GetTotal(Stat.Accuracy) > 0)
+                                    AddBuff(BuffType.AccuracyAid, this, time * Settings.Minute, new Stats { [Stat.Accuracy] = item.GetTotal(Stat.Accuracy) });
+
+                                if (item.GetTotal(Stat.Agility) > 0)
+                                    AddBuff(BuffType.AgilityAid, this, time * Settings.Minute, new Stats { [Stat.Agility] = item.GetTotal(Stat.Agility) });
                             }
                             break;
                         case 4: //Exp
@@ -478,6 +498,11 @@ namespace Server.MirObjects
                                 MP = Stats[Stat.MP];
                                 Revive(MaxHealth, true);
                             }
+                            else
+                            {
+                                Owner.Enqueue(p);
+                                return;
+                            }
                             break;
                         case 15: //Increase Hero inventory
                             if (Info.Inventory.Length >= 42)
@@ -487,10 +512,13 @@ namespace Server.MirObjects
                                 Owner.Enqueue(p);
                                 return;
                             }
-                            Enqueue(new S.ResizeInventory { Size = Info.ResizeInventory() });
+                            Owner.Enqueue(new S.ResizeInventory { Size = Info.ResizeInventory(), Grid = MirGridType.HeroInventory });
                             ReceiveChat(GameLanguage.ServerTextMap.GetLocalization(ServerTextKeys.HeroInventoryIncreased), ChatType.System);
                             Owner.Enqueue(p);
                             break;
+                        default:
+                            Owner.Enqueue(p);
+                            return;
                     }
                     break;
                 case ItemType.Book:
@@ -780,7 +808,7 @@ namespace Server.MirObjects
             if (Target != null && (Target.CurrentMap != CurrentMap || !Target.IsAttackTarget(this) || !Functions.InRange(CurrentLocation, Target.CurrentLocation, Globals.DataRange)))
                 Target = null;
 
-            if (Owner != null && !Owner.CurrentMap.Info.NoHero)
+            if (Owner != null && Owner.CurrentMap != null && !Owner.CurrentMap.Info.NoHero)
             {
                 if ((!Functions.InRange(CurrentLocation, Owner.CurrentLocation, Globals.DataRange) || CurrentMap != Owner.CurrentMap) && CanMove)
                     OwnerRecall();
@@ -1175,6 +1203,7 @@ namespace Server.MirObjects
 
             if (Experience < MaxExperience) return;
             if (Level >= ushort.MaxValue) return;
+            if (MaxExperience <= 0) return;
 
             //Calculate increased levels
             var experience = Experience;

@@ -1,4 +1,4 @@
-﻿using Server.MirEnvir;
+using Server.MirEnvir;
 
 namespace Server.MirDatabase
 {
@@ -42,6 +42,17 @@ namespace Server.MirDatabase
             new IntelligentCreatureInfo { PetType = IntelligentCreatureType.AngryBird, Icon = 512, MousePickupEnabled = true, MousePickupRange = 11, AutoPickupEnabled = true, AutoPickupRange = 11, SemiAutoPickupEnabled = true, SemiAutoPickupRange = 11, CanProduceBlackStone = true };
             new IntelligentCreatureInfo { PetType = IntelligentCreatureType.Foxey, Icon = 513, MousePickupEnabled = true, MousePickupRange = 11, AutoPickupEnabled = true, AutoPickupRange = 11, SemiAutoPickupEnabled = true, SemiAutoPickupRange = 11, CanProduceBlackStone = true };
             new IntelligentCreatureInfo { PetType = IntelligentCreatureType.MedicalRat, Icon = 514, MousePickupEnabled = true, MousePickupRange = 11, AutoPickupEnabled = true, AutoPickupRange = 11, SemiAutoPickupEnabled = true, SemiAutoPickupRange = 11, CanProduceBlackStone = true };
+            new IntelligentCreatureInfo { PetType = IntelligentCreatureType.BabyTiger, Icon = 513, MousePickupEnabled = true, MousePickupRange = 11, AutoPickupEnabled = true, AutoPickupRange = 11, SemiAutoPickupEnabled = true, SemiAutoPickupRange = 11 };
+            new IntelligentCreatureInfo { PetType = IntelligentCreatureType.JarDragon, Icon = 507, MousePickupEnabled = true, MousePickupRange = 11, AutoPickupEnabled = true, AutoPickupRange = 11, SemiAutoPickupEnabled = true, SemiAutoPickupRange = 11 };
+            new IntelligentCreatureInfo { PetType = IntelligentCreatureType.DancingSnake, Icon = 510, MousePickupEnabled = true, MousePickupRange = 11, AutoPickupEnabled = true, AutoPickupRange = 11, SemiAutoPickupEnabled = true, SemiAutoPickupRange = 11 };
+            new IntelligentCreatureInfo { PetType = IntelligentCreatureType.Nezha, Icon = 511, MousePickupEnabled = true, MousePickupRange = 11, AutoPickupEnabled = true, AutoPickupRange = 11, SemiAutoPickupEnabled = true, SemiAutoPickupRange = 11 };
+            new IntelligentCreatureInfo { PetType = IntelligentCreatureType.FrostGiant, Icon = 509, MousePickupEnabled = true, MousePickupRange = 11, AutoPickupEnabled = true, AutoPickupRange = 11, SemiAutoPickupEnabled = true, SemiAutoPickupRange = 11 };
+            new IntelligentCreatureInfo { PetType = IntelligentCreatureType.RedDragon, Icon = 507, MousePickupEnabled = true, MousePickupRange = 11, AutoPickupEnabled = true, AutoPickupRange = 11, SemiAutoPickupEnabled = true, SemiAutoPickupRange = 11 };
+            new IntelligentCreatureInfo { PetType = IntelligentCreatureType.GoldDragon, Icon = 507, MousePickupEnabled = true, MousePickupRange = 11, AutoPickupEnabled = true, AutoPickupRange = 11, SemiAutoPickupEnabled = true, SemiAutoPickupRange = 11 };
+            new IntelligentCreatureInfo { PetType = IntelligentCreatureType.GreenDragon, Icon = 507, MousePickupEnabled = true, MousePickupRange = 11, AutoPickupEnabled = true, AutoPickupRange = 11, SemiAutoPickupEnabled = true, SemiAutoPickupRange = 11 };
+            new IntelligentCreatureInfo { PetType = IntelligentCreatureType.WhiteTiger, Icon = 502, MousePickupEnabled = true, MousePickupRange = 11, AutoPickupEnabled = true, AutoPickupRange = 11, SemiAutoPickupEnabled = true, SemiAutoPickupRange = 11 };
+            new IntelligentCreatureInfo { PetType = IntelligentCreatureType.VermilionBird, Icon = 512, MousePickupEnabled = true, MousePickupRange = 11, AutoPickupEnabled = true, AutoPickupRange = 11, SemiAutoPickupEnabled = true, SemiAutoPickupRange = 11 };
+            new IntelligentCreatureInfo { PetType = IntelligentCreatureType.BlackTortoise, Icon = 510, MousePickupEnabled = true, MousePickupRange = 11, AutoPickupEnabled = true, AutoPickupRange = 11, SemiAutoPickupEnabled = true, SemiAutoPickupRange = 11 };
         }
 
         public IntelligentCreatureInfo()
@@ -58,6 +69,12 @@ namespace Server.MirDatabase
                 return info;
             }
             return null;
+        }
+
+        public static bool ProvidesSummonBuff(IntelligentCreatureType petType)
+        {
+            int type = (int)petType;
+            return (type >= 15 && type <= 18) || (type >= 21 && type <= 27);
         }
     }
 
@@ -96,6 +113,9 @@ namespace Server.MirDatabase
             MaintainFoodTime = 0;
 
             Filter = new IntelligentCreatureItemFilter();
+
+            if (Info != null && Info.AutoPickupEnabled)
+                petMode = IntelligentCreaturePickupMode.Automatic;
         }
 
         public UserIntelligentCreature(BinaryReader reader, int version, int customVersion)
@@ -129,6 +149,9 @@ namespace Server.MirDatabase
 
                 MaintainFoodTime = reader.ReadInt64();//maintain food buff
             }
+
+            if (petMode == IntelligentCreaturePickupMode.SemiAutomatic && Info != null && Info.AutoPickupEnabled)
+                petMode = IntelligentCreaturePickupMode.Automatic;
         }
 
         public void Save(BinaryWriter writer)

@@ -1,4 +1,4 @@
-﻿using Client.MirControls;
+using Client.MirControls;
 using Client.MirGraphics;
 using Client.MirSounds;
 
@@ -221,6 +221,7 @@ namespace Client.MirScenes.Dialogs
                 new ShortcutInfo(CMain.InputKeys.GetKey(KeybindOptions.Equipment), GameLanguage.ClientTextMap.GetLocalization(ClientTextKeys.StatusWindowOpenClose)),
                 new ShortcutInfo(CMain.InputKeys.GetKey(KeybindOptions.Skills), GameLanguage.ClientTextMap.GetLocalization(ClientTextKeys.SkillWindowOpenClose)),
                 new ShortcutInfo(CMain.InputKeys.GetKey(KeybindOptions.Group), GameLanguage.ClientTextMap.GetLocalization(ClientTextKeys.GroupWindowOpenClose)),
+                new ShortcutInfo(CMain.InputKeys.GetKey(KeybindOptions.GroupHealthPanel), GroupHealthDialog.PanelDescription),
                 new ShortcutInfo(CMain.InputKeys.GetKey(KeybindOptions.Trade), GameLanguage.ClientTextMap.GetLocalization(ClientTextKeys.TradeWindowOpenClose)),
                 new ShortcutInfo(CMain.InputKeys.GetKey(KeybindOptions.Friends), GameLanguage.ClientTextMap.GetLocalization(ClientTextKeys.FriendWindowOpenClose)),
                 new ShortcutInfo(CMain.InputKeys.GetKey(KeybindOptions.Minimap), GameLanguage.ClientTextMap.GetLocalization(ClientTextKeys.MinimapWindowOpenClose)),

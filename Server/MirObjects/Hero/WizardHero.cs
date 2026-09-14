@@ -1,4 +1,4 @@
-﻿using Server.MirDatabase;
+using Server.MirDatabase;
 
 namespace Server.MirObjects
 {
@@ -109,56 +109,46 @@ namespace Server.MirObjects
                 }
 
                 magic = GetMagic(Spell.FlameDisruptor);
-                if (CanUseMagic(magic))
+                if (CanUseMagic(magic) && HasSightOf(Target))
                 {
                     BeginMagic(magic.Spell, Direction, Target.ObjectID, Target.CurrentLocation);
                     return;
                 }
 
                 magic = GetMagic(Spell.Vampirism);
-                if (CanUseMagic(magic))
+                if (CanUseMagic(magic) && HasSightOf(Target))
                 {
                     BeginMagic(magic.Spell, Direction, Target.ObjectID, Target.CurrentLocation);
                     return;
                 }
 
                 magic = GetMagic(Spell.FrostCrunch);
-                if (CanUseMagic(magic))
+                if (CanUseMagic(magic) && HasSightOf(Target))
                 {
                     BeginMagic(magic.Spell, Direction, Target.ObjectID, Target.CurrentLocation);
                     return;
                 }
 
                 magic = GetMagic(Spell.ThunderBolt);
-                if (CanUseMagic(magic))
+                if (CanUseMagic(magic) && HasSightOf(Target))
                 {
                     BeginMagic(magic.Spell, Direction, Target.ObjectID, Target.CurrentLocation);
                     return;
                 }
 
                 magic = GetMagic(Spell.GreatFireBall);
-                if (CanUseMagic(magic))
+                if (CanUseMagic(magic) && HasSightOf(Target))
                 {
                     BeginMagic(magic.Spell, Direction, Target.ObjectID, Target.CurrentLocation);
                     return;
                 }
 
                 magic = GetMagic(Spell.FireBall);
-                if (CanUseMagic(magic))
+                if (CanUseMagic(magic) && HasSightOf(Target))
                 {
                     BeginMagic(magic.Spell, Direction, Target.ObjectID, Target.CurrentLocation);
                     return;
                 }
-
-                magic = GetMagic(Spell.None);
-                {
-                    return;
-                }
-            }
-            
-            magic = GetMagic(Spell.None);
-            {
-                return;
             }
         }
 

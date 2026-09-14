@@ -20,6 +20,8 @@ namespace Server.MirDatabase
         public bool SaveRespawnTime = false;
         public ushort RespawnTicks; //leave 0 if not using this system!
 
+        public bool NoPlayerNoSpawn = false; //无人不刷怪: 该地图无在线玩家时停止补充新怪
+
         public RespawnInfo()
         {
 
@@ -49,6 +51,11 @@ namespace Server.MirDatabase
             {
                 RespawnIndex = ++Envir.RespawnIndex;
             }
+
+            if (Version >= 120)
+            {
+                NoPlayerNoSpawn = reader.ReadBoolean();
+            }
         }
 
         public static RespawnInfo FromText(string text)
@@ -76,6 +83,8 @@ namespace Server.MirDatabase
             if (!bool.TryParse(data[9], out info.SaveRespawnTime)) return null;
             if (!ushort.TryParse(data[10], out info.RespawnTicks)) return null;
 
+            if (data.Length > 11 && !bool.TryParse(data[11], out info.NoPlayerNoSpawn)) return null;
+
             return info;
         }
 
@@ -97,12 +106,14 @@ namespace Server.MirDatabase
             writer.Write(RespawnIndex);
             writer.Write(SaveRespawnTime);
             writer.Write(RespawnTicks);
+
+            writer.Write(NoPlayerNoSpawn);
         }
 
         public override string ToString()
         {
             var monsterName = Envir.MonsterInfoList.Find(o => o.Index == MonsterIndex)?.Name ?? "Unknown";
-            return string.Format("Monster: {0} - {1} - {2} - {3} - {4} - {5} - {6} - {7} - {8} - {9} - {10}",
+            return string.Format("Monster: {0} - {1} - {2} - {3} - {4} - {5} - {6} - {7} - {8} - {9} - {10} - {11}",
                 MonsterIndex,
                 monsterName,
                 Functions.PointToString(Location),
@@ -113,7 +124,8 @@ namespace Server.MirDatabase
                 RandomDelay,
                 RespawnIndex,
                 SaveRespawnTime,
-                RespawnTicks);
+                RespawnTicks,
+                NoPlayerNoSpawn);
         }
     }
 

@@ -218,6 +218,17 @@ namespace Server.MirObjects
                     CheckList.Add(new NPCChecks(CheckType.IsAdmin));
                     break;
 
+                //英雄系统: HASHERO (玩家已创建英雄则通过)
+                case "HASHERO":
+                    CheckList.Add(new NPCChecks(CheckType.HasHero));
+                    break;
+
+                //战场系统: CANGETBATTLEREWARD 1(胜方) / 0(败方)
+                case "CANGETBATTLEREWARD":
+                    if (parts.Length < 2) return;
+                    CheckList.Add(new NPCChecks(CheckType.CanGetBattleReward, parts[1]));
+                    break;
+
                 case "CHECKPKPOINT":
                     if (parts.Length < 3) return;
 
@@ -456,6 +467,17 @@ namespace Server.MirObjects
                     string tempy = parts.Length > 3 ? parts[3] : "0";
 
                     acts.Add(new NPCActions(ActionType.Move, parts[1], tempx, tempy));
+                    break;
+
+                //战场系统(勇猛的战场): 纯服务端实现, 见 MirEnvir\BattleField.cs
+                case "加入战场":
+                    acts.Add(new NPCActions(ActionType.BattleJoin));
+                    break;
+                case "退出战场":
+                    acts.Add(new NPCActions(ActionType.BattleLeave));
+                    break;
+                case "领取战场奖励":
+                    acts.Add(new NPCActions(ActionType.BattleClaimReward));
                     break;
 
                 case "INSTANCEMOVE":
@@ -1296,6 +1318,10 @@ namespace Server.MirObjects
 
             switch (innerMatch)
             {
+                case "BATTLE()":
+                    //战场系统: $BATTLE(0)战况 (1)红方战报 (2)蓝方战报
+                    newValue = Server.MirEnvir.BattleField.BattleText(oneValMatch.Success ? oneValMatch.Groups[2].Captures[0].Value : "0");
+                    break;
                 case "MONSTERCOUNT()":
                     Map map = Envir.GetMapByNameAndInstance(oneValMatch.Groups[2].Captures[0].Value.ToUpper());
                     newValue = map == null ? "N/A" : map.MonsterCount.ToString();
@@ -2121,6 +2147,15 @@ namespace Server.MirObjects
                         }
                         break;
 
+                    case CheckType.CanGetBattleReward:
+                        if (param.Count < 1 || (param[0] != "1" && param[0] != "0"))
+                        {
+                            failed = true;
+                            break;
+                        }
+                        failed = !Server.MirEnvir.BattleField.CanClaim(player, param[0] == "1");
+                        break;
+
                     case CheckType.CheckGold:
                         if (!uint.TryParse(param[1], out tempUint))
                         {
@@ -2287,6 +2322,11 @@ namespace Server.MirObjects
 
                     case CheckType.IsAdmin:
                         failed = !player.IsGM;
+                        break;
+
+                    //英雄系统: HASHERO (玩家已创建英雄则通过)
+                    case CheckType.HasHero:
+                        failed = !player.HasHero;
                         break;
 
                     case CheckType.CheckPkPoint:
@@ -3085,6 +3125,18 @@ namespace Server.MirObjects
                             if (coords.X > 0 && coords.Y > 0) player.Teleport(targetmap, coords);
                             else player.TeleportRandom(200, 0, targetmap);
                         }
+                        break;
+
+                    case ActionType.BattleJoin:
+                        Server.MirEnvir.BattleField.Join(player);
+                        break;
+
+                    case ActionType.BattleLeave:
+                        Server.MirEnvir.BattleField.Leave(player);
+                        break;
+
+                    case ActionType.BattleClaimReward:
+                        Server.MirEnvir.BattleField.Claim(player);
                         break;
 
                     case ActionType.InstanceMove:

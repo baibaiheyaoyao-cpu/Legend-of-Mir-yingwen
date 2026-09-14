@@ -1,4 +1,4 @@
-﻿namespace Server.MirForms.VisualMapInfo
+namespace Server.MirForms.VisualMapInfo
 {
     partial class VForm
     {

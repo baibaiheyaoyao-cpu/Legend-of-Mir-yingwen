@@ -1,4 +1,4 @@
-﻿using Client.MirGraphics;
+using Client.MirGraphics;
 using Client.MirScenes;
 using Client.MirSounds;
 using S = ServerPackets;
@@ -194,6 +194,17 @@ namespace Client.MirObjects
                 case Monster.AngryBird:
                 case Monster.Foxey:
                 case Monster.MedicalRat:
+                case Monster.BabyTiger:
+                case Monster.JarDragon:
+                case Monster.DancingSnake:
+                case Monster.Nezha:
+                case Monster.FrostGiant:
+                case Monster.RedDragon:
+                case Monster.GoldDragon:
+                case Monster.GreenDragon:
+                case Monster.WhiteTiger:
+                case Monster.VermilionBird:
+                case Monster.BlackTortoisePet:
                     BodyLibrary = Libraries.Pets[((ushort)BaseImage) - 10000];
                     break;
                 case Monster.HellBomb1:
@@ -343,7 +354,8 @@ namespace Client.MirObjects
         public override void Process()
         {
             bool update = CMain.Time >= NextMotion || GameScene.CanMove;
-            SkipFrames = ActionFeed.Count > 1;
+            //变身类动画(神兽起立/趴下、祖玛苏醒等)禁止快进, 保证按帧间隔完整播放
+            SkipFrames = ActionFeed.Count > 1 && CurrentAction != MirAction.Show && CurrentAction != MirAction.Hide;
 
             ProcessFrames();
 
@@ -499,6 +511,17 @@ namespace Client.MirObjects
                 case Monster.AngryBird:
                 case Monster.Foxey:
                 case Monster.MedicalRat:
+                case Monster.BabyTiger:
+                case Monster.JarDragon:
+                case Monster.DancingSnake:
+                case Monster.Nezha:
+                case Monster.FrostGiant:
+                case Monster.RedDragon:
+                case Monster.GoldDragon:
+                case Monster.GreenDragon:
+                case Monster.WhiteTiger:
+                case Monster.VermilionBird:
+                case Monster.BlackTortoisePet:
                     BodyLibrary = Libraries.Pets[((ushort)BaseImage) - 10000];
                     break;
             }
@@ -1390,6 +1413,8 @@ namespace Client.MirObjects
                                     Stoned = false;
                                     break;
                                 case Monster.Shinsu:
+                                    // 079库Show帧实际位于350-429(8方向x10帧, 已解析验证非空白)
+                                    // 起立动画播完后切换080战斗形态
                                     BodyLibrary = Libraries.Monsters[(ushort)Monster.Shinsu1];
                                     BaseImage = Monster.Shinsu1;
                                     BaseSound = (ushort)BaseImage * 10;
@@ -1609,6 +1634,7 @@ namespace Client.MirObjects
                                                 Effects.Add(new Effect(Libraries.Monsters[(ushort)Monster.LeftGuard], 272 + (int)Direction * 3, 3, 3 * Frame.Interval, this));
                                                 break;
                                             case Monster.Shinsu1:
+                                                // 原版: 变身形态近战挥击特效(224+方向x6)
                                                 Effects.Add(new Effect(Libraries.Monsters[(ushort)Monster.Shinsu1], 224 + (int)Direction * 6, 6, 6 * Frame.Interval, this));
                                                 break;
                                             case Monster.DeathCrawler:
@@ -1666,6 +1692,10 @@ namespace Client.MirObjects
                                     {
                                         switch (BaseImage)
                                         {
+                                            case Monster.ChieftainSword:   // 阳龙王普攻：金剑气弹道(752~863 16向×7帧)
+                                                if (MapControl.GetObject(TargetID) != null)
+                                                    CreateProjectile(752, Libraries.Monsters[(ushort)Monster.ChieftainSword], true, 7, 50, 0, direction16: true);
+                                                break;
                                             case Monster.GeneralMeowMeow:
                                                 Effects.Add(new Effect(Libraries.Monsters[(ushort)Monster.GeneralMeowMeow], 416 + (int)Direction * 5, 5, 5 * Frame.Interval, this));
                                                 break;
@@ -1957,6 +1987,13 @@ namespace Client.MirObjects
                                     {
                                         switch (BaseImage)
                                         {
+                                            case Monster.ChieftainSword:   // 阳龙王烈风击：月牙冲击波(1186~1195)画目标
+                                                {
+                                                    MapObject yyob = MapControl.GetObject(TargetID);
+                                                    if (yyob != null)
+                                                        yyob.Effects.Add(new Effect(Libraries.Monsters[(ushort)Monster.ChieftainSword], 1186, 10, 1000, yyob) { Blend = true });
+                                                }
+                                                break;
                                             // Sanjian
                                             case Monster.GlacierSnail:
                                                 Effects.Add(new Effect(Libraries.Monsters[(ushort)Monster.GlacierSnail], 344 + (int)Direction * 5, 5, 5 * Frame.Interval, this));
@@ -2216,6 +2253,9 @@ namespace Client.MirObjects
                                 case 4:
                                     switch (BaseImage)
                                     {
+                                        case Monster.ChieftainSword:   // 阳龙王狂暴剑法(1348~1354)挂自身
+                                            Effects.Add(new Effect(Libraries.Monsters[(ushort)Monster.ChieftainSword], 1348, 7, 700, this) { Blend = true });
+                                            break;
                                         case Monster.OlympicFlame:
                                             if (TrackableEffect.GetOwnerEffectID(this.ObjectID, "CreatureSmoke") < 0)
                                                 Effects.Add(new TrackableEffect(new Effect(Libraries.Pets[((ushort)BaseImage) - 10000], 256, 3, 1000, this), "CreatureSmoke"));
@@ -2324,6 +2364,13 @@ namespace Client.MirObjects
                                 case 3:
                                     switch (BaseImage)
                                     {
+                                        case Monster.ChieftainSword:   // 阳龙王技能命中：蓝色爆炸(1170~1185)画目标
+                                            {
+                                                MapObject yyob = MapControl.GetObject(TargetID);
+                                                if (yyob != null)
+                                                    yyob.Effects.Add(new Effect(Libraries.Monsters[(ushort)Monster.ChieftainSword], 1170, 16, 1200, yyob) { Blend = true });
+                                            }
+                                            break;
                                         case Monster.SnowWolfKing:
                                             Effects.Add(new Effect(Libraries.Monsters[(ushort)Monster.SnowWolfKing], 581 + (int)Direction * 3, 3, 3 * Frame.Interval, this));
                                             break;
@@ -2521,6 +2568,24 @@ namespace Client.MirObjects
                                     {
                                         switch (BaseImage)
                                         {
+                                            // [AI-Claude] 风灵(615): 弹道520-597(8方向x8帧) + 命中5x5绽放710-727(18帧512x512)
+                                            // 帧号来自 kehux\Data\Monster\615.Lib 实际扫描(与参考2库版本不同不可照抄)
+                                            case (Monster)615:
+                                                missile = CreateProjectile(520, Libraries.Monsters[615], true, 8, 50, 0, direction16: false);
+                                                if (missile.Target != null)
+                                                {
+                                                    missile.Complete += (o, e) =>
+                                                    {
+                                                        if (missile.Target.CurrentAction == MirAction.Dead) return;
+                                                        missile.Target.Effects.Add(new Effect(Libraries.Monsters[615], 710, 18, 900, missile.Target) { Blend = true, DrawBehind = true });
+                                                    };
+                                                }
+                                                break;
+                                            // [AI-Claude] 幻灵(616): 自身7x7攻击绽放 350-365(16帧512x512)
+                                            // (库帧表Eff层370-379引擎不自动播 须专属case)
+                                            case (Monster)616:
+                                                Effects.Add(new Effect(Libraries.Monsters[616], 350, 16, 1600, this) { Blend = true });
+                                                break;
                                             // Sanjian
                                             case Monster.FurbolgArcher:
                                                 if (MapControl.GetObject(TargetID) != null)
@@ -3039,6 +3104,11 @@ namespace Client.MirObjects
                                                     }
                                                 }
                                                 break;
+
+                                            case Monster.ChieftainSword:   // 阳龙正气功波：地面火墙(992~1001)画自身周围(此区域=远程动作帧处理)
+                                                MapControl.Effects.Add(new Effect(Libraries.Monsters[(ushort)Monster.ChieftainSword], 992, 10, 1000, CurrentLocation, CMain.Time) { Blend = true });
+                                                break;
+
                                             case Monster.ManTree:
                                                 ob = MapControl.GetObject(TargetID);
                                                 if (ob != null)
@@ -3129,11 +3199,15 @@ namespace Client.MirObjects
                                                     ob.Effects.Add(new Effect(Libraries.Monsters[(ushort)Monster.AssassinScroll], 299, 8, 800, ob));
                                                 }
                                                 break;
-                                            case Monster.TaoistScroll:
-                                                ob = MapControl.GetObject(TargetID);
-                                                if (ob != null)
+                                            case Monster.TaoistScroll: // [AI-Claude] 415模型(含召唤上古神谕宠物): 弹道236-259(8方向x3帧) + 命中绽放272-291(20帧) 旧帧号299已越界废弃
+                                                missile = CreateProjectile(236, Libraries.Monsters[(ushort)Monster.TaoistScroll], true, 3, 80, 0, direction16: false);
+                                                if (missile.Target != null)
                                                 {
-                                                    ob.Effects.Add(new Effect(Libraries.Monsters[(ushort)Monster.TaoistScroll], 272, 10, 1000, ob) { Blend = true });
+                                                    missile.Complete += (o, e) =>
+                                                    {
+                                                        if (missile.Target.CurrentAction == MirAction.Dead) return;
+                                                        missile.Target.Effects.Add(new Effect(Libraries.Monsters[(ushort)Monster.TaoistScroll], 272, 20, 1800, missile.Target) { Blend = true });
+                                                    };
                                                 }
                                                 break;
                                             case Monster.WarriorScroll:
