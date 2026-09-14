@@ -245,6 +245,16 @@ namespace Client.MirControls
 
         private void NewQuestInfo(S.NewQuestInfo info)
         {
+            //按Index替换: 服务端重载脚本后会重发任务信息(接/交付NPC绑定可能已变),
+            //盲目Add会产生重复条目且旧条目仍优先命中查找, 导致任务显示/交付错乱
+            for (int i = 0; i < GameScene.QuestInfoList.Count; i++)
+            {
+                if (GameScene.QuestInfoList[i].Index != info.Info.Index) continue;
+
+                GameScene.QuestInfoList[i] = info.Info;
+                return;
+            }
+
             GameScene.QuestInfoList.Add(info.Info);
         }
 

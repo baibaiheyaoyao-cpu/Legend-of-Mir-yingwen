@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 
 namespace ServerPackets
@@ -302,6 +302,31 @@ namespace ServerPackets
 
             for (int i = 0; i < Characters.Count; i++)
                 Characters[i].Save(writer);
+        }
+    }
+
+    /// <summary>
+    /// 服务端 -> 客户端: 可创建职业开关(登录成功后紧跟LoginSuccess发送).
+    /// AllowedClasses 按MirClass枚举值置位: bit3=刺客 bit4=弓手 bit5=武僧, 未置位=禁止创建.
+    /// 旧客户端收到未知包ID会忽略, 退化为提交创建时由服务端拒绝.
+    /// </summary>
+    public sealed class ClassAvailability : Packet
+    {
+        public override short Index
+        {
+            get { return (short)ServerPacketIds.ClassAvailability; }
+        }
+
+        public byte AllowedClasses = 0xFF;
+
+        protected override void ReadPacket(BinaryReader reader)
+        {
+            AllowedClasses = reader.ReadByte();
+        }
+
+        protected override void WritePacket(BinaryWriter writer)
+        {
+            writer.Write(AllowedClasses);
         }
     }
     public sealed class NewCharacter : Packet
@@ -3806,6 +3831,24 @@ namespace ServerPackets
             writer.Write(MemberLocation.Y);
         }
     }
+    public sealed class GroupMemberHealth : Packet
+    {
+        public override short Index { get { return (short)ServerPacketIds.GroupMemberHealth; } }
+
+        public string MemberName = string.Empty;
+        public byte PercentHealth;
+
+        protected override void ReadPacket(BinaryReader reader)
+        {
+            MemberName = reader.ReadString();
+            PercentHealth = reader.ReadByte();
+        }
+        protected override void WritePacket(BinaryWriter writer)
+        {
+            writer.Write(MemberName);
+            writer.Write(PercentHealth);
+        }
+    }
     public sealed class Revived : Packet
     {
         public override short Index { get { return (short)ServerPacketIds.Revived; } }
@@ -6008,14 +6051,17 @@ namespace ServerPackets
         public override short Index { get { return (short)ServerPacketIds.ResizeInventory; } }
 
         public int Size;
+        public MirGridType Grid = MirGridType.Inventory;
 
         protected override void ReadPacket(BinaryReader reader)
         {
             Size = reader.ReadInt32();
+            Grid = (MirGridType)reader.ReadByte();
         }
         protected override void WritePacket(BinaryWriter writer)
         {
             writer.Write(Size);
+            writer.Write((byte)Grid);
         }
     }
 
@@ -6826,6 +6872,30 @@ namespace ServerPackets
         protected override void WritePacket(BinaryWriter writer)
         {
             Info.Save(writer);
+        }
+    }
+
+    public sealed class CustomSkillConfigs : Packet
+    {
+        public override short Index
+        {
+            get { return (short)ServerPacketIds.CustomSkillConfigs; }
+        }
+
+        public List<CustomSkillConfig> Skills = new List<CustomSkillConfig>();
+
+        protected override void ReadPacket(BinaryReader reader)
+        {
+            int count = reader.ReadInt32();
+            for (int i = 0; i < count; i++)
+                Skills.Add(new CustomSkillConfig(reader));
+        }
+
+        protected override void WritePacket(BinaryWriter writer)
+        {
+            writer.Write(Skills.Count);
+            for (int i = 0; i < Skills.Count; i++)
+                Skills[i].Save(writer);
         }
     }
 }

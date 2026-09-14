@@ -1,4 +1,4 @@
-﻿using Server.MirForms.VisualMapInfo.Class;
+using Server.MirForms.VisualMapInfo.Class;
 using Server.MirForms.VisualMapInfo.Control;
 using Microsoft.VisualBasic.PowerPacks;
 using Server.MirEnvir;

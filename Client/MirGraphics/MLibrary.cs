@@ -29,8 +29,10 @@ namespace Client.MirGraphics
             Magic2 = new MLibrary(Settings.DataPath + "Magic2"),
             Magic3 = new MLibrary(Settings.DataPath + "Magic3"),
             Magic4 = new MLibrary(Settings.DataPath + "Magic4"),
+            Magic_32bit = new MLibrary(Settings.DataPath + "Magic_32bit"), //奥义技能素材库(万效符1700/1730)
             Effect = new MLibrary(Settings.DataPath + "Effect"),
             MagicC = new MLibrary(Settings.DataPath + "MagicC"),
+            MagicD = new MLibrary(Settings.DataPath + "MagicD"), //印技能素材库(血龙震1010起8方向×20帧)
             GuildSkill = new MLibrary(Settings.DataPath + "GuildSkill"),
             Weather = new MLibrary(Settings.DataPath + "Weather");
 
@@ -255,7 +257,7 @@ namespace Client.MirGraphics
                 ARArmours.Length + ARHair.Length + ARWeapons.Length + ARWeaponsS.Length +
                 MonkArmours.Length + MonkHair.Length + MonkWeapons.Length + MonkHumEffects.Length + MonkWeaponEffects.Length +
                 CHumEffect.Length + AHumEffect.Length + ARHumEffect.Length + Mounts.Length + Fishing.Length + Pets.Length +
-                Transform.Length + TransformMounts.Length + TransformEffect.Length + TransformWeaponEffect.Length + 20;
+                Transform.Length + TransformMounts.Length + TransformEffect.Length + TransformWeaponEffect.Length + 21;
 
             Dragon.Initialize();
             Progress++;
@@ -284,7 +286,11 @@ namespace Client.MirGraphics
             Progress++;
             Magic4.Initialize();
             Progress++;
+            Magic_32bit.Initialize();
+            Progress++;
             MagicC.Initialize();
+            Progress++;
+            MagicD.Initialize();
             Progress++;
 
             Effect.Initialize();

@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
@@ -101,24 +101,31 @@ namespace Client
 
         private static void Application_Idle(object sender, EventArgs e)
         {
-            try
+            while (AppStillIdle)
             {
-                while (AppStillIdle)
+                //异常保护移到循环内: 单次异常不再杀死整个循环(否则后台/最小化时渲染异常会导致循环停摆, 客户端假死)
+                try
                 {
+                    //最小化时不渲染(D3D Present会设备丢失刷异常), 只跑逻辑 → 最小化/后台也能挂机; 并降低CPU占用
+                    bool minimized = Program.Form != null && Program.Form.WindowState == FormWindowState.Minimized;
+                    if (minimized)
+                        Thread.Sleep(10);
+
                     UpdateTime();
                     UpdateEnviroment();
 
                     if (IsDrawTime())
                     {
-                        RenderEnvironment();
+                        if (!minimized)
+                            RenderEnvironment();
                         UpdateFrameTime();
                     }
                 }
-
-            }
-            catch (Exception ex)
-            {
-                SaveError(ex.ToString());
+                catch (Exception ex)
+                {
+                    SaveError(ex.ToString());
+                    Thread.Sleep(10); //防止异常风暴占满CPU/刷爆日志
+                }
             }
         }
 

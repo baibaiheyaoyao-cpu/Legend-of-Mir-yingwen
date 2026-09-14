@@ -1,4 +1,4 @@
-﻿using Client.MirGraphics;
+using Client.MirGraphics;
 using Client.MirScenes;
 using Client.MirSounds;
 using S = ServerPackets;
@@ -61,6 +61,22 @@ namespace Client.MirObjects
                     FrameCount = 20;
                     Light = 3;
                     Blend = true;
+                    break;
+                case Spell.SoulflameSiphon: // [AI-Claude] 吸魔炎风: 龙卷法阵循环
+                    BodyLibrary = Libraries.Magic_32bit;
+                    DrawFrame = 1590;
+                    FrameInterval = 120;
+                    FrameCount = 12;
+                    Light = 3;
+                    Blend = false;
+                    break;
+                case Spell.SoulflameSiphonRare:
+                    BodyLibrary = Libraries.Magic_32bit;
+                    DrawFrame = 1640;
+                    FrameInterval = 120;
+                    FrameCount = 12;
+                    Light = 3;
+                    Blend = false;
                     break;
                 case Spell.DigOutZombie:
                     BodyLibrary = (ushort)Monster.DigOutZombie < Libraries.Monsters.Count() ? Libraries.Monsters[(ushort)Monster.DigOutZombie] : Libraries.Magic;

@@ -108,6 +108,11 @@ namespace Server.MirDatabase
         public bool HeroSpawned;
         public HeroBehaviour HeroBehaviour;
 
+        //天赋系统 - 角色天赋存档(数据库版本119新增; 版本118已被罗汉棍法LuoHanGunFa占用)
+        public List<UserTalent> TalentList = new List<UserTalent>();    //已学天赋(id+等级)
+        public int TalentPoints;            //当前可用天赋点(未消耗)
+        public int TalentPointsGranted;     //历史累计已发放的天赋点(用于洗点返还与登录补发计算)
+
         public CharacterInfo() { }
 
         public CharacterInfo(ClientPackets.NewCharacter p, MirConnection c)
@@ -390,6 +395,17 @@ namespace Server.MirDatabase
 
             if (version > 100)
                 HeroBehaviour = (HeroBehaviour)reader.ReadByte();
+
+            //天赋存档(版本119新增: 旧库没有这三段, 判断版本防止读错位)
+            if (version > 118)
+            {
+                int talentCount = reader.ReadInt32();
+                for (int i = 0; i < talentCount; i++)
+                    TalentList.Add(new UserTalent(reader));
+
+                TalentPoints = reader.ReadInt32();
+                TalentPointsGranted = reader.ReadInt32();
+            }
         }
 
         public virtual void Save(BinaryWriter writer)
@@ -536,7 +552,14 @@ namespace Server.MirDatabase
 
             writer.Write(RefineTimeRemaining);
 
-            writer.Write(Friends.Count);
+            int validFriendCount = 0;
+            for (int i = 0; i < Friends.Count; i++)
+            {
+                if (Friends[i].Info == null) continue;
+                validFriendCount++;
+            }
+
+            writer.Write(validFriendCount);
             for (int i = 0; i < Friends.Count; i++)
             {
                 if (Friends[i].Info == null) continue;
@@ -572,6 +595,14 @@ namespace Server.MirDatabase
             writer.Write(CurrentHeroIndex);
             writer.Write(HeroSpawned);
             writer.Write((byte)HeroBehaviour);
+
+            //天赋存档(必须写在Save末尾, 与Load的 version>118 判断对应)
+            writer.Write(TalentList.Count);
+            for (int i = 0; i < TalentList.Count; i++)
+                TalentList[i].Save(writer);
+
+            writer.Write(TalentPoints);
+            writer.Write(TalentPointsGranted);
         }
 
         public SelectInfo ToSelectInfo()

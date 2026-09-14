@@ -109,7 +109,7 @@ namespace AutoPatcherAdmin
         private void BrowseClientButton_Click(object sender, EventArgs e)
         {
             using var dialog = new FolderBrowserDialog();
-            dialog.Description = "Select client directory";
+            dialog.Description = "请选择客户端目录";
             string current = ClientTextBox.Text.TrimEnd('\\', '/');
             if (Directory.Exists(current))
                 dialog.SelectedPath = current;
@@ -169,40 +169,40 @@ namespace AutoPatcherAdmin
         {
             OnUi(() =>
             {
-                MessageBox.Show(this, GetFriendlyError(ex), "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                ActionLabel.Text = "Error.";
+                MessageBox.Show(this, GetFriendlyError(ex), "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                ActionLabel.Text = "出错。";
             });
         }
 
         private static string GetFriendlyError(Exception ex)
         {
             if (ex is SocketException se)
-                return $"Network error: {se.Message}\nCheck host address and that the server is accessible.";
+                return $"网络错误: {se.Message}\n请检查服务器地址及网络是否可访问。";
             if (ex is IOException && ex.InnerException is SocketException se2)
-                return $"Network error: {se2.Message}\nCheck host address and that the server is accessible.";
+                return $"网络错误: {se2.Message}\n请检查服务器地址及网络是否可访问。";
             if (ex is WebException we)
             {
                 return we.Status switch
                 {
-                    WebExceptionStatus.ConnectFailure        => "Could not connect to the server. Check the host address and that the server is running.",
-                    WebExceptionStatus.Timeout               => "Connection timed out. The server may be busy or unreachable.",
-                    WebExceptionStatus.NameResolutionFailure => "Host name could not be resolved. Check the host address.",
-                    WebExceptionStatus.ConnectionClosed      => "The server closed the connection unexpectedly.",
-                    WebExceptionStatus.ProtocolError         => $"Server returned an error: {we.Message}",
-                    _                                        => $"Network error: {we.Message}"
+                    WebExceptionStatus.ConnectFailure        => "无法连接到服务器。请检查服务器地址以及服务器是否在运行。",
+                    WebExceptionStatus.Timeout               => "连接超时。服务器可能繁忙或无法访问。",
+                    WebExceptionStatus.NameResolutionFailure => "无法解析主机名。请检查服务器地址。",
+                    WebExceptionStatus.ConnectionClosed      => "服务器意外关闭了连接。",
+                    WebExceptionStatus.ProtocolError         => $"服务器返回错误: {we.Message}",
+                    _                                        => $"网络错误: {we.Message}"
                 };
             }
             if (ex is DirectoryNotFoundException)
-                return $"Directory not found:\n{ex.Message}";
+                return $"目录不存在:\n{ex.Message}";
             if (ex is FileNotFoundException fnf)
-                return $"File not found:\n{fnf.FileName ?? ex.Message}";
+                return $"文件不存在:\n{fnf.FileName ?? ex.Message}";
             if (ex is UnauthorizedAccessException)
-                return $"Access denied. Check server permissions.\n{ex.Message}";
+                return $"访问被拒绝。请检查服务器权限。\n{ex.Message}";
             string typeName = ex.GetType().FullName ?? string.Empty;
             if (typeName.Contains("SshAuthenticationException"))
-                return "Authentication failed. Check the username and password.";
+                return "身份验证失败。请检查用户名和密码。";
             if (typeName.Contains("SshConnectionException"))
-                return "SSH connection failed. Check the host address and that the SFTP server is running.";
+                return "SSH 连接失败。请检查服务器地址以及 SFTP 服务是否在运行。";
             if (ex.InnerException != null)
                 return GetFriendlyError(ex.InnerException);
             return ex.Message;
@@ -260,11 +260,11 @@ namespace AutoPatcherAdmin
                     for (int remaining = RetryDelaySeconds; remaining > 0; remaining--)
                     {
                         CheckCancelled();
-                        SetActionText($"{phase} — connection lost, retrying in {remaining}s ({attempt}/{MaxRetries})...");
+                        SetActionText($"{phase} — 连接中断，{remaining} 秒后重试 ({attempt}/{MaxRetries})...");
                         SetFileText(string.Empty);
                         Thread.Sleep(1000);
                     }
-                    SetActionText($"Reconnecting ({attempt}/{MaxRetries})...");
+                    SetActionText($"正在重连 ({attempt}/{MaxRetries})...");
                 }
             }
         }
@@ -273,16 +273,16 @@ namespace AutoPatcherAdmin
         {
             if (!Directory.Exists(Settings.Client))
             {
-                string msg = $"Client directory not found:\n{Settings.Client}\n\nUpdate the Client Directory setting and try again.";
-                OnUi(() => MessageBox.Show(this, msg, "Validation Failed", MessageBoxButtons.OK, MessageBoxIcon.Error));
-                SetActionText("Error: client directory not found.");
+                string msg = $"未找到客户端目录:\n{Settings.Client}\n\n请修改“客户端目录”设置后重试。";
+                OnUi(() => MessageBox.Show(this, msg, "校验失败", MessageBoxButtons.OK, MessageBoxIcon.Error));
+                SetActionText("错误: 未找到客户端目录。");
                 return false;
             }
             if (!Uri.TryCreate(Settings.Host, UriKind.Absolute, out _))
             {
-                string msg = $"Host address is not a valid URL:\n{Settings.Host}\n\nCheck the Host Address setting.";
-                OnUi(() => MessageBox.Show(this, msg, "Validation Failed", MessageBoxButtons.OK, MessageBoxIcon.Error));
-                SetActionText("Error: invalid host address.");
+                string msg = $"服务器地址不是有效网址:\n{Settings.Host}\n\n请检查“服务器地址”设置。";
+                OnUi(() => MessageBox.Show(this, msg, "校验失败", MessageBoxButtons.OK, MessageBoxIcon.Error));
+                SetActionText("错误: 无效的服务器地址。");
                 return false;
             }
             return true;
@@ -322,9 +322,9 @@ namespace AutoPatcherAdmin
         {
             OnUi(() =>
             {
-                FileLabel.Text = "Complete...";
-                SpeedLabel.Text = "Complete...";
-                ActionLabel.Text = "Complete...";
+                FileLabel.Text = "完成";
+                SpeedLabel.Text = "完成";
+                ActionLabel.Text = "完成";
             });
         }
 
@@ -338,8 +338,8 @@ namespace AutoPatcherAdmin
         {
             var elapsed = DateTime.Now - _lastPublishStart;
             string timeStr = elapsed.TotalMinutes >= 1
-                ? $"{(int)elapsed.TotalMinutes}m {elapsed.Seconds}s"
-                : $"{elapsed.Seconds}s";
+                ? $"{(int)elapsed.TotalMinutes} 分 {elapsed.Seconds} 秒"
+                : $"{elapsed.Seconds} 秒";
 
             var result = _compareResult;
             int added    = result?.Added.Count    ?? 0;
@@ -364,7 +364,7 @@ namespace AutoPatcherAdmin
                     timeElapsed:     timeStr);
                 dlg.ShowDialog(this);
 
-                ActionLabel.Text = "Publish complete.";
+                ActionLabel.Text = "发布完成。";
                 FileLabel.Text = string.Empty;
                 SpeedLabel.Text = string.Empty;
                 _compareResult = null;
@@ -389,7 +389,7 @@ namespace AutoPatcherAdmin
                 done++;
                 var isCompressed = entry.Length != entry.Compressed;
                 var filename = entry.FileName + (isCompressed ? ".gz" : "");
-                SetActionText($"Removing old file {done} of {total}...");
+                SetActionText($"正在删除旧文件 {done}/{total} ...");
                 SetFileText(filename);
                 try
                 {
@@ -535,12 +535,12 @@ namespace AutoPatcherAdmin
 
             OnUi(() =>
             {
-                SummaryAddedLabel.Text = $"Added: {added}";
-                SummaryChangedLabel.Text = $"Changed: {changed}";
-                SummaryUnchangedLabel.Text = $"Unchanged: {unchanged}";
-                SummaryDeletedLabel.Text = $"Deleted: {deleted}";
-                string sizeNote = Settings.CompressFiles && uploadCount > 0 ? " (uncompressed)" : string.Empty;
-                SummaryUploadSizeLabel.Text = $"Upload: {uploadCount} files / {FormatBytes(uploadBytes)}{sizeNote}";
+                SummaryAddedLabel.Text = $"新增: {added}";
+                SummaryChangedLabel.Text = $"变更: {changed}";
+                SummaryUnchangedLabel.Text = $"未变更: {unchanged}";
+                SummaryDeletedLabel.Text = $"删除: {deleted}";
+                string sizeNote = Settings.CompressFiles && uploadCount > 0 ? " (未压缩)" : string.Empty;
+                SummaryUploadSizeLabel.Text = $"上传: {uploadCount} 个文件 / {FormatBytes(uploadBytes)}{sizeNote}";
             });
         }
 
@@ -568,7 +568,7 @@ namespace AutoPatcherAdmin
                 foreach (var file in files)
                 {
                     string normalizedPath = file.FileName.Replace('\\', '/');
-                    int rowIndex = PreviewGrid.Rows.Add("Pending", normalizedPath, FormatBytes(file.Length), 0);
+                    int rowIndex = PreviewGrid.Rows.Add("排队中", normalizedPath, FormatBytes(file.Length), 0);
                     var row = PreviewGrid.Rows[rowIndex];
                     row.Tag = normalizedPath;
                     row.DefaultCellStyle.BackColor = Color.FromArgb(220, 235, 255);
@@ -649,7 +649,7 @@ namespace AutoPatcherAdmin
         private void SetUploadRowUploading(string contentFileName)
         {
             string key = NormalizeUploadKey(contentFileName);
-            PostUi(() => MoveRowToTop(key, "Uploading", Color.FromArgb(255, 246, 214), Color.FromArgb(120, 78, 0)));
+            PostUi(() => MoveRowToTop(key, "上传中", Color.FromArgb(255, 246, 214), Color.FromArgb(120, 78, 0)));
         }
 
         private void RemoveUploadRow(string contentFileName)
@@ -672,13 +672,13 @@ namespace AutoPatcherAdmin
         private void SetUploadRowStaging(string contentFileName)
         {
             string key = NormalizeUploadKey(contentFileName);
-            PostUi(() => MoveRowToTop(key, "Staging", Color.FromArgb(200, 245, 245), Color.FromArgb(0, 100, 110)));
+            PostUi(() => MoveRowToTop(key, "暂存中", Color.FromArgb(200, 245, 245), Color.FromArgb(0, 100, 110)));
         }
 
         private void SetUploadRowVerifying(string contentFileName)
         {
             string key = NormalizeUploadKey(contentFileName);
-            PostUi(() => MoveRowToTop(key, "Verifying", Color.FromArgb(255, 250, 200), Color.FromArgb(100, 85, 0)));
+            PostUi(() => MoveRowToTop(key, "校验中", Color.FromArgb(255, 250, 200), Color.FromArgb(100, 85, 0)));
         }
 
         private static string NormalizeUploadKey(string contentFileName)
@@ -720,10 +720,10 @@ namespace AutoPatcherAdmin
             OnUi(() =>
             {
                 _previewRows.Clear();
-                AddPreviewRows("Added", result.Added);
-                AddPreviewRows("Changed", result.Changed);
-                AddPreviewRows("Deleted", result.Deleted);
-                AddPreviewRows("Unchanged", result.Unchanged);
+                AddPreviewRows("新增", result.Added);
+                AddPreviewRows("变更", result.Changed);
+                AddPreviewRows("删除", result.Deleted);
+                AddPreviewRows("未变更", result.Unchanged);
                 RenderPreviewRows();
             });
         }
@@ -743,10 +743,10 @@ namespace AutoPatcherAdmin
 
         private void RenderPreviewRows()
         {
-            string filter = PreviewActionFilterDropDown.SelectedItem as string ?? "All";
+            string filter = PreviewActionFilterDropDown.SelectedItem as string ?? "全部";
             PreviewGrid.Rows.Clear();
 
-            foreach (var row in _previewRows.Where(x => filter == "All" || x.Action == filter))
+            foreach (var row in _previewRows.Where(x => filter == "全部" || x.Action == filter))
             {
                 int rowIndex = PreviewGrid.Rows.Add(row.Action, row.Path, FormatBytes(row.Size));
                 ApplyPreviewRowStyle(PreviewGrid.Rows[rowIndex], row.Action);
@@ -757,19 +757,19 @@ namespace AutoPatcherAdmin
         {
             switch (action)
             {
-                case "Added":
+                case "新增":
                     row.DefaultCellStyle.BackColor = Color.FromArgb(225, 248, 225);
                     row.DefaultCellStyle.ForeColor = Color.DarkGreen;
                     break;
-                case "Changed":
+                case "变更":
                     row.DefaultCellStyle.BackColor = Color.FromArgb(255, 246, 214);
                     row.DefaultCellStyle.ForeColor = Color.FromArgb(120, 78, 0);
                     break;
-                case "Deleted":
+                case "删除":
                     row.DefaultCellStyle.BackColor = Color.FromArgb(255, 225, 225);
                     row.DefaultCellStyle.ForeColor = Color.DarkRed;
                     break;
-                case "Unchanged":
+                case "未变更":
                     row.DefaultCellStyle.BackColor = Color.FromArgb(238, 238, 238);
                     row.DefaultCellStyle.ForeColor = Color.DimGray;
                     break;
@@ -785,7 +785,7 @@ namespace AutoPatcherAdmin
         {
             if (!ValidateSettings()) return false;
 
-            SetActionText("Verifying connection...");
+            SetActionText("正在检测连接...");
             try
             {
                 using var probe = PatchTransportFactory.Create();
@@ -795,7 +795,7 @@ namespace AutoPatcherAdmin
             catch (Exception ex)
             {
                 ShowError(ex);
-                SetActionText("Connection failed — check host and credentials.");
+                SetActionText("连接失败 — 请检查服务器地址和账号密码。");
                 return false;
             }
 
@@ -804,30 +804,30 @@ namespace AutoPatcherAdmin
             ClearPreviewGrid();
             UpdateSummaryLabels(null);
 
-            SetActionText("Connecting...");
+            SetActionText("正在连接...");
             RetryOnDisconnect(() =>
             {
                 GetOldFileList();
-            }, "Connecting");
+            }, "正在连接");
             bool forceReuploadAll = false;
 
             if (OldList.Count == 0)
             {
                 var result = OnUi(() => MessageBox.Show(this,
-                        "No existing PList was found on the host. Publishing now will upload every file. Continue with compare?",
-                        "PList not found",
+                        "服务器上未找到已发布的 PList 清单。现在发布将上传全部文件，是否继续对比?",
+                        "未找到 PList 清单",
                         MessageBoxButtons.YesNo,
                         MessageBoxIcon.Warning));
 
                 if (result != DialogResult.Yes)
                 {
-                    SetActionText("Cancelled.");
+                    SetActionText("已取消。");
                     return false;
                 }
             }
 
             CheckCancelled();
-            SetActionText("Comparing files...");
+            SetActionText("正在对比文件...");
 
             GetNewFileList();
             CheckCancelled();
@@ -867,8 +867,8 @@ namespace AutoPatcherAdmin
             {
                 ProcessButton.Enabled = _publishPreviewReady;
                 ActionLabel.Text = _publishPreviewReady
-                    ? $"Ready: {_compareResult.UploadCount} files to upload, {_compareResult.Deleted.Count} files to remove."
-                    : "Up to date — all files match remote.";
+                    ? $"就绪: {_compareResult.UploadCount} 个文件待上传, {_compareResult.Deleted.Count} 个文件待删除。"
+                    : "已是最新 — 所有文件与服务器一致。";
             });
             return true;
         }
@@ -900,7 +900,7 @@ namespace AutoPatcherAdmin
                 TestConnectionButton.Enabled = true;
                 PreviewActionFilterDropDown.Enabled = true;
                 AbortButton.Enabled = false;
-                AbortButton.Text = "Cancel";
+                AbortButton.Text = "取消";
                 PreviewGrid.Enabled = true;
                 if (_statusConnectionLabel != null) _statusConnectionLabel.Text = string.Empty;
                 Cursor = Cursors.Default;
@@ -987,16 +987,16 @@ namespace AutoPatcherAdmin
             if (!ValidateSettings()) throw new OperationCanceledException("Validation failed.");
 
             // Guard against stale compare: re-download the PList and warn if it changed.
-            SetActionText("Checking remote state...");
+            SetActionText("正在检查服务器状态...");
             byte[]? currentRemote = DownloadFile(PatchFileName);
             if (currentRemote != null && _remotePListRawBytes != null &&
                 !currentRemote.SequenceEqual(_remotePListRawBytes))
             {
                 var answer = OnUi(() => MessageBox.Show(this,
-                    "The remote PList has changed since you ran Compare.\n" +
-                    "Another publish may have happened in the meantime.\n\n" +
-                    "Continue with the current publish plan?",
-                    "Remote Changed",
+                    "自执行“对比”以来，服务器上的 PList 已发生变化。\n" +
+                    "可能同时发生了另一次发布。\n\n" +
+                    "是否仍按当前的发布计划继续?",
+                    "服务器清单已变化",
                     MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2));
                 if (answer != DialogResult.Yes)
                     throw new OperationCanceledException("Publish cancelled: remote PList changed.");
@@ -1022,16 +1022,16 @@ namespace AutoPatcherAdmin
             long totalCompressedBytes = 0L;
             var contentFilePaths = new string[totalToCompress];
             var uploadedInfos = new FileInformation[totalToCompress];
-            string prepVerb = Settings.CompressFiles ? "Compressing" : "Preparing";
+            string prepVerb = Settings.CompressFiles ? "压缩中" : "准备中";
 
-            PostUi(() => ActionLabel.Text = $"{prepVerb} {totalToCompress} files...");
+            PostUi(() => ActionLabel.Text = $"{prepVerb} {totalToCompress} 个文件...");
 
             // activeKeys  — files being compressed right now (at most ProcessorCount)
             // completedKeys — files that just finished; drained by the timer to turn green
             var activeKeys  = new System.Collections.Concurrent.ConcurrentDictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
             var completedKeys = new System.Collections.Concurrent.ConcurrentQueue<string>();
             int compressDone = 0;
-            string completedStatus = Settings.CompressFiles ? "Compressed" : "Prepared";
+            string completedStatus = Settings.CompressFiles ? "已压缩" : "已就绪";
 
             // WinForms Timer fires directly on the UI thread (no BeginInvoke queue).
             // Each tick: bubble active rows to top, drain up to 20 completed rows to green.
@@ -1043,7 +1043,7 @@ namespace AutoPatcherAdmin
                 {
                     if (Volatile.Read(ref compressDone) != 0) return;
 
-                    ActionLabel.Text = $"{prepVerb} {Volatile.Read(ref compressed)} of {totalToCompress}...";
+                    ActionLabel.Text = $"{prepVerb} {Volatile.Read(ref compressed)}/{totalToCompress} ...";
 
                     // Turn recently-completed rows green (cap at 20 per tick to stay fast)
                     int drain = 20;
@@ -1111,7 +1111,7 @@ namespace AutoPatcherAdmin
                     row.DefaultCellStyle.BackColor = Color.FromArgb(210, 240, 210);
                     row.DefaultCellStyle.ForeColor = Color.FromArgb(20, 100, 20);
                 }
-                ActionLabel.Text = $"{prepVerb} complete — {totalToCompress} files.";
+                ActionLabel.Text = $"共 {totalToCompress} 个文件{completedStatus}完成。";
             });
 
             var contentFiles = contentFilePaths.ToList();
@@ -1124,7 +1124,7 @@ namespace AutoPatcherAdmin
             {
                 long saved = totalOriginalBytes - totalCompressedBytes;
                 int savePct = (int)((double)saved / totalOriginalBytes * 100);
-                OnUi(() => SummaryUploadSizeLabel.Text += $" → {FormatBytes(totalCompressedBytes)} compressed ({savePct}% saved)");
+                OnUi(() => SummaryUploadSizeLabel.Text += $" → 压缩后 {FormatBytes(totalCompressedBytes)} (节省 {savePct}%)");
             }
 
             pListFiles.Add(CreateTempUploadFiles(new FileInformation { FileName = PatchFileName }, CreateNewList()));
@@ -1132,7 +1132,7 @@ namespace AutoPatcherAdmin
             CheckCancelled();
             try
             {
-                RetryOnDisconnect(() => UploadFilesStaged(contentFiles, pListFiles), "Upload");
+                RetryOnDisconnect(() => UploadFilesStaged(contentFiles, pListFiles), "上传");
             }
             catch
             {
@@ -1140,14 +1140,14 @@ namespace AutoPatcherAdmin
                 throw;
             }
 
-            SetActionText("Cleaning old files...");
+            SetActionText("正在清理旧文件...");
             try
             {
-                RetryOnDisconnect(CleanUp, "Cleanup");
+                RetryOnDisconnect(CleanUp, "清理");
             }
             catch (Exception ex)
             {
-                OnUi(() => MessageBox.Show(this, "Publish completed, but old-file cleanup failed:\r\n\r\n" + GetFriendlyError(ex), "Cleanup failed", MessageBoxButtons.OK, MessageBoxIcon.Warning));
+                OnUi(() => MessageBox.Show(this, "发布已完成，但清理旧文件失败:\r\n\r\n" + GetFriendlyError(ex), "清理失败", MessageBoxButtons.OK, MessageBoxIcon.Warning));
             }
 
             UploadList = null;
@@ -1196,7 +1196,7 @@ namespace AutoPatcherAdmin
             try
             {
                 // Create staging tree with a single connection before parallel uploads begin.
-                SetActionText("Preparing staging area...");
+                SetActionText("正在准备暂存目录...");
                 using (var setup = PatchTransportFactory.Create())
                 {
                     setup.EnsureDirectory(rootPath);
@@ -1207,7 +1207,7 @@ namespace AutoPatcherAdmin
                 int staged = 0;
                 int stageActive = 0;
                 int totalStage = contentFiles.Count;
-                SetActionText($"Staging {totalStage} files...");
+                SetActionText($"正在暂存 {totalStage} 个文件...");
                 RunParallelWithTransport(contentFiles, netDegree, (t, file) =>
                 {
                     CheckCancelled();
@@ -1220,7 +1220,7 @@ namespace AutoPatcherAdmin
                     int snapActive;
                     try
                     {
-                        t.UploadDirectory(TempUploadDirectory, stagingPath, new[] { file }, "Staging", _cts.Token);
+                        t.UploadDirectory(TempUploadDirectory, stagingPath, new[] { file }, "暂存中", _cts.Token);
                         SetUploadRowProgress(file, 100);
                         AdvanceOverallProgress();
                         snapActive = Volatile.Read(ref stageActive);
@@ -1231,18 +1231,18 @@ namespace AutoPatcherAdmin
                         Interlocked.Decrement(ref stageActive);
                     }
 
-                    UpdateRowStatus(NormalizeUploadKey(file), "Staged", Color.FromArgb(190, 225, 240), Color.FromArgb(0, 70, 110));
+                    UpdateRowStatus(NormalizeUploadKey(file), "已暂存", Color.FromArgb(190, 225, 240), Color.FromArgb(0, 70, 110));
                     int done = Interlocked.Increment(ref staged);
                     PostUi(() =>
                     {
-                        ActionLabel.Text = $"Staging — {done} / {totalStage} done  ({snapActive} active)";
+                        ActionLabel.Text = $"暂存 — 完成 {done}/{totalStage}  (并行 {snapActive})";
                         FileLabel.Text = file;
                     });
                 });
 
                 // Stage PList files sequentially (1-2 files; not worth a parallel pool).
                 using (var mTransport = PatchTransportFactory.Create())
-                    mTransport.UploadDirectory(TempUploadDirectory, stagingPath, pListFiles, "Staging PList", _cts.Token);
+                    mTransport.UploadDirectory(TempUploadDirectory, stagingPath, pListFiles, "暂存清单", _cts.Token);
 
                 // Verify staged files in parallel.
                 VerifyStagedFiles(stagingPath, allFiles, netDegree);
@@ -1252,7 +1252,7 @@ namespace AutoPatcherAdmin
                     EnsureRemoteDirectories(setup, contentFiles, rootPath);
 
                 // Promote content files in parallel.
-                PromoteStagedFiles(stagingPath, rootPath, contentFiles, "Uploading", netDegree,
+                PromoteStagedFiles(stagingPath, rootPath, contentFiles, "上传", netDegree,
                     onStart: SetUploadRowUploading,
                     onComplete: RemoveUploadRow);
 
@@ -1262,7 +1262,7 @@ namespace AutoPatcherAdmin
                     foreach (var file in pListFiles)
                     {
                         CheckCancelled();
-                        SetActionText("Publishing PList...");
+                        SetActionText("正在发布清单 PList...");
                         string src = CombineRemotePath(stagingPath, file);
                         string dst = CombineRemotePath(rootPath, file);
                         mTransport.EnsureDirectory(GetRemoteDirectory(dst));
@@ -1275,7 +1275,7 @@ namespace AutoPatcherAdmin
             }
             catch
             {
-                SetActionText("Cleaning up staging...");
+                SetActionText("正在清理暂存目录...");
                 try
                 {
                     using var cleanup = PatchTransportFactory.Create();
@@ -1293,7 +1293,7 @@ namespace AutoPatcherAdmin
             int total = files.Count;
             int verified = 0;
             int verifyActive = 0;
-            SetActionText($"Verifying {total} files...");
+            SetActionText($"正在校验 {total} 个文件...");
             RunParallelWithTransport(files, degree, (transport, file) =>
             {
                 CheckCancelled();
@@ -1304,7 +1304,7 @@ namespace AutoPatcherAdmin
                 string remotePath = CombineRemotePath(stagingPath, file);
 
                 if (!File.Exists(localPath))
-                    throw new FileNotFoundException("Local staged file is missing.", localPath);
+                    throw new FileNotFoundException("本地暂存文件丢失。", localPath);
 
                 long localLength = new FileInfo(localPath).Length;
                 long remoteLength = transport.GetFileLength(remotePath);
@@ -1312,11 +1312,11 @@ namespace AutoPatcherAdmin
                 Interlocked.Decrement(ref verifyActive);
 
                 if (localLength != remoteLength)
-                    throw new InvalidOperationException($"Staged upload verification failed for {file}: local {localLength} bytes, remote {remoteLength} bytes.");
+                    throw new InvalidOperationException($"暂存文件上传校验失败 {file}: 本地 {localLength} 字节，服务器 {remoteLength} 字节。");
 
                 AdvanceOverallProgress();
                 int done = Interlocked.Increment(ref verified);
-                PostUi(() => ActionLabel.Text = $"Verifying — {done} / {total} done  ({snapActive} active)");
+                PostUi(() => ActionLabel.Text = $"校验 — 完成 {done}/{total}  (并行 {snapActive})");
             });
         }
 
@@ -1327,7 +1327,7 @@ namespace AutoPatcherAdmin
             int total = files.Count;
             int promoted = 0;
             int promoteActive = 0;
-            SetActionText($"{label} {total} files...");
+            SetActionText($"正在{label} {total} 个文件...");
             RunParallelWithTransport(files, degree, (transport, file) =>
             {
                 CheckCancelled();
@@ -1347,7 +1347,7 @@ namespace AutoPatcherAdmin
                 int snapActive = Volatile.Read(ref promoteActive);
                 PostUi(() =>
                 {
-                    ActionLabel.Text = $"{label} — {done} / {total} done  ({snapActive} active)";
+                    ActionLabel.Text = $"正在{label} — 完成 {done}/{total}  (并行 {snapActive})";
                     FileLabel.Text = file;
                 });
             });
@@ -1481,8 +1481,8 @@ namespace AutoPatcherAdmin
 
             if (!fileQueue.IsEmpty)
                 throw new InvalidOperationException(
-                    $"Upload incomplete — {fileQueue.Count} file(s) could not be processed. " +
-                    "The server rejected all connections or all workers exceeded the reconnect limit.");
+                    $"上传不完整 — 有 {fileQueue.Count} 个文件未能处理。 " +
+                    "服务器拒绝了所有连接，或所有工作线程都超过了重连上限。");
         }
 
         private int DiscoverConnectionCeiling(int requestedCeiling)
@@ -1491,7 +1491,7 @@ namespace AutoPatcherAdmin
                 return 1;
 
             var rootPath = new Uri(Settings.Host).AbsolutePath;
-            SetActionText($"Checking connection ceiling up to {requestedCeiling}...");
+            SetActionText($"正在检测并发上限(最高 {requestedCeiling})...");
 
             var discovered = 1;
             for (var candidate = 1; candidate <= requestedCeiling; candidate++)
@@ -1680,7 +1680,7 @@ namespace AutoPatcherAdmin
             {
                 FileLabel.Text = e.FileName;
                 SpeedLabel.Text = FormatSpeed(e.BytesPerSecond);
-                ActionLabel.Text = $"Downloading... {e.RemainingFiles} remaining";
+                ActionLabel.Text = $"正在下载... 剩余 {e.RemainingFiles} 个";
             });
 
             if (!Directory.Exists(TempDownloadDirectory))
@@ -1778,27 +1778,27 @@ namespace AutoPatcherAdmin
                     {
                         CreateTempUploadFiles(new FileInformation { FileName = PatchFileName }, CreateNewList())
                     };
-                    RetryOnDisconnect(() => UploadFilesStaged(new List<string>(), pListFiles), "Upload");
+                    RetryOnDisconnect(() => UploadFilesStaged(new List<string>(), pListFiles), "上传");
 
-                    CompletePListOperation("PList updated.");
+                    CompletePListOperation("PList 清单已更新。");
                     Log("PList upload complete.");
                 });
             }
             catch (OperationCanceledException)
             {
-                ActionLabel.Text = "Cancelled.";
+                ActionLabel.Text = "已取消。";
                 DeleteDirectory(TempUploadDirectory);
                 Log("PList upload cancelled.");
                 ClearPreviewGrid();
                 UpdateSummaryLabels(null);
-                MessageBox.Show(this, "Cancel complete. Any partial work has been cleaned up.", "Cancelled", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(this, "取消完成，残留的临时内容已清理。", "已取消", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
-                ActionLabel.Text = "Error.";
+                ActionLabel.Text = "出错。";
                 DeleteDirectory(TempUploadDirectory);
                 Log($"PList upload error: {ex.Message}");
-                MessageBox.Show(this, GetFriendlyError(ex), "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(this, GetFriendlyError(ex), "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
             {
@@ -1810,13 +1810,13 @@ namespace AutoPatcherAdmin
         {
             if (!_publishPreviewReady || UploadList == null)
             {
-                MessageBox.Show(this, "Run Compare first so you can review the publish plan.", "Compare required", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(this, "请先执行“对比”，以便检查发布计划后再发布。", "需要先对比", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
             _cts = new CancellationTokenSource();
             DisableAllButtons();
-            ActionLabel.Text = $"Publishing {_compareResult?.UploadCount ?? 0} changed files...";
+            ActionLabel.Text = $"正在发布 {_compareResult?.UploadCount ?? 0} 个变更文件...";
             try
             {
                 await Task.Run(BeginUpload);
@@ -1824,18 +1824,18 @@ namespace AutoPatcherAdmin
             catch (OperationCanceledException)
             {
                 _publishPreviewReady = false;
-                ActionLabel.Text = "Cancelled.";
+                ActionLabel.Text = "已取消。";
                 Log("Publish cancelled.");
                 ClearPreviewGrid();
                 UpdateSummaryLabels(null);
-                MessageBox.Show(this, "Cancel complete. Any partial work has been cleaned up.", "Cancelled", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(this, "取消完成，残留的临时内容已清理。", "已取消", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
                 _publishPreviewReady = false;
-                ActionLabel.Text = "Error.";
+                ActionLabel.Text = "出错。";
                 Log($"Publish error: {ex.Message}");
-                MessageBox.Show(this, GetFriendlyError(ex), "Publish Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(this, GetFriendlyError(ex), "发布失败", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
             {
@@ -1854,17 +1854,17 @@ namespace AutoPatcherAdmin
             }
             catch (OperationCanceledException)
             {
-                ActionLabel.Text = "Cancelled.";
+                ActionLabel.Text = "已取消。";
                 Log("Compare cancelled.");
                 ClearPreviewGrid();
                 UpdateSummaryLabels(null);
-                MessageBox.Show(this, "Cancel complete. Any partial work has been cleaned up.", "Cancelled", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(this, "取消完成，残留的临时内容已清理。", "已取消", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
-                ActionLabel.Text = "Error.";
+                ActionLabel.Text = "出错。";
                 Log($"Compare error: {ex.Message}");
-                MessageBox.Show(this, GetFriendlyError(ex), "Compare Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(this, GetFriendlyError(ex), "对比失败", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
             {
@@ -1888,7 +1888,7 @@ namespace AutoPatcherAdmin
                     {
                         GetOldFileList();
                         DownloadFiles();
-                    }, "Download");
+                    }, "下载");
                     MoveTempDownloadedFiles();
                     Log("Download complete.");
                 });
@@ -1896,19 +1896,19 @@ namespace AutoPatcherAdmin
             }
             catch (OperationCanceledException)
             {
-                ActionLabel.Text = "Cancelled.";
+                ActionLabel.Text = "已取消。";
                 Log("Download cancelled.");
                 await Task.Run(() => DeleteDirectory(TempDownloadDirectory));
                 ClearPreviewGrid();
                 UpdateSummaryLabels(null);
-                MessageBox.Show(this, "Cancel complete. Any partial work has been cleaned up.", "Cancelled", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(this, "取消完成，残留的临时内容已清理。", "已取消", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
-                ActionLabel.Text = "Error.";
+                ActionLabel.Text = "出错。";
                 Log($"Download error: {ex.Message}");
                 await Task.Run(() => DeleteDirectory(TempDownloadDirectory));
-                MessageBox.Show(this, GetFriendlyError(ex), "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(this, GetFriendlyError(ex), "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
             {
@@ -1922,15 +1922,15 @@ namespace AutoPatcherAdmin
             if (!ValidateSettings()) return;
 
             var confirm = MessageBox.Show(this,
-                "WARNING: This will permanently delete ALL files from the remote repository, including the PList and all client files.\n\nThis cannot be undone. Are you absolutely sure?",
-                "Clear Remote Repository",
+                "警告: 这将永久删除远程仓库中的全部文件，包括 PList 清单和所有客户端文件。\n\n此操作无法撤销。你确定要这样做吗?",
+                "清空远程仓库",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Warning,
                 MessageBoxDefaultButton.Button2);
 
             if (confirm != DialogResult.Yes)
             {
-                ActionLabel.Text = "Clear cancelled.";
+                ActionLabel.Text = "已取消清空。";
                 return;
             }
 
@@ -1943,13 +1943,13 @@ namespace AutoPatcherAdmin
             }
             catch (OperationCanceledException)
             {
-                ActionLabel.Text = "Cancelled.";
-                MessageBox.Show(this, "Cancel complete. Any partial work has been cleaned up.", "Cancelled", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                ActionLabel.Text = "已取消。";
+                MessageBox.Show(this, "取消完成，残留的临时内容已清理。", "已取消", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, GetFriendlyError(ex), "Clear Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                ActionLabel.Text = "Error during clear.";
+                MessageBox.Show(this, GetFriendlyError(ex), "清空失败", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                ActionLabel.Text = "清空过程出错。";
             }
             finally
             {
@@ -1962,11 +1962,11 @@ namespace AutoPatcherAdmin
         private void AbortButton_Click(object sender, EventArgs e)
         {
             _cts.Cancel();
-            SetActionText("Cancelling...");
+            SetActionText("正在取消...");
             OnUi(() =>
             {
                 AbortButton.Enabled = false;
-                AbortButton.Text = "Cancelling...";
+                AbortButton.Text = "正在取消...";
                 PreviewGrid.Enabled = false;
                 Cursor = Cursors.WaitCursor;
             });
@@ -1979,7 +1979,7 @@ namespace AutoPatcherAdmin
 
             _cts = new CancellationTokenSource();
             DisableAllButtons();
-            SetActionText("Testing connection...");
+            SetActionText("正在测试连接...");
             try
             {
                 bool hasPList = false;
@@ -1990,17 +1990,17 @@ namespace AutoPatcherAdmin
                     hasPList = transport.FileExists(CombineRemotePath(rootPath, PatchFileName));
                 });
                 ActionLabel.Text = hasPList
-                    ? "Connection OK — PList found."
-                    : "Connection OK — no PList yet (fresh repository).";
+                    ? "连接正常 — 已找到 PList 清单。"
+                    : "连接正常 — 尚无 PList (全新仓库)。";
             }
             catch (OperationCanceledException)
             {
-                ActionLabel.Text = "Cancelled.";
+                ActionLabel.Text = "已取消。";
             }
             catch (Exception ex)
             {
-                ActionLabel.Text = "Connection failed.";
-                MessageBox.Show(this, GetFriendlyError(ex), "Connection Test Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                ActionLabel.Text = "连接失败。";
+                MessageBox.Show(this, GetFriendlyError(ex), "连接测试失败", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
             {
@@ -2016,7 +2016,7 @@ namespace AutoPatcherAdmin
             using IPatchTransport transport = PatchTransportFactory.Create();
 
             // --- Delete files ---
-            SetActionText("Fetching remote file list...");
+            SetActionText("正在读取远程文件列表...");
             IReadOnlyList<string> remoteFiles = transport.EnumerateFiles(rootPath, _cts.Token);
 
             var filesToDelete = remoteFiles
@@ -2033,7 +2033,7 @@ namespace AutoPatcherAdmin
                 CheckCancelled();
                 fileDone++;
                 string displayPath = MakeRelativeRemotePath(rootPath, remotePath);
-                SetActionText($"Deleting file {fileDone} of {fileTotal}...");
+                SetActionText($"正在删除文件 {fileDone}/{fileTotal} ...");
                 SetFileText(displayPath);
 
                 try
@@ -2041,7 +2041,7 @@ namespace AutoPatcherAdmin
                     transport.DeleteFile(remotePath);
                     if (transport.FileExists(remotePath))
                     {
-                        failures.Add($"{displayPath}: file still exists after delete");
+                        failures.Add($"{displayPath}: 文件删除后仍存在");
                         Log($"Clear Remote verify failed: {displayPath}");
                     }
                     else
@@ -2057,7 +2057,7 @@ namespace AutoPatcherAdmin
             }
 
             // --- Delete directories (deepest first so parents are empty when removed) ---
-            SetActionText("Fetching remote directory list...");
+            SetActionText("正在读取远程目录列表...");
             SetFileText(string.Empty);
             IReadOnlyList<string> remoteDirs = transport.EnumerateDirectories(rootPath, _cts.Token);
 
@@ -2069,7 +2069,7 @@ namespace AutoPatcherAdmin
                 CheckCancelled();
                 dirDone++;
                 string displayPath = MakeRelativeRemotePath(rootPath, dirPath);
-                SetActionText($"Removing directory {dirDone} of {dirTotal}...");
+                SetActionText($"正在删除目录 {dirDone}/{dirTotal} ...");
                 SetFileText(displayPath);
 
                 try
@@ -2087,7 +2087,7 @@ namespace AutoPatcherAdmin
 
             if (fileTotal == 0 && dirTotal == 0)
             {
-                SetActionText("Remote repository is already empty.");
+                SetActionText("远程仓库本来就是空的。");
                 return;
             }
 
@@ -2096,7 +2096,7 @@ namespace AutoPatcherAdmin
 
             OldList = new List<FileInformation>();
             SetFileText(string.Empty);
-            SetActionText($"Remote repository cleared — {fileTotal} file(s), {dirTotal} director(ies) removed.");
+            SetActionText($"远程仓库已清空 — 删除 {fileTotal} 个文件、{dirTotal} 个目录。");
         }
 
         private static string NormalizeRemotePath(string path)
@@ -2143,7 +2143,7 @@ namespace AutoPatcherAdmin
             if (_statusConnectionLabel == null) return;
             int live = Volatile.Read(ref _liveConnections);
             int ceil = Volatile.Read(ref _connectionCeiling);
-            _statusConnectionLabel.Text = live > 0 ? $"Connections: {live} / {ceil}" : string.Empty;
+            _statusConnectionLabel.Text = live > 0 ? $"并发连接: {live} / {ceil}" : string.Empty;
         }
 
 

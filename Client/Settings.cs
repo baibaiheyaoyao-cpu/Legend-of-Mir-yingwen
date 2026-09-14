@@ -163,7 +163,7 @@ namespace Client
             DisplayBodyName = false,
             NewMove = false;
 
-        public static string Language = "English";
+        public static string Language = "Chinese";
 
         public static int[,] SkillbarLocation = new int[2, 2] { { 0, 0 }, { 216, 0 } };
 

@@ -1,4 +1,4 @@
-﻿using Client.MirControls;
+using Client.MirControls;
 using Client.MirGraphics;
 using Client.MirScenes;
 using Client.MirSounds;
@@ -225,6 +225,9 @@ namespace Client.MirObjects
 
             switch (type)
             {
+                case BuffType.Exp: // [AI-Claude] 光之牌: 经验buff头顶循环光效(Magic3 3470-3477) buff消失自动移除
+                    Effects.Add(new BuffEffect(Libraries.Magic3, 3470, 8, 800, this, true, type) { Repeat = true });
+                    break;
                 case BuffType.Fury:
                     Effects.Add(new BuffEffect(Libraries.Magic3, 190, 7, 1400, this, true, type) { Repeat = true });
                     break;
@@ -464,6 +467,9 @@ namespace Client.MirObjects
         }
         public void DrawHealth()
         {
+            //显示血量(辅助面板基本页): 关闭时不绘制任何血条
+            if (!AssistSettings.ShowHealth) return;
+
             string name = Name;
             if (Name.Contains("(")) name = Name.Substring(Name.IndexOf("(") + 1, Name.Length - Name.IndexOf("(") - 2);
 

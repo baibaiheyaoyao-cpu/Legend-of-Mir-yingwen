@@ -451,7 +451,9 @@ namespace Server.MirDatabase
             }
             if (index == -1 || (info = EditEnvir.QuestInfoList.FirstOrDefault(it => it.Index == index)) == null)
             {
-                info = new QuestInfo() { Index = ++EditEnvir.QuestIndex };
+                // 保留CSV原始Index, 保证NPC脚本[Quests]引用链和前置任务链不错位
+                info = new QuestInfo() { Index = index != -1 ? index : ++EditEnvir.QuestIndex };
+                if (info.Index > EditEnvir.QuestIndex) EditEnvir.QuestIndex = info.Index;
                 isNew = true;
 
             }

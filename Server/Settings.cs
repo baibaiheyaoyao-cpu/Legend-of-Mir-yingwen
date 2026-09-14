@@ -58,7 +58,8 @@ namespace Server
         public static string StrongboxDropFilename = "00Strongbox";
         public static string BlackstoneDropFilename = "00Blackstone";
 
-        public static string Language = "English";
+        //默认中文: 服务器退出时会把内存值回写Setup.ini, 默认English曾在ini读取失败时把语言静默翻转成英文
+        public static string Language = "Chinese";
 
         //Network
         public static string IPAddress = "127.0.0.1";
@@ -98,6 +99,10 @@ namespace Server
                            GatherOrbsPerLevel = true,
                            ExpMobLevelDifference = true;
         public static int LineMessageTimer = 10;
+
+        //Map unload
+        public static bool MapUnloadEnabled = false;
+        public static int MapUnloadDelay = 15;
 
         //Database
         public static int SaveDelay = 5;
@@ -285,6 +290,58 @@ namespace Server
         //Gem Settings
         public static bool GemStatIndependent = true;
 
+        //Imprint Settings (印系统 - 镶嵌Socket物品额外授予技能, 读取 Configs\ImprintSystem.ini)
+        //键=印的物品名(需与物品数据库中完全一致), 值=Spell枚举名(如 FireBall / ThunderBoltRare)
+        public static Dictionary<string, string> ImprintSkills = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        //Custom Skills (自定义技能槽 242-255, 读取 Configs\CustomSkills.ini, "自定义技能"面板编辑)
+        public static List<CustomSkillConfig> CustomSkills = new List<CustomSkillConfig>();
+
+        //自定义技能槽范围
+        public static Spell CustomSpellFirst { get { return Spell.Custom1; } }
+        public static Spell CustomSpellLast { get { return Spell.Custom14; } }
+
+        public static bool IsCustomSpell(Spell spell)
+        {
+            return (byte)spell >= (byte)CustomSpellFirst && (byte)spell <= (byte)CustomSpellLast;
+        }
+
+        public static CustomSkillConfig GetCustomSkill(Spell spell)
+        {
+            for (int i = 0; i < CustomSkills.Count; i++)
+                if (CustomSkills[i].Spell == spell && CustomSkills[i].Enabled) return CustomSkills[i];
+            return null;
+        }
+
+        /// <summary>统一印名→技能查找: ImprintSystem.ini 旧映射 + 自定义技能 BindItem</summary>
+        public static bool TryGetImprintSpell(string itemName, out string spellName)
+        {
+            spellName = null;
+            if (string.IsNullOrEmpty(itemName)) return false;
+            if (ImprintSkills.TryGetValue(itemName, out spellName)) return true;
+            for (int i = 0; i < CustomSkills.Count; i++)
+                if (CustomSkills[i].Enabled && string.Equals(CustomSkills[i].BindItem, itemName, StringComparison.Ordinal))
+                { spellName = CustomSkills[i].Spell.ToString(); return true; }
+            return false;
+        }
+
+        /// <summary>所有印绑定技能名(用于卸装移除临时技能)</summary>
+        public static List<string> GetAllImprintSpells()
+        {
+            var list = new List<string>(ImprintSkills.Values);
+            for (int i = 0; i < CustomSkills.Count; i++)
+                if (CustomSkills[i].Enabled && !string.IsNullOrEmpty(CustomSkills[i].BindItem))
+                    list.Add(CustomSkills[i].Spell.ToString());
+            return list;
+        }
+
+        //Talent Settings (天赋系统 - 点数经济, 读取 Configs\Talent.ini)
+        public static int TalentStartingLevel = 10;         //解锁等级: 达到该等级开放天赋系统
+        public static int TalentStepLevel = 1;              //每升多少级
+        public static int TalentStepPoint = 100;            //获得多少天赋点
+        public static int TalentLearnCost = 100;            //天赋升1级消耗的点数
+        public static uint TalentResetCost = 1000000;       //洗点消耗金币
+
 
         //Goods Settings
         public static bool GoodsOn = true;
@@ -429,6 +486,8 @@ namespace Server
             ExpMobLevelDifference = Reader.ReadBoolean("Optional", "ExpMobLevelDifference", ExpMobLevelDifference);
             GameMasterEffect = Reader.ReadBoolean("Optional", "GameMasterEffect", GameMasterEffect);
             LineMessageTimer = Reader.ReadInt32("Optional", "LineMessageTimer", LineMessageTimer);
+            MapUnloadEnabled = Reader.ReadBoolean("Optional", "MapUnloadEnabled", MapUnloadEnabled);
+            MapUnloadDelay = Reader.ReadInt32("Optional", "MapUnloadDelay", MapUnloadDelay);
 
             //Database
             SaveDelay = Reader.ReadInt32("Database", "SaveDelay", SaveDelay);
@@ -628,9 +687,12 @@ namespace Server
             LoadGoods();
             LoadMonsterRarity();
             LoadGem();
+            LoadImprint();
+            LoadCustomSkills();
             LoadNotice();
             LoadWorldMap();
             LoadHeroSettings();
+            LoadTalent();
 
             string languageDirectory = @".\Localization\";
             if (!Directory.Exists(languageDirectory))
@@ -722,6 +784,8 @@ namespace Server
             Reader.Write("Optional", "ExpMobLevelDifference", ExpMobLevelDifference);
             Reader.Write("Optional", "GameMasterEffect", GameMasterEffect);
             Reader.Write("Optional", "LineMessageTimer", LineMessageTimer);
+            Reader.Write("Optional", "MapUnloadEnabled", MapUnloadEnabled);
+            Reader.Write("Optional", "MapUnloadDelay", MapUnloadDelay);
 
             //Database
             Reader.Write("Database", "SaveDelay", SaveDelay);
@@ -893,6 +957,25 @@ namespace Server
                 HeroExperienceList.Add(exp);
             }
         }
+
+        /// <summary>
+        /// 天赋系统 - 加载天赋点数经济配置 (Configs\Talent.ini).
+        /// 文件不存在时按代码默认值自动创建, 站长可直接改ini微调数值而无需重编译.
+        /// </summary>
+        public static void LoadTalent()
+        {
+            InIReader reader = new InIReader(Path.Combine(ConfigPath, "Talent.ini"));
+
+            TalentStartingLevel = reader.ReadInt32("Config", "StartingLevel", TalentStartingLevel);
+            TalentStepLevel = Math.Max(1, reader.ReadInt32("Config", "StepLevel", TalentStepLevel));
+            TalentStepPoint = reader.ReadInt32("Config", "StepPoint", TalentStepPoint);
+            TalentLearnCost = Math.Max(0, reader.ReadInt32("Config", "LearnCost", TalentLearnCost));
+
+            //洗点金币消耗(读取int再转uint, 避免负数)
+            var resetCost = reader.ReadInt32("Config", "CostAmount", (int)TalentResetCost);
+            TalentResetCost = resetCost < 0 ? 0 : (uint)resetCost;
+        }
+
             public static void LoadWorldMap()
         {
             InIReader reader = null;
@@ -1159,8 +1242,16 @@ namespace Server
                 stat.SlotChance = reader.ReadByte("Item" + i.ToString(), "SlotChance", 0);
                 stat.SlotStatChance = reader.ReadByte("Item" + i.ToString(), "SlotStatChance", 0);
                 stat.SlotMaxStat = reader.ReadByte("Item" + i.ToString(), "SlotMaxStat", 0);
+                if (stat.SlotMaxStat == 0) stat.SlotMaxStat = (byte)(i == 1 ? 3 : 1);
                 RandomItemStatsList.Add(stat);
                 i++;
+            }
+
+            while (RandomItemStatsList.Count < 9)
+            {
+                var pad = new RandomItemStat();
+                pad.SlotMaxStat = 1;
+                RandomItemStatsList.Add(pad);
             }
         }
         public static void SaveRandomItemStats()
@@ -1702,6 +1793,115 @@ namespace Server
             File.Delete(Path.Combine(ConfigPath, "GemSystem.ini"));
             InIReader reader = new InIReader(Path.Combine(ConfigPath, "GemSystem.ini"));
             reader.Write("Config", "GemStatIndependent", GemStatIndependent);
+        }
+
+        public static void LoadImprint()
+        {
+            string path = Path.Combine(ConfigPath, "ImprintSystem.ini");
+            ImprintSkills.Clear();
+
+            if (!File.Exists(path)) return;
+
+            //手动解析: 键为任意印名, InIReader按键读取不适合枚举整节
+            bool inSection = false;
+            foreach (string raw in File.ReadAllLines(path))
+            {
+                string line = raw.Trim();
+                if (line.Length == 0) continue;
+
+                if (line.StartsWith("["))
+                {
+                    inSection = StringComparer.Ordinal.Equals(line, "[ImprintSkills]");
+                    continue;
+                }
+                if (!inSection || line.StartsWith(";") || line.StartsWith("#")) continue;
+
+                int eq = line.IndexOf('=');
+                if (eq <= 0) continue;
+
+                string name = line.Substring(0, eq).Trim();
+                string spell = line.Substring(eq + 1).Trim();
+                if (name.Length == 0 || spell.Length == 0) continue;
+
+                if (!Enum.TryParse(spell, out Spell spellType))
+                {
+                    System.Diagnostics.Trace.WriteLine($"ImprintSystem.ini: 未知技能枚举 '{spell}' (印 '{name}')");
+                    continue;
+                }
+
+                ImprintSkills[name] = spell;
+            }
+        }
+
+        public static void LoadCustomSkills()
+        {
+            string path = Path.Combine(ConfigPath, "CustomSkills.ini");
+            CustomSkills.Clear();
+
+            //固定14槽, 全部初始化(未启用Template=0); 注意用int循环, byte到255会回绕造成死循环
+            for (int b = (byte)Spell.Custom1; b <= (byte)Spell.Custom14; b++)
+                CustomSkills.Add(new CustomSkillConfig { Spell = (Spell)b });
+
+            if (!File.Exists(path))
+            {
+                SaveCustomSkills();
+                return;
+            }
+
+            InIReader reader = new InIReader(path);
+            foreach (var cfg in CustomSkills)
+            {
+                string sec = "Skill" + (byte)cfg.Spell;
+                cfg.Name = reader.ReadString(sec, "Name", "");
+                cfg.Template = (byte)reader.ReadInt32(sec, "Template", 0);
+                cfg.BaseCost = (ushort)reader.ReadInt32(sec, "BaseCost", 10);
+                cfg.DelayMs = (uint)reader.ReadInt32(sec, "DelayMs", 2000);
+                cfg.Icon = (byte)reader.ReadInt32(sec, "Icon", 0);
+                cfg.P1 = reader.ReadInt32(sec, "P1", 0);
+                cfg.P2 = reader.ReadInt32(sec, "P2", 0);
+                cfg.P3 = reader.ReadInt32(sec, "P3", 0);
+                cfg.P4 = reader.ReadInt32(sec, "P4", 0);
+                cfg.P5 = reader.ReadInt32(sec, "P5", 0);
+                cfg.P6 = reader.ReadInt32(sec, "P6", 0);
+                cfg.EffectLib = (byte)reader.ReadInt32(sec, "EffectLib", 255);
+                cfg.EffectBase = (short)reader.ReadInt32(sec, "EffectBase", 0);
+                cfg.EffectCount = (byte)reader.ReadInt32(sec, "EffectCount", 0);
+                cfg.EffectStride = (byte)reader.ReadInt32(sec, "EffectStride", 0);
+                cfg.EffectDuration = (ushort)reader.ReadInt32(sec, "EffectDuration", 1500);
+                cfg.SoundSpell = (ushort)reader.ReadInt32(sec, "SoundSpell", 0);
+                cfg.CastAction = (byte)reader.ReadInt32(sec, "CastAction", 0);
+                cfg.BindItem = reader.ReadString(sec, "BindItem", "");
+            }
+        }
+
+        public static void SaveCustomSkills()
+        {
+            string path = Path.Combine(ConfigPath, "CustomSkills.ini");
+            File.Delete(path);
+            InIReader reader = new InIReader(path);
+            foreach (var cfg in CustomSkills)
+            {
+                string sec = "Skill" + (byte)cfg.Spell;
+                reader.Write(sec, "Name", cfg.Name);
+                reader.Write(sec, "Template", cfg.Template);
+                reader.Write(sec, "BaseCost", (int)cfg.BaseCost);
+                reader.Write(sec, "DelayMs", (int)cfg.DelayMs);
+                reader.Write(sec, "Icon", (int)cfg.Icon);
+                reader.Write(sec, "P1", cfg.P1);
+                reader.Write(sec, "P2", cfg.P2);
+                reader.Write(sec, "P3", cfg.P3);
+                reader.Write(sec, "P4", cfg.P4);
+                reader.Write(sec, "P5", cfg.P5);
+                reader.Write(sec, "P6", cfg.P6);
+                reader.Write(sec, "EffectLib", (int)cfg.EffectLib);
+                reader.Write(sec, "EffectBase", (int)cfg.EffectBase);
+                reader.Write(sec, "EffectCount", (int)cfg.EffectCount);
+                reader.Write(sec, "EffectStride", (int)cfg.EffectStride);
+                reader.Write(sec, "EffectDuration", (int)cfg.EffectDuration);
+                reader.Write(sec, "SoundSpell", (int)cfg.SoundSpell);
+                reader.Write(sec, "CastAction", (int)cfg.CastAction);
+                reader.Write(sec, "BindItem", cfg.BindItem ?? "");
+            }
         }
 
         public static void LoadGoods()

@@ -1,4 +1,4 @@
-﻿using Server.MirEnvir;
+using Server.MirEnvir;
 using Server.MirObjects;
 
 namespace Server.MirDatabase
@@ -80,7 +80,15 @@ namespace Server.MirDatabase
                 new BuffInfo { Type = BuffType.Defence, Properties = BuffProperty.None, StackType = BuffStackType.StackDuration },
                 new BuffInfo { Type = BuffType.MagicDefence, Properties = BuffProperty.None, StackType = BuffStackType.StackDuration },
                 new BuffInfo { Type = BuffType.WonderDrug, Properties = BuffProperty.None, StackType = BuffStackType.StackDuration },
-                new BuffInfo { Type = BuffType.Knapsack, Properties = BuffProperty.None, StackType = BuffStackType.StackDuration }
+                new BuffInfo { Type = BuffType.Knapsack, Properties = BuffProperty.None, StackType = BuffStackType.StackDuration },
+                new BuffInfo { Type = BuffType.CreatureBuff, Properties = BuffProperty.RemoveOnExit, StackType = BuffStackType.Infinite, Visible = true },
+                new BuffInfo { Type = BuffType.SnackTier1, Properties = BuffProperty.None, StackType = BuffStackType.ResetStatAndDuration, Visible = true },
+                new BuffInfo { Type = BuffType.SnackTier2, Properties = BuffProperty.None, StackType = BuffStackType.ResetStatAndDuration, Visible = true },
+                new BuffInfo { Type = BuffType.SnackTier3, Properties = BuffProperty.None, StackType = BuffStackType.ResetStatAndDuration, Visible = true },
+                new BuffInfo { Type = BuffType.SnackTier4, Properties = BuffProperty.None, StackType = BuffStackType.ResetStatAndDuration, Visible = true },
+                new BuffInfo { Type = BuffType.LuckAid, Properties = BuffProperty.None, StackType = BuffStackType.StackDuration },
+                new BuffInfo { Type = BuffType.AccuracyAid, Properties = BuffProperty.None, StackType = BuffStackType.StackDuration },
+                new BuffInfo { Type = BuffType.AgilityAid, Properties = BuffProperty.None, StackType = BuffStackType.StackDuration }
             };
 
             return info;

@@ -1,4 +1,4 @@
-﻿namespace Server.MirForms.VisualMapInfo.Control.Forms
+namespace Server.MirForms.VisualMapInfo.Control.Forms
 {
     partial class RespawnsDetailForm
     {

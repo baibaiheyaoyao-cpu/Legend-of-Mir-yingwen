@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Net.Sockets;
 using Server.MirDatabase;
 using Server.MirEnvir;
@@ -750,6 +750,15 @@ namespace Server.MirNetwork
                     return;
                 case (short)ClientPacketIds.DeleteItem:
                     DeleteItem((C.DeleteItem)p);
+                    break;
+                case (short)ClientPacketIds.ClientTalent:
+                    ClientTalent();
+                    break;
+                case (short)ClientPacketIds.LearnTalent:
+                    LearnTalent((C.LearnTalent)p);
+                    break;
+                case (short)ClientPacketIds.ResetTalentPoints:
+                    ResetTalentPoints();
                     break;
                 default:
                     MessageQueue.Enqueue(GameLanguage.ServerTextMap.GetLocalization((ServerTextKeys.InvalidPacketReceived), p.Index));
@@ -2198,6 +2207,35 @@ namespace Server.MirNetwork
 
             Player.GetRentedItems();
         }
+
+        #region 天赋系统 - 客户端包处理(实际逻辑都在 PlayerObject.Talents.cs)
+        /// <summary>客户端请求天赋数据: 下发全表 + 玩家状态</summary>
+        private void ClientTalent()
+        {
+            if (Stage != GameStage.Game)
+                return;
+
+            Player.SendTalentInfo();
+        }
+
+        /// <summary>客户端请求学习/升级一个天赋</summary>
+        private void LearnTalent(C.LearnTalent p)
+        {
+            if (Stage != GameStage.Game)
+                return;
+
+            Player.LearnTalent(p.TalentId);
+        }
+
+        /// <summary>客户端请求洗点</summary>
+        private void ResetTalentPoints()
+        {
+            if (Stage != GameStage.Game)
+                return;
+
+            Player.ResetTalents();
+        }
+        #endregion
 
         private void ItemRentalRequest()
         {

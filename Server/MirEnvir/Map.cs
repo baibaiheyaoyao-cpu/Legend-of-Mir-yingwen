@@ -29,6 +29,7 @@ namespace Server.MirEnvir
         public List<Door> Doors = new List<Door>();
         public MineSpot[,] Mine;
         public long LightningTime, FireTime;
+        public long LastActiveTime;
         public int MonsterCount;
 
         public List<NPCObject> NPCs = new List<NPCObject>();
@@ -45,6 +46,7 @@ namespace Server.MirEnvir
         {
             Info = info;
             Thread = Envir.Random.Next(Settings.ThreadLimit);
+            LastActiveTime = Envir.Time;
         }
 
         public Door AddDoor(byte DoorIndex, Point location)
@@ -608,7 +610,7 @@ namespace Server.MirEnvir
                 for (int i = 0; i < Info.MineZones.Count; i++)
                 {
                     MineZone Zone = Info.MineZones[i];
-                    if (Zone.Mine != 0)
+                    if (Zone.Mine != 0 && Settings.MineSetList.Count > Zone.Mine - 1)
                         Settings.MineSetList[Zone.Mine - 1].SetDrops(Envir.ItemInfoList);
                     if (Settings.MineSetList.Count < Zone.Mine) continue;
                     for (int x =  Zone.Location.X - Zone.Size; x < Zone.Location.X + Zone.Size; x++)
@@ -745,6 +747,9 @@ namespace Server.MirEnvir
                 MapRespawn respawn = Respawns[i];
                 if ((respawn.Info.RespawnTicks != 0) && (Envir.RespawnTick.CurrentTickcounter < respawn.NextSpawnTick)) continue;
                 if ((respawn.Info.RespawnTicks == 0) && (Envir.Time < respawn.RespawnTime)) continue;
+
+                //无人不刷怪: 该地图无在线玩家时停止补充新怪(不清除已存在的怪)
+                if (Info.NoPlayerNoSpawn && Players.Count == 0) continue;
 
                 if (respawn.Count < (respawn.Info.Count * Envir.SpawnMultiplier))
                 {
@@ -916,6 +921,9 @@ namespace Server.MirEnvir
                 case Spell.SummonSkeleton:
                 case Spell.SummonShinsu:
                 case Spell.SummonHolyDeva:
+                case Spell.Yling:   // [AI-Claude] 召唤风灵(615): 与神兽同组 前方落地+入宠物列表
+                case Spell.Hling:   // [AI-Claude] 召唤幻灵(616)
+                case Spell.AncientOracle: // [AI-Claude] 召唤上古神谕(415)
                 case Spell.SummonVampire:
                 case Spell.SummonToad:
                 case Spell.SummonSnakes:
@@ -988,6 +996,51 @@ namespace Server.MirEnvir
 
                     }
 
+                    break;
+
+                #endregion
+
+                #region 自定义技能(242-255): 范围伤害结算(半径可配)
+
+                default:
+                    if (Settings.IsCustomSpell(magic.Spell))
+                    {
+                        value = (int)data[2];
+                        location = (Point)data[3];
+                        int radius = data.Count > 4 ? Math.Max(1, (int)data[4]) : 1;
+
+                        for (int y = location.Y - radius; y <= location.Y + radius; y++)
+                        {
+                            if (y < 0) continue;
+                            if (y >= Height) break;
+
+                            for (int x = location.X - radius; x <= location.X + radius; x++)
+                            {
+                                if (x < 0) continue;
+                                if (x >= Width) break;
+
+                                cell = GetCell(x, y);
+
+                                if (!cell.Valid || cell.Objects == null) continue;
+
+                                for (int i = 0; i < cell.Objects.Count; i++)
+                                {
+                                    MapObject target = cell.Objects[i];
+                                    switch (target.Race)
+                                    {
+                                        case ObjectType.Monster:
+                                        case ObjectType.Player:
+                                            if (target.IsAttackTarget(player))
+                                            {
+                                                if (target.Attacked(player, value, DefenceType.MAC, false) > 0)
+                                                    train = true;
+                                            }
+                                            break;
+                                    }
+                                }
+                            }
+                        }
+                    }
                     break;
 
                 #endregion
@@ -1565,8 +1618,225 @@ namespace Server.MirEnvir
                             AddObject(ob);
                             ob.Spawned();
                         }
-                    } 
+                    }
 
+                    break;
+
+                #endregion
+
+                #region WanXiaoFu 万效符
+
+                case Spell.WanXiaoFu:
+                case Spell.WanXiaoFuRare:
+                    {
+                        value = (int)data[2];                      //Buff时长(秒)
+                        location = (Point)data[3];
+                        bool wxRare = data.Count > 4 && (bool)data[4];
+
+                        //7x7范围友方一次性上4个Buff(数值移植自angelk727)
+                        for (int y = location.Y - 3; y <= location.Y + 3; y++)
+                        {
+                            if (y < 0) continue;
+                            if (y >= Height) break;
+
+                            for (int x = location.X - 3; x <= location.X + 3; x++)
+                            {
+                                if (x < 0) continue;
+                                if (x >= Width) break;
+
+                                cell = GetCell(x, y);
+                                if (!cell.Valid || cell.Objects == null) continue;
+
+                                for (int i = 0; i < cell.Objects.Count; i++)
+                                {
+                                    MapObject target = cell.Objects[i];
+                                    if (target.Node == null) continue;
+
+                                    switch (target.Race)
+                                    {
+                                        case ObjectType.Monster:
+                                        case ObjectType.Player:
+                                        case ObjectType.Hero:
+                                            if (!target.IsFriendlyTarget(player)) break;
+
+                                            //幽灵盾+神圣战甲(按目标等级)
+                                            target.AddBuff(BuffType.SoulShield, player, Settings.Second * value,
+                                                new Stats { [Stat.MaxMAC] = target.Level / 7 + 4 });
+                                            target.AddBuff(BuffType.BlessedArmour, player, Settings.Second * value,
+                                                new Stats { [Stat.MaxAC] = target.Level / 7 + 4 });
+
+                                            //无极真气(按目标职业, 数值=施法者SC)
+                                            int wxChance = 10 - (player.Stats[Stat.Luck] / 3 + magic.Level + 1);
+                                            if (wxChance < 2) wxChance = 2;
+
+                                            int wxUE = player.Stats[Stat.MaxSC] >= 5 ? Math.Min(8, player.Stats[Stat.MaxSC] / 5) : 1;
+                                            Stats wxStatsUE = new Stats();
+                                            HumanObject wxHuman = target as HumanObject;
+                                            if (wxHuman == null || wxHuman.Class == MirClass.Warrior || wxHuman.Class == MirClass.Assassin)
+                                                wxStatsUE[Stat.MaxDC] = wxUE;
+                                            else if (wxHuman.Class == MirClass.Wizard || wxHuman.Class == MirClass.Archer)
+                                                wxStatsUE[Stat.MaxMC] = wxUE;
+                                            else
+                                                wxStatsUE[Stat.MaxSC] = wxUE;
+                                            target.AddBuff(BuffType.UltimateEnhancer, player, Settings.Second * value, wxStatsUE);
+
+                                            //先天气功(气功盾)
+                                            target.AddBuff(BuffType.EnergyShield, player, Settings.Second * value,
+                                                new Stats
+                                                {
+                                                    [Stat.EnergyShieldPercent] = (int)Math.Round((1 / (decimal)wxChance) * 100),
+                                                    [Stat.EnergyShieldHPGain] = player.Stats[Stat.HP] * 5 / 100
+                                                });
+
+                                            //万效符秘笈: 概率(级+1)/4净化Debuff与毒(仿Purification)
+                                            if (wxRare && Envir.Random.Next(4) <= magic.Level)
+                                            {
+                                                for (int b = 0; b < target.Buffs.Count; b++)
+                                                {
+                                                    var buff = target.Buffs[b];
+                                                    if (!buff.Properties.HasFlag(BuffProperty.Debuff)) continue;
+                                                    target.RemoveBuff(buff.Type);
+                                                }
+
+                                                if (target.PoisonList.Any(p => p.PType == PoisonType.DelayedExplosion))
+                                                {
+                                                    target.ExplosionInflictedTime = 0;
+                                                    target.ExplosionInflictedStage = 0;
+                                                    if (target.ObjectID == player.ObjectID)
+                                                        player.Enqueue(new S.RemoveDelayedExplosion { ObjectID = target.ObjectID });
+                                                    target.Broadcast(new S.RemoveDelayedExplosion { ObjectID = target.ObjectID });
+                                                }
+
+                                                target.PoisonList.Clear();
+                                            }
+
+                                            target.OperateTime = 0;
+                                            break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    break;
+
+                #endregion
+
+                #region StormEscapeRare 雷仙风秘籍
+
+                case Spell.StormEscapeRare:
+                    value = (int)data[2];
+                    location = (Point)data[3];
+                    for (int y = location.Y - 2; y <= location.Y + 2; y++)
+                    {
+                        if (y < 0) continue;
+                        if (y >= Height) break;
+
+                        for (int x = location.X - 2; x <= location.X + 2; x++)
+                        {
+                            if (x < 0) continue;
+                            if (x >= Width) break;
+
+                            cell = GetCell(x, y);
+                            if (!cell.Valid || cell.Objects == null) continue;
+
+                            for (int i = 0; i < cell.Objects.Count; i++)
+                            {
+                                MapObject target = cell.Objects[i];
+                                if (target.Race != ObjectType.Monster && target.Race != ObjectType.Player) continue;
+                                if (!target.IsAttackTarget(player)) continue;
+                                if (target.Attacked(player, value, DefenceType.MAC, false) <= 0) continue;
+
+                                target.ApplyPoison(new Poison { PType = PoisonType.LRParalysis, Duration = magic.Level + 2, TickSpeed = 1000 }, player);
+                                target.OperateTime = 0;
+                                train = true;
+                            }
+                        }
+                    }
+
+                    break;
+
+                #endregion
+
+                #region SoulflameSiphon 吸魔炎风/秘籍
+
+                case Spell.SoulflameSiphon:
+                case Spell.SoulflameSiphonRare:
+                    {
+                        value = (int)data[2];
+                        location = (Point)data[3];
+                        int sfsLevel = data.Count > 4 && data[4] is byte ? (byte)data[4] : 0;
+                        bool sfsRare = magic.Spell == Spell.SoulflameSiphonRare;
+
+                        int duration;
+                        if (sfsRare)
+                        {
+                            //秘籍: 7/8/10/10秒
+                            switch (sfsLevel)
+                            {
+                                case 0: duration = 7000; break;
+                                case 1: duration = 8000; break;
+                                default: duration = 10000; break;
+                            }
+                        }
+                        else
+                        {
+                            //普通: 3/4/5/6秒
+                            switch (sfsLevel)
+                            {
+                                case 0: duration = 3000; break;
+                                case 1: duration = 4000; break;
+                                case 2: duration = 5000; break;
+                                default: duration = 6000; break;
+                            }
+                        }
+
+                        train = true;
+                        bool sfsShow = true;
+
+                        for (int y = location.Y - 1; y <= location.Y + 1; y++)
+                        {
+                            if (y < 0) continue;
+                            if (y >= Height) break;
+
+                            for (int x = location.X - 1; x <= location.X + 1; x++)
+                            {
+                                if (x < 0) continue;
+                                if (x >= Width) break;
+
+                                cell = GetCell(x, y);
+                                if (!cell.Valid) continue;
+
+                                bool sfsCast = true;
+                                if (cell.Objects != null)
+                                    for (int o = 0; o < cell.Objects.Count; o++)
+                                    {
+                                        MapObject ob = cell.Objects[o];
+                                        if (ob.Race != ObjectType.Spell || ((SpellObject)ob).Spell != magic.Spell) continue;
+                                        sfsCast = false;
+                                        break;
+                                    }
+                                if (!sfsCast) continue;
+
+                                SpellObject sob = new SpellObject
+                                {
+                                    Spell = magic.Spell,
+                                    Value = value,
+                                    ExpireTime = Envir.Time + duration,
+                                    TickSpeed = 1000,
+                                    Caster = player,
+                                    CurrentLocation = new Point(x, y),
+                                    CastLocation = location,
+                                    Show = sfsShow,
+                                    CurrentMap = this,
+                                };
+                                sfsShow = false;
+
+                                AddObject(sob);
+                                sob.Spawned();
+                            }
+                        }
+                    }
                     break;
 
                 #endregion
@@ -2442,25 +2712,103 @@ namespace Server.MirEnvir
             if (ob.Race == ObjectType.Player)
             {
                 Players.Add((PlayerObject)ob);
+                LastActiveTime = Envir.Time;
             }
 
             if (ob.Race == ObjectType.Merchant) NPCs.Add((NPCObject)ob);
             if (ob.Race == ObjectType.Spell) Spells.Add((SpellObject)ob);
-            if (ob.Race == ObjectType.Hero) Heroes.Add((HeroObject)ob);
+            if (ob.Race == ObjectType.Hero)
+            {
+                Heroes.Add((HeroObject)ob);
+                LastActiveTime = Envir.Time;
+            }
 
             GetCell(ob.CurrentLocation).Add(ob);
         }
 
         public void RemoveObject(MapObject ob)
         {
-            if (ob.Race == ObjectType.Player) Players.Remove((PlayerObject)ob);
+            if (ob.Race == ObjectType.Player)
+            {
+                Players.Remove((PlayerObject)ob);
+                LastActiveTime = Envir.Time;
+            }
+
             if (ob.Race == ObjectType.Merchant) NPCs.Remove((NPCObject)ob);
             if (ob.Race == ObjectType.Spell) Spells.Remove((SpellObject)ob);
-            if (ob.Race == ObjectType.Hero) Heroes.Remove((HeroObject)ob);
+            if (ob.Race == ObjectType.Hero)
+            {
+                Heroes.Remove((HeroObject)ob);
+                LastActiveTime = Envir.Time;
+            }
 
             GetCell(ob.CurrentLocation).Remove(ob);
         }
 
+        public void Unload()
+        {
+            Envir.SaveGoodsForMap(this);
+
+            List<MapObject> objects = new List<MapObject>();
+            LinkedListNode<MapObject> node = Envir.Objects.First;
+            while (node != null)
+            {
+                MapObject ob = node.Value;
+                if (ob.CurrentMap == this) objects.Add(ob);
+                node = node.Next;
+            }
+
+            for (int i = objects.Count - 1; i >= 0; i--)
+            {
+                MapObject ob = objects[i];
+                if (ob.Node == null) continue;
+
+                if (ob.Race == ObjectType.Monster)
+                {
+                    MonsterObject monster = (MonsterObject)ob;
+                    if (!monster.Dead)
+                    {
+                        Envir.MonsterCount--;
+                    }
+                    if (monster.Master != null)
+                        monster.Master.Pets.Remove(monster);
+                    monster.SlaveList.Clear();
+                }
+
+                if (ob.CurrentMap != null) ob.CurrentMap.RemoveObject(ob);
+                ob.Despawn();
+            }
+
+            MonsterCount = 0;
+
+            for (int i = 0; i < Respawns.Count; i++)
+            {
+                MapRespawn respawn = Respawns[i];
+                if (respawn.Info.SaveRespawnTime && respawn.Info.RespawnTicks != 0)
+                    Envir.SavedSpawns.Remove(respawn);
+            }
+
+            Envir.MapList.Remove(this);
+
+            NPCs.Clear();
+            Spells.Clear();
+            Players.Clear();
+            Heroes.Clear();
+            ActionList.Clear();
+            Conquest.Clear();
+
+            Envir.QueueForFree(this);
+        }
+
+        public void FreeMemory()
+        {
+            Cells = null;
+            DoorIndex = null;
+            WalkableCells = null;
+            Doors = null;
+            Mine = null;
+            Respawns = null;
+        }
 
         public SafeZoneInfo GetSafeZone(Point location)
         {
@@ -2561,7 +2909,15 @@ namespace Server.MirEnvir
             get { return Attribute == CellAttribute.Walk; }
         }
 
-        public List<MapObject> Objects = new List<MapObject>();
+        private static readonly List<MapObject> EmptyObjects = new List<MapObject>();
+
+        private List<MapObject> _objects;
+
+        public List<MapObject> Objects
+        {
+            get { return _objects ?? EmptyObjects; }
+        }
+
         public CellAttribute Attribute;
         public sbyte FishingAttribute = -1;
 
@@ -2573,13 +2929,16 @@ namespace Server.MirEnvir
                 return;
             }
 
-            if (Objects.Contains(mapObject))
+            if (_objects == null)
+                _objects = new List<MapObject>();
+
+            if (_objects.Contains(mapObject))
             {
                 ReportCellIssue($"Duplicate MapObject add detected for ObjectID {mapObject.ObjectID}.");
                 return;
             }
 
-            Objects.Add(mapObject);
+            _objects.Add(mapObject);
         }
         public void Remove(MapObject mapObject)
         {
@@ -2589,11 +2948,10 @@ namespace Server.MirEnvir
                 return;
             }
 
-            if (!Objects.Remove(mapObject))
+            if (_objects == null || !_objects.Remove(mapObject))
             {
                 ReportCellIssue($"Failed to remove MapObject {mapObject.ObjectID} from Cell collection.");
             }
-            // DO NOT set Objects = null; keep the list to avoid re-alloc
         }
 
         private static void ReportCellIssue(string message)

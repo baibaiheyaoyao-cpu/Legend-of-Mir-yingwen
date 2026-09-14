@@ -1,4 +1,4 @@
-﻿namespace Server
+namespace Server
 {
     partial class GameShop
     {
@@ -65,6 +65,7 @@
             Add_Button = new Button();
             GameShopSearchBox = new TextBox();
             ExportButton = new Button();
+            Reload_Button = new Button();
             ItemDetails_gb.SuspendLayout();
             groupBox3.SuspendLayout();
             SuspendLayout();
@@ -492,11 +493,23 @@
             ExportButton.UseVisualStyleBackColor = true;
             ExportButton.Click += ExportButton_Click;
             // 
+            // Reload_Button
+            // 
+            Reload_Button.Location = new Point(14, 503);
+            Reload_Button.Margin = new Padding(4, 3, 4, 3);
+            Reload_Button.Name = "Reload_Button";
+            Reload_Button.Size = new Size(553, 27);
+            Reload_Button.TabIndex = 116;
+            Reload_Button.Text = "热重载商城并在线生效";
+            Reload_Button.UseVisualStyleBackColor = true;
+            Reload_Button.Click += Reload_Button_Click;
+            // 
             // GameShop
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(581, 503);
+            ClientSize = new Size(581, 540);
+            Controls.Add(Reload_Button);
             Controls.Add(ExportButton);
             Controls.Add(GameShopSearchBox);
             Controls.Add(Add_Button);
@@ -561,5 +574,6 @@
         private ComboBox ItemComboBox;
         private TextBox GameShopSearchBox;
         private Button ExportButton;
+        private Button Reload_Button;
     }
 }

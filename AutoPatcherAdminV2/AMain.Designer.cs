@@ -87,7 +87,7 @@ namespace AutoPatcherAdmin
             label1.Name = "label1";
             label1.Size = new Size(92, 15);
             label1.TabIndex = 1;
-            label1.Text = "Client Directory:";
+            label1.Text = "客户端目录:";
             // 
             // label2
             // 
@@ -96,7 +96,7 @@ namespace AutoPatcherAdmin
             label2.Name = "label2";
             label2.Size = new Size(80, 15);
             label2.TabIndex = 4;
-            label2.Text = "Host Address:";
+            label2.Text = "服务器地址:";
             // 
             // HostTextBox
             // 
@@ -111,7 +111,7 @@ namespace AutoPatcherAdmin
             TestConnectionButton.Name = "TestConnectionButton";
             TestConnectionButton.Size = new Size(56, 23);
             TestConnectionButton.TabIndex = 57;
-            TestConnectionButton.Text = "Test";
+            TestConnectionButton.Text = "检测";
             TestConnectionButton.UseVisualStyleBackColor = true;
             TestConnectionButton.Click += TestConnectionButton_Click;
             // 
@@ -122,7 +122,7 @@ namespace AutoPatcherAdmin
             label3.Name = "label3";
             label3.Size = new Size(40, 15);
             label3.TabIndex = 6;
-            label3.Text = "Login:";
+            label3.Text = "登录账号:";
             // 
             // LoginTextBox
             // 
@@ -138,7 +138,7 @@ namespace AutoPatcherAdmin
             label4.Name = "label4";
             label4.Size = new Size(60, 15);
             label4.TabIndex = 8;
-            label4.Text = "Password:";
+            label4.Text = "密码:";
             // 
             // PasswordTextBox
             // 
@@ -156,7 +156,7 @@ namespace AutoPatcherAdmin
             AbortButton.Name = "AbortButton";
             AbortButton.Size = new Size(112, 23);
             AbortButton.TabIndex = 58;
-            AbortButton.Text = "Cancel";
+            AbortButton.Text = "取消";
             AbortButton.UseVisualStyleBackColor = true;
             AbortButton.Click += AbortButton_Click;
             // 
@@ -166,7 +166,7 @@ namespace AutoPatcherAdmin
             ProcessButton.Name = "ProcessButton";
             ProcessButton.Size = new Size(118, 28);
             ProcessButton.TabIndex = 9;
-            ProcessButton.Text = "Publish Changes";
+            ProcessButton.Text = "发布变更";
             ProcessButton.UseVisualStyleBackColor = true;
             ProcessButton.Click += ProcessButton_Click;
             // 
@@ -178,7 +178,7 @@ namespace AutoPatcherAdmin
             ActionLabel.Name = "ActionLabel";
             ActionLabel.Size = new Size(26, 15);
             ActionLabel.TabIndex = 11;
-            ActionLabel.Text = "Idle";
+            ActionLabel.Text = "空闲";
             // 
             // label5
             // 
@@ -187,7 +187,7 @@ namespace AutoPatcherAdmin
             label5.Name = "label5";
             label5.Size = new Size(45, 15);
             label5.TabIndex = 10;
-            label5.Text = "Action:";
+            label5.Text = "状态:";
             // 
             // SpeedLabel
             // 
@@ -196,7 +196,7 @@ namespace AutoPatcherAdmin
             SpeedLabel.Name = "SpeedLabel";
             SpeedLabel.Size = new Size(26, 15);
             SpeedLabel.TabIndex = 15;
-            SpeedLabel.Text = "Idle";
+            SpeedLabel.Text = "空闲";
             // 
             // label7
             // 
@@ -205,7 +205,7 @@ namespace AutoPatcherAdmin
             label7.Name = "label7";
             label7.Size = new Size(42, 15);
             label7.TabIndex = 14;
-            label7.Text = "Speed:";
+            label7.Text = "速度:";
             // 
             // FileLabel
             // 
@@ -215,7 +215,7 @@ namespace AutoPatcherAdmin
             FileLabel.Name = "FileLabel";
             FileLabel.Size = new Size(26, 15);
             FileLabel.TabIndex = 17;
-            FileLabel.Text = "Idle";
+            FileLabel.Text = "空闲";
             // 
             // label8
             // 
@@ -224,7 +224,7 @@ namespace AutoPatcherAdmin
             label8.Name = "label8";
             label8.Size = new Size(28, 15);
             label8.TabIndex = 16;
-            label8.Text = "File:";
+            label8.Text = "文件:";
             // 
             // ListButton
             // 
@@ -232,7 +232,7 @@ namespace AutoPatcherAdmin
             ListButton.Name = "ListButton";
             ListButton.Size = new Size(104, 28);
             ListButton.TabIndex = 20;
-            ListButton.Text = "PList Only";
+            ListButton.Text = "仅更新清单";
             ListButton.UseVisualStyleBackColor = true;
             ListButton.Click += ListButton_Click;
             // 
@@ -243,7 +243,7 @@ namespace AutoPatcherAdmin
             AllowCleanCheckBox.Name = "AllowCleanCheckBox";
             AllowCleanCheckBox.Size = new Size(107, 19);
             AllowCleanCheckBox.TabIndex = 22;
-            AllowCleanCheckBox.Text = "Allow Clean Up";
+            AllowCleanCheckBox.Text = "允许清理旧文件";
             AllowCleanCheckBox.UseVisualStyleBackColor = true;
             // 
             // AllowCleanHintLabel
@@ -256,7 +256,7 @@ namespace AutoPatcherAdmin
             AllowCleanHintLabel.Name = "AllowCleanHintLabel";
             AllowCleanHintLabel.Size = new Size(169, 24);
             AllowCleanHintLabel.TabIndex = 53;
-            AllowCleanHintLabel.Text = "Removes old server files no longer in the PList after each publish.";
+            AllowCleanHintLabel.Text = "每次发布后，自动删除服务器上清单中已不再使用的旧文件。";
             // 
             // CompressFilesCheckBox
             // 
@@ -265,7 +265,7 @@ namespace AutoPatcherAdmin
             CompressFilesCheckBox.Name = "CompressFilesCheckBox";
             CompressFilesCheckBox.Size = new Size(105, 19);
             CompressFilesCheckBox.TabIndex = 54;
-            CompressFilesCheckBox.Text = "Compress Files";
+            CompressFilesCheckBox.Text = "压缩文件";
             CompressFilesCheckBox.UseVisualStyleBackColor = true;
             // 
             // CompressFilesHintLabel
@@ -278,7 +278,7 @@ namespace AutoPatcherAdmin
             CompressFilesHintLabel.Name = "CompressFilesHintLabel";
             CompressFilesHintLabel.Size = new Size(174, 12);
             CompressFilesHintLabel.TabIndex = 55;
-            CompressFilesHintLabel.Text = "GZip files before upload. Saves 40-70%";
+            CompressFilesHintLabel.Text = "上传前使用 GZip 压缩，可节省约 40%-70%。";
             // 
             // BrowseClientButton
             // 
@@ -296,7 +296,7 @@ namespace AutoPatcherAdmin
             DownloadExistingButton.Name = "DownloadExistingButton";
             DownloadExistingButton.Size = new Size(116, 28);
             DownloadExistingButton.TabIndex = 23;
-            DownloadExistingButton.Text = "Download Remote";
+            DownloadExistingButton.Text = "下载服务器文件";
             DownloadExistingButton.UseVisualStyleBackColor = true;
             DownloadExistingButton.Click += DownloadExistingButton_Click;
             // 
@@ -317,7 +317,7 @@ namespace AutoPatcherAdmin
             label6.Name = "label6";
             label6.Size = new Size(55, 15);
             label6.TabIndex = 26;
-            label6.Text = "Protocol:";
+            label6.Text = "协议:";
             // 
             // PortNumericUpDown
             // 
@@ -334,7 +334,7 @@ namespace AutoPatcherAdmin
             PortLabel.Name = "PortLabel";
             PortLabel.Size = new Size(32, 15);
             PortLabel.TabIndex = 49;
-            PortLabel.Text = "Port:";
+            PortLabel.Text = "端口:";
             // 
             // PortHintLabel
             // 
@@ -345,7 +345,7 @@ namespace AutoPatcherAdmin
             PortHintLabel.Name = "PortHintLabel";
             PortHintLabel.Size = new Size(54, 12);
             PortHintLabel.TabIndex = 50;
-            PortHintLabel.Text = "0 = Default";
+            PortHintLabel.Text = "0 = 默认端口";
             // 
             // ConnectionHeaderLabel
             // 
@@ -355,7 +355,7 @@ namespace AutoPatcherAdmin
             ConnectionHeaderLabel.Name = "ConnectionHeaderLabel";
             ConnectionHeaderLabel.Size = new Size(70, 15);
             ConnectionHeaderLabel.TabIndex = 27;
-            ConnectionHeaderLabel.Text = "Connection";
+            ConnectionHeaderLabel.Text = "服务器连接";
             // 
             // ActionsHeaderLabel
             // 
@@ -365,7 +365,7 @@ namespace AutoPatcherAdmin
             ActionsHeaderLabel.Name = "ActionsHeaderLabel";
             ActionsHeaderLabel.Size = new Size(48, 15);
             ActionsHeaderLabel.TabIndex = 28;
-            ActionsHeaderLabel.Text = "Actions";
+            ActionsHeaderLabel.Text = "操作";
             // 
             // SummaryHeaderLabel
             // 
@@ -375,7 +375,7 @@ namespace AutoPatcherAdmin
             SummaryHeaderLabel.Name = "SummaryHeaderLabel";
             SummaryHeaderLabel.Size = new Size(102, 15);
             SummaryHeaderLabel.TabIndex = 29;
-            SummaryHeaderLabel.Text = "Publish Summary";
+            SummaryHeaderLabel.Text = "发布汇总";
             // 
             // SummaryAddedLabel
             // 
@@ -384,7 +384,7 @@ namespace AutoPatcherAdmin
             SummaryAddedLabel.Name = "SummaryAddedLabel";
             SummaryAddedLabel.Size = new Size(54, 15);
             SummaryAddedLabel.TabIndex = 30;
-            SummaryAddedLabel.Text = "Added: 0";
+            SummaryAddedLabel.Text = "新增: 0";
             // 
             // SummaryChangedLabel
             // 
@@ -393,7 +393,7 @@ namespace AutoPatcherAdmin
             SummaryChangedLabel.Name = "SummaryChangedLabel";
             SummaryChangedLabel.Size = new Size(67, 15);
             SummaryChangedLabel.TabIndex = 31;
-            SummaryChangedLabel.Text = "Changed: 0";
+            SummaryChangedLabel.Text = "变更: 0";
             // 
             // SummaryUnchangedLabel
             // 
@@ -402,7 +402,7 @@ namespace AutoPatcherAdmin
             SummaryUnchangedLabel.Name = "SummaryUnchangedLabel";
             SummaryUnchangedLabel.Size = new Size(80, 15);
             SummaryUnchangedLabel.TabIndex = 32;
-            SummaryUnchangedLabel.Text = "Unchanged: 0";
+            SummaryUnchangedLabel.Text = "未变更: 0";
             // 
             // SummaryDeletedLabel
             // 
@@ -411,7 +411,7 @@ namespace AutoPatcherAdmin
             SummaryDeletedLabel.Name = "SummaryDeletedLabel";
             SummaryDeletedLabel.Size = new Size(59, 15);
             SummaryDeletedLabel.TabIndex = 33;
-            SummaryDeletedLabel.Text = "Deleted: 0";
+            SummaryDeletedLabel.Text = "删除: 0";
             // 
             // SummaryUploadSizeLabel
             // 
@@ -420,7 +420,7 @@ namespace AutoPatcherAdmin
             SummaryUploadSizeLabel.Name = "SummaryUploadSizeLabel";
             SummaryUploadSizeLabel.Size = new Size(108, 15);
             SummaryUploadSizeLabel.TabIndex = 34;
-            SummaryUploadSizeLabel.Text = "Upload: 0 files / 0 B";
+            SummaryUploadSizeLabel.Text = "上传: 0 个文件 / 0 B";
             // 
             // ProgressHeaderLabel
             // 
@@ -430,7 +430,7 @@ namespace AutoPatcherAdmin
             ProgressHeaderLabel.Name = "ProgressHeaderLabel";
             ProgressHeaderLabel.Size = new Size(55, 15);
             ProgressHeaderLabel.TabIndex = 35;
-            ProgressHeaderLabel.Text = "Progress";
+            ProgressHeaderLabel.Text = "进度";
             // 
             // PreviewFilterLabel
             // 
@@ -439,13 +439,13 @@ namespace AutoPatcherAdmin
             PreviewFilterLabel.Name = "PreviewFilterLabel";
             PreviewFilterLabel.Size = new Size(75, 15);
             PreviewFilterLabel.TabIndex = 50;
-            PreviewFilterLabel.Text = "Show action:";
+            PreviewFilterLabel.Text = "筛选状态:";
             // 
             // PreviewActionFilterDropDown
             // 
             PreviewActionFilterDropDown.DropDownStyle = ComboBoxStyle.DropDownList;
             PreviewActionFilterDropDown.FormattingEnabled = true;
-            PreviewActionFilterDropDown.Items.AddRange(new object[] { "All", "Added", "Changed", "Deleted", "Unchanged" });
+            PreviewActionFilterDropDown.Items.AddRange(new object[] { "全部", "新增", "变更", "删除", "未变更" });
             PreviewActionFilterDropDown.Location = new Point(614, 276);
             PreviewActionFilterDropDown.Name = "PreviewActionFilterDropDown";
             PreviewActionFilterDropDown.Size = new Size(134, 23);
@@ -458,7 +458,7 @@ namespace AutoPatcherAdmin
             CompareButton.Name = "CompareButton";
             CompareButton.Size = new Size(118, 28);
             CompareButton.TabIndex = 37;
-            CompareButton.Text = "Compare";
+            CompareButton.Text = "对比";
             CompareButton.UseVisualStyleBackColor = true;
             CompareButton.Click += CompareButton_Click;
             // 
@@ -480,7 +480,7 @@ namespace AutoPatcherAdmin
             // 
             // PreviewActionColumn
             // 
-            PreviewActionColumn.HeaderText = "Action";
+            PreviewActionColumn.HeaderText = "状态";
             PreviewActionColumn.Name = "PreviewActionColumn";
             PreviewActionColumn.ReadOnly = true;
             PreviewActionColumn.SortMode = DataGridViewColumnSortMode.NotSortable;
@@ -489,14 +489,14 @@ namespace AutoPatcherAdmin
             // PreviewFileColumn
             // 
             PreviewFileColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-            PreviewFileColumn.HeaderText = "File";
+            PreviewFileColumn.HeaderText = "文件";
             PreviewFileColumn.Name = "PreviewFileColumn";
             PreviewFileColumn.ReadOnly = true;
             PreviewFileColumn.SortMode = DataGridViewColumnSortMode.NotSortable;
             // 
             // PreviewSizeColumn
             // 
-            PreviewSizeColumn.HeaderText = "Size";
+            PreviewSizeColumn.HeaderText = "大小";
             PreviewSizeColumn.Name = "PreviewSizeColumn";
             PreviewSizeColumn.ReadOnly = true;
             PreviewSizeColumn.SortMode = DataGridViewColumnSortMode.NotSortable;
@@ -509,7 +509,7 @@ namespace AutoPatcherAdmin
             ClearRepositoryButton.Name = "ClearRepositoryButton";
             ClearRepositoryButton.Size = new Size(104, 28);
             ClearRepositoryButton.TabIndex = 52;
-            ClearRepositoryButton.Text = "Clear Remote";
+            ClearRepositoryButton.Text = "清空服务器";
             ClearRepositoryButton.UseVisualStyleBackColor = true;
             ClearRepositoryButton.Click += ClearRepositoryButton_Click;
             // 
@@ -535,7 +535,7 @@ namespace AutoPatcherAdmin
             StatusActionLabel.Name = "StatusActionLabel";
             StatusActionLabel.Size = new Size(465, 17);
             StatusActionLabel.Spring = true;
-            StatusActionLabel.Text = "Idle";
+            StatusActionLabel.Text = "空闲";
             StatusActionLabel.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // StatusFileLabel
@@ -595,7 +595,7 @@ namespace AutoPatcherAdmin
             MinimizeBox = false;
             Name = "AMain";
             StartPosition = FormStartPosition.CenterScreen;
-            Text = "Auto Patcher Admin";
+            Text = "补丁发布管理";
             Load += AMain_Load;
             ((System.ComponentModel.ISupportInitialize)PortNumericUpDown).EndInit();
             ((System.ComponentModel.ISupportInitialize)PreviewGrid).EndInit();

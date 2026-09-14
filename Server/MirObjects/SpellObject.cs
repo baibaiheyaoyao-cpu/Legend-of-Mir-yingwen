@@ -1,5 +1,6 @@
 using System.Drawing;
 ﻿using Server.MirEnvir;
+using Server.MirDatabase;
 using S = ServerPackets;
 
 
@@ -108,6 +109,25 @@ namespace Server.MirObjects
                 Despawn();
                 return;
             }
+
+            // [AI-Claude] 吸魔炎风: 施法者换图则消散; 中心格每帧牵引(数值移植自angelk727)
+            if (Spell == Spell.SoulflameSiphon || Spell == Spell.SoulflameSiphonRare)
+            {
+                if (Caster == null || Caster.Node == null || CurrentMap != Caster.CurrentMap)
+                {
+                    CurrentMap.RemoveObject(this);
+                    Despawn();
+                    return;
+                }
+                if (CurrentLocation == CastLocation)
+                {
+                    if (Spell == Spell.SoulflameSiphonRare)
+                        SoulflameSiphonRarePull();
+                    else
+                        SoulflameSiphonPull();
+                }
+            }
+
             if (Envir.Time < TickTime) return;
             TickTime = Envir.Time + TickSpeed;
 
@@ -118,7 +138,6 @@ namespace Server.MirObjects
                     ProcessSpell(cell.Objects[i]);
                 }
 
-            if ((Spell == Spell.MapLava) || (Spell == Spell.MapLightning)) Value = 0;
         }
         public void ProcessSpell(MapObject ob)
         {
@@ -163,6 +182,16 @@ namespace Server.MirObjects
                                 TickSpeed = TickSpeed,
                                 Value = (Caster.Stats[Stat.MinSC] + Caster.Stats[Stat.MaxSC]) / 2 + BonusDmg
                             }, Caster, false, false);
+                    }
+                    break;
+                case Spell.SoulflameSiphon:      // [AI-Claude] 吸魔炎风: 每跳MAC伤害
+                case Spell.SoulflameSiphonRare:
+                    {
+                        if (ob.Race != ObjectType.Player && ob.Race != ObjectType.Monster) return;
+                        if (ob.Dead) return;
+                        if (!ob.IsAttackTarget(Caster)) return;
+
+                        ob.Attacked(((HumanObject)Caster), Value, DefenceType.MAC, false);
                     }
                     break;
                 case Spell.Blizzard:
@@ -406,6 +435,108 @@ namespace Server.MirObjects
                     }
                     break;
             }
+        }
+
+        // [AI-Claude 2026-08-30] 吸魔炎风牵引: 中心±2范围怪物拉向中心(数值移植自angelk727 L873)
+        private void SoulflameSiphonPull()
+        {
+            if (Caster == null || CurrentMap == null) return;
+
+            bool pulled = false;
+            Point center = CastLocation;
+            HumanObject human = Caster as HumanObject;
+            int casterLevel = Caster.Level;
+
+            for (int y = center.Y - 2; y <= center.Y + 2; y++)
+            {
+                if (y < 0 || y >= CurrentMap.Height) continue;
+
+                for (int x = center.X - 2; x <= center.X + 2; x++)
+                {
+                    if (x < 0 || x >= CurrentMap.Width) continue;
+
+                    Cell cell = CurrentMap.GetCell(x, y);
+                    if (cell == null || cell.Objects == null) continue;
+
+                    for (int i = 0; i < cell.Objects.Count; i++)
+                    {
+                        MapObject ob = cell.Objects[i];
+                        if (ob == null || ob.Dead) continue;
+                        if (ob.Race != ObjectType.Monster) continue;
+
+                        int diff = ob.Level - casterLevel;
+                        if (diff >= 5) continue;
+
+                        int chance = 100 - diff * 20;
+                        if (chance < 0) chance = 0;
+                        if (Envir.Random.Next(100) >= chance) continue;
+
+                        int dist = Functions.MaxDistance(ob.CurrentLocation, center);
+                        if (dist <= 1) continue;
+
+                        if (ob.Pushed(Caster, Functions.DirectionFromPoint(ob.CurrentLocation, center), dist - 1) == 0) continue;
+                        pulled = true;
+                    }
+                }
+            }
+
+            if (pulled && human != null)
+            {
+                UserMagic magic = human.GetMagic(Spell);
+                if (magic != null) human.LevelMagic(magic);
+            }
+        }
+
+        // 吸魔炎风秘籍牵引: 技能等级≥2可拉玩家
+        private void SoulflameSiphonRarePull()
+        {
+            if (Caster == null || CurrentMap == null) return;
+
+            bool pulled = false;
+            Point center = CastLocation;
+            HumanObject human = Caster as HumanObject;
+            int casterLevel = Caster.Level;
+
+            UserMagic magic = human != null ? human.GetMagic(Spell) : null;
+            bool allowPlayer = (magic != null ? magic.Level : 0) >= 2;
+
+            for (int y = center.Y - 2; y <= center.Y + 2; y++)
+            {
+                if (y < 0 || y >= CurrentMap.Height) continue;
+
+                for (int x = center.X - 2; x <= center.X + 2; x++)
+                {
+                    if (x < 0 || x >= CurrentMap.Width) continue;
+
+                    Cell cell = CurrentMap.GetCell(x, y);
+                    if (cell == null || cell.Objects == null) continue;
+
+                    for (int i = 0; i < cell.Objects.Count; i++)
+                    {
+                        MapObject ob = cell.Objects[i];
+                        if (ob == null || ob.Dead) continue;
+                        if (ob.Race != ObjectType.Monster && ob.Race != ObjectType.Player) continue;
+                        if (ob.Race == ObjectType.Player && !allowPlayer) continue;
+                        if (!ob.IsAttackTarget(Caster)) continue;
+
+                        int diff = ob.Level - casterLevel;
+                        if (diff >= 5) continue;
+
+                        int chance = 100 - diff * 20;
+                        if (chance < 0) chance = 0;
+                        if (Envir.Random.Next(100) >= chance) continue;
+
+                        int dist = Functions.MaxDistance(ob.CurrentLocation, center);
+                        if (dist <= 1) continue;
+
+                        if (ob.Pushed(Caster, Functions.DirectionFromPoint(ob.CurrentLocation, center), dist - 1) == 0) continue;
+                        pulled = true;
+                    }
+                }
+            }
+
+            if (pulled && human != null && magic != null)
+                human.LevelMagic(magic);
         }
 
         public void DetonateTrapNow()

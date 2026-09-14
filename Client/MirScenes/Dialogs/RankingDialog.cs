@@ -194,7 +194,7 @@ namespace Client.MirScenes.Dialogs
                 NextRequestTime = CMain.Now + TimeSpan.FromSeconds(0.5);
             };
 
-            OnlineOnlyButton = new MirCheckBox { Index = 2086, UnTickedIndex = 2086, TickedIndex = 2087, Parent = this, Location = new Point(190, Size.Height - 20), Library = Libraries.Prguse };
+            OnlineOnlyButton = new MirCheckBox { Index = 2086, UnTickedIndex = 2086, TickedIndex = 2087, BoxIndex = 2086, Parent = this, Location = new Point(190, Size.Height - 20), Library = Libraries.Prguse };
             OnlineOnlyButton.LabelText = GameLanguage.ClientTextMap.GetLocalization(ClientTextKeys.OnlineOnly);
             OnlineOnlyButton.Click += (o, e) =>
             {

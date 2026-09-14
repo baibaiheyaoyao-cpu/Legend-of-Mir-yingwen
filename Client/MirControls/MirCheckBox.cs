@@ -1,4 +1,4 @@
-﻿using Client.MirSounds;
+using Client.MirSounds;
 
 namespace Client.MirControls
 {
@@ -20,6 +20,15 @@ namespace Client.MirControls
         {
             get { return _untickedIndex; }
             set { _untickedIndex = value; }
+        }
+        #endregion
+
+        #region BoxIndex
+        private int _boxIndex = -1;
+        public int BoxIndex
+        {
+            get { return _boxIndex; }
+            set { _boxIndex = value; }
         }
         #endregion
 
@@ -89,6 +98,14 @@ namespace Client.MirControls
                 Location = new Point(15, -2),
                 Parent = this
             };
+
+            BeforeDraw += DrawBoxImage;
+        }
+
+        private void DrawBoxImage(object sender, EventArgs e)
+        {
+            if (BoxIndex < 0 || Library == null || Index == BoxIndex) return;
+            Library.Draw(BoxIndex, DisplayLocationWithoutOffSet, Color.White, false, 1F);
         }
 
         private void MirCheckBox_Click(object sender, EventArgs e)

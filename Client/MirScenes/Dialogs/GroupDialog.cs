@@ -1,4 +1,4 @@
-﻿using Client.MirControls;
+using Client.MirControls;
 using Client.MirGraphics;
 using Client.MirNetwork;
 using Client.MirObjects;
@@ -12,6 +12,7 @@ namespace Client.MirScenes.Dialogs
         public static bool AllowGroup;
         public static List<string> GroupList = new List<string>();
         public static Dictionary<string, string> GroupMembersMap = new Dictionary<string, string>();
+        public static Dictionary<string, byte> GroupHealth = new Dictionary<string, byte>();
 
         public MirImageControl TitleLabel;
         public MirButton SwitchButton, CloseButton, AddButton, DelButton;
@@ -108,6 +109,7 @@ namespace Client.MirScenes.Dialogs
             BeforeDraw += GroupPanel_BeforeDraw;
 
             GroupList.Clear();
+            GroupHealth.Clear();
         }
 
         private void GroupPanel_BeforeDraw(object sender, EventArgs e)

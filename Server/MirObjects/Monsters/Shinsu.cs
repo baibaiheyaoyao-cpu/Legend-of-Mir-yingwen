@@ -1,9 +1,12 @@
-﻿using Server.MirDatabase;
+using Server.MirDatabase;
 using Server.MirEnvir;
 using S = ServerPackets;
 
 namespace Server.MirObjects.Monsters
 {
+    // [AI-Claude 2026-08-31] 按原版恢复完整变身逻辑
+    // 平时(079)不攻击跟随 → 战斗30秒Mode=true变身(080)开始攻击
+    // 与引擎原版Shinsu.cs完全一致(版本回退)
     public class Shinsu : MonsterObject
     {
         public bool Mode = false;

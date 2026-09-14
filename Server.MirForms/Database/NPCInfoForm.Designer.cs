@@ -82,6 +82,7 @@ namespace Server
             PasteMButton = new Button();
             CopyMButton = new Button();
             ExportButton = new Button();
+            GmStreetButton = new Button();
             ImportButton = new Button();
             ExportSelectedButton = new Button();
             NPCSearchBox = new TextBox();
@@ -497,7 +498,7 @@ namespace Server
             EndMin_num.Location = new Point(278, 222);
             EndMin_num.Margin = new Padding(4, 3, 4, 3);
             EndMin_num.Maximum = new decimal(new int[] { 59, 0, 0, 0 });
-            EndMin_num.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
+            EndMin_num.Minimum = new decimal(new int[] { 0, 0, 0, 0 });
             EndMin_num.Name = "EndMin_num";
             EndMin_num.Size = new Size(55, 23);
             EndMin_num.TabIndex = 50;
@@ -540,7 +541,7 @@ namespace Server
             // 
             StartMin_num.Location = new Point(278, 188);
             StartMin_num.Margin = new Padding(4, 3, 4, 3);
-            StartMin_num.Maximum = new decimal(new int[] { 58, 0, 0, 0 });
+            StartMin_num.Maximum = new decimal(new int[] { 59, 0, 0, 0 });
             StartMin_num.Name = "StartMin_num";
             StartMin_num.Size = new Size(55, 23);
             StartMin_num.TabIndex = 46;
@@ -731,9 +732,16 @@ namespace Server
             ExportSelectedButton.Text = "导出选中";
             ExportSelectedButton.UseVisualStyleBackColor = true;
             ExportSelectedButton.Click += ExportSelected_Click;
-            // 
+            //
+            // GmStreetButton
+            //
+            GmStreetButton.Location = new Point(392, 16);
+            GmStreetButton.Size = new Size(136, 31);
+            GmStreetButton.Text = "GM测试街...";
+            GmStreetButton.Click += GmStreetButton_Click;
+            //
             // NPCSearchBox
-            // 
+            //
             NPCSearchBox.Location = new Point(14, 56);
             NPCSearchBox.Name = "NPCSearchBox";
             NPCSearchBox.PlaceholderText = "搜索...";
@@ -750,6 +758,7 @@ namespace Server
             Controls.Add(ExportSelectedButton);
             Controls.Add(ImportButton);
             Controls.Add(ExportButton);
+            Controls.Add(GmStreetButton);
             Controls.Add(PasteMButton);
             Controls.Add(CopyMButton);
             Controls.Add(tabControl1);
@@ -784,6 +793,7 @@ namespace Server
         private System.Windows.Forms.Button PasteMButton;
         private System.Windows.Forms.Button CopyMButton;
         private System.Windows.Forms.Button ExportButton;
+        private System.Windows.Forms.Button GmStreetButton;
         private System.Windows.Forms.Button ImportButton;
         private System.Windows.Forms.Button ExportSelectedButton;
         private System.Windows.Forms.Label label11;

@@ -159,7 +159,10 @@ namespace Server.MirDatabase
             }
             info.FileName = data[1];
 
-            info.MapIndex = EditEnvir.MapInfoList.Where(d => d.FileName == data[2]).FirstOrDefault().Index;
+            // 地图不存在时跳过该行, 防止空引用导致整个导入中断
+            var mapInfo = EditEnvir.MapInfoList.FirstOrDefault(d => d.FileName == data[2]);
+            if (mapInfo == null) return;
+            info.MapIndex = mapInfo.Index;
 
             if (!int.TryParse(data[3], out int x)) return;
             if (!int.TryParse(data[4], out int y)) return;

@@ -67,6 +67,7 @@ namespace Server
             CopyMButton = new Button();
             ExportButton = new Button();
             ImportButton = new Button();
+            ClearAllQButton = new Button();
             ExportSelectedButton = new Button();
             QuestSearchBox = new TextBox();
             tabControl1.SuspendLayout();
@@ -500,7 +501,18 @@ namespace Server
             ImportButton.Text = "导入";
             ImportButton.UseVisualStyleBackColor = true;
             ImportButton.Click += ImportButton_Click;
-            // 
+            //
+            // ClearAllQButton
+            //
+            ClearAllQButton.Location = new Point(906, 14);
+            ClearAllQButton.Margin = new Padding(4, 3, 4, 3);
+            ClearAllQButton.Name = "ClearAllQButton";
+            ClearAllQButton.Size = new Size(100, 27);
+            ClearAllQButton.TabIndex = 26;
+            ClearAllQButton.Text = "清空全部任务";
+            ClearAllQButton.UseVisualStyleBackColor = true;
+            ClearAllQButton.Click += ClearAllQButton_Click;
+            //
             // ExportSelectedButton
             // 
             ExportSelectedButton.Location = new Point(674, 14);
@@ -527,6 +539,7 @@ namespace Server
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(919, 384);
             Controls.Add(QuestSearchBox);
+            Controls.Add(ClearAllQButton);
             Controls.Add(ExportSelectedButton);
             Controls.Add(ImportButton);
             Controls.Add(ExportButton);
@@ -561,6 +574,7 @@ namespace Server
         private System.Windows.Forms.Button CopyMButton;
         private System.Windows.Forms.Button ExportButton;
         private System.Windows.Forms.Button ImportButton;
+        private System.Windows.Forms.Button ClearAllQButton;
         private System.Windows.Forms.Button ExportSelectedButton;
         private System.Windows.Forms.Label label11;
         private System.Windows.Forms.Button OpenQButton;

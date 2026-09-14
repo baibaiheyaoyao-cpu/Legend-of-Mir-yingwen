@@ -161,6 +161,9 @@ namespace Server.MirObjects
 
         public List<PlayerObject> GroupMembers;
 
+        //组队面板血条 - 上次向异屏队友广播的HP百分比(节流: 百分比变化才重发)
+        public byte LastGroupHealthPercent = byte.MaxValue;
+
         public virtual AttackMode AMode { get; set; }
         public virtual PetMode PMode { get; set; }
 
@@ -855,6 +858,11 @@ namespace Server.MirObjects
 
             if (Race == ObjectType.Player)
             {
+                //组队面板血条 - 百分比无变化时不向异屏队友重复广播
+                Packet groupP = null;
+                if (PercentHealth != LastGroupHealthPercent)
+                    groupP = new S.GroupMemberHealth { MemberName = Name, PercentHealth = PercentHealth };
+
                 if (GroupMembers != null) //Send HP to group
                 {
                     for (int i = 0; i < GroupMembers.Count; i++)
@@ -862,10 +870,19 @@ namespace Server.MirObjects
                         PlayerObject member = GroupMembers[i];
 
                         if (this == member) continue;
-                        if (member.CurrentMap != CurrentMap || !Functions.InRange(member.CurrentLocation, CurrentLocation, Globals.DataRange)) continue;
-                        member.Enqueue(p);
+                        if (member.CurrentMap == CurrentMap && Functions.InRange(member.CurrentLocation, CurrentLocation, Globals.DataRange))
+                        {
+                            member.Enqueue(p);
+                        }
+                        else if (groupP != null)
+                        {
+                            //异屏队友: 按名字键同步HP百分比, 用于组队面板血条
+                            member.Enqueue(groupP);
+                        }
                     }
                 }
+
+                if (groupP != null) LastGroupHealthPercent = PercentHealth;
 
                 return;
             }

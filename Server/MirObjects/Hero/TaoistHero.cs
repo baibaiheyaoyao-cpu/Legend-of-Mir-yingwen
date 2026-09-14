@@ -1,10 +1,12 @@
-﻿using Server.MirDatabase;
+using Server.MirDatabase;
 
 namespace Server.MirObjects
 {
     public class TaoistHero : HeroObject
     {
         public TaoistHero(CharacterInfo info, PlayerObject owner) : base(info, owner) { }
+        private long PurifyBlockTime;
+        private uint PurifyBlockTargetID;
         protected override bool InAttackRange()
         {
             if (Target.CurrentMap != CurrentMap) return false;
@@ -33,13 +35,18 @@ namespace Server.MirObjects
 
                 if (target.Buffs.Any(b => b.Properties.HasFlag(BuffProperty.Debuff)) || target.PoisonList.Count > 0)
                 {
-                    magic = GetMagic(Spell.Purification);
-                    if (CanUseMagic(magic))
+                    if (Envir.Time >= PurifyBlockTime || PurifyBlockTargetID != target.ObjectID)
                     {
-                        BeginMagic(magic.Spell, direction, target.ObjectID, target.CurrentLocation);
-                        return;
-                    }
+                        magic = GetMagic(Spell.Purification);
+                        if (CanUseMagic(magic))
+                        {
+                            BeginMagic(magic.Spell, direction, target.ObjectID, target.CurrentLocation);
+                            PurifyBlockTime = Envir.Time + 5000;
+                            PurifyBlockTargetID = target.ObjectID;
+                            return;
                 }
+            }
+        }
 
                 if (target.PercentHealth < 90)
                 {
@@ -132,21 +139,11 @@ namespace Server.MirObjects
                 }
 
                 magic = GetMagic(Spell.SoulFireBall);
-                if (CanUseMagic(magic) && amuletItem != null)
+                if (CanUseMagic(magic) && amuletItem != null && HasSightOf(Target))
                 {
                     BeginMagic(magic.Spell, Direction, Target.ObjectID, Target.CurrentLocation);
                     return;
                 }
-
-                magic = GetMagic(Spell.None);
-                {
-                    return;
-                }
-            }
-
-            magic = GetMagic(Spell.None);
-            {
-                return;
             }
         }
 
@@ -166,7 +163,6 @@ namespace Server.MirObjects
 
             if (CanCast && NextMagicSpell != Spell.None)
             {
-                if (Target != Owner && !CanAttack) return;
                 Magic(NextMagicSpell, NextMagicDirection, NextMagicTargetID, NextMagicLocation);
                 NextMagicSpell = Spell.None;
             }

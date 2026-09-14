@@ -1,4 +1,4 @@
-﻿using Server.MirDatabase;
+using Server.MirDatabase;
 using Server.MirEnvir;
 using System.Data;
 
@@ -23,7 +23,7 @@ namespace Server.Database
             List<AuctionInfo> activeAuctions = allAuctions.Where(a => !a.Expired && !a.Sold).ToList();
 
             // Update the TotalItemsLabel with the count of active items
-            TotalItemsLabel.Text = $"Total Items: {activeAuctions.Count}";
+            TotalItemsLabel.Text = $"物品总数: {activeAuctions.Count}";
 
             // Retrieve search keyword from SearchBox and convert to lowercase for case-insensitive search
             string searchKeyword = SearchBox.Text.Trim().ToLower();
@@ -53,23 +53,23 @@ namespace Server.Database
             // Update TotalItemsOwnedLabel based on the player filter results
             if (filterByPlayer && !string.IsNullOrEmpty(filteredPlayerName))
             {
-                TotalItemsOwnedLabel.Text = $"Total Items owned by: {filteredPlayerName} ({filteredPlayerItemCount})";
+                TotalItemsOwnedLabel.Text = $"该玩家物品总数: {filteredPlayerName} ({filteredPlayerItemCount})";
             }
             else
             {
-                TotalItemsOwnedLabel.Text = "Total Items owned by: ";
+                TotalItemsOwnedLabel.Text = "该玩家物品总数: ";
             }
 
             // Iterate over each filtered auction listing and add it to the MarketListing
             foreach (var listing in filteredAuctions)
             {
                 // Create a new ListViewItem with the item's name or "Unknown Item" as a fallback
-                ListViewItem item = new ListViewItem(listing.Item?.Info.FriendlyName ?? "Unknown Item");
+                ListViewItem item = new ListViewItem(listing.Item?.Info.FriendlyName ?? "未知物品");
 
                 // Add sub-items for UID, Price, Seller, and Expiry
                 item.SubItems.Add(listing.AuctionID.ToString()); // Auction ID
                 item.SubItems.Add(listing.Price.ToString("N0")); // Gold Price
-                item.SubItems.Add(listing.SellerInfo?.Name ?? "Unknown Seller"); // Seller Name
+                item.SubItems.Add(listing.SellerInfo?.Name ?? "未知卖家"); // Seller Name
                 item.SubItems.Add(listing.ConsignmentDate.AddDays(7).ToString("g")); // Expiry date assuming 7 days from consignment
 
                 // Add the item to the MarketListing
@@ -91,7 +91,7 @@ namespace Server.Database
             // Ensure an item is selected in the MarketListing
             if (MarketListing.SelectedItems.Count == 0)
             {
-                MessageBox.Show("Please select a listing to expire.");
+                MessageBox.Show("请先选择一个要过期的寄售。");
                 return;
             }
 
@@ -99,7 +99,7 @@ namespace Server.Database
             var selectedItem = MarketListing.SelectedItems[0];
             if (!ulong.TryParse(selectedItem.SubItems[1].Text, out ulong auctionId))
             {
-                MessageBox.Show("Invalid Auction ID selected.");
+                MessageBox.Show("所选拍卖ID无效。");
                 return;
             }
 
@@ -107,7 +107,7 @@ namespace Server.Database
             var auction = Envir.Main.Auctions.FirstOrDefault(a => a.AuctionID == auctionId);
             if (auction == null)
             {
-                MessageBox.Show("Auction listing not found.");
+                MessageBox.Show("未找到该寄售记录。");
                 return;
             }
 
@@ -117,7 +117,7 @@ namespace Server.Database
             // Refresh the MarketListing to reflect the update
             LoadMarket();
 
-            MessageBox.Show("Listing marked as expired successfully.");
+            MessageBox.Show("寄售已成功标记为过期。");
         }
         #endregion
 
@@ -126,28 +126,28 @@ namespace Server.Database
         {
             if (MarketListing.SelectedItems.Count == 0)
             {
-                MessageBox.Show("Please select a listing to delete.");
+                MessageBox.Show("请先选择一个要删除的寄售。");
                 return;
             }
 
             var selectedItem = MarketListing.SelectedItems[0];
             if (!ulong.TryParse(selectedItem.SubItems[1].Text, out ulong auctionId))
             {
-                MessageBox.Show("Invalid Auction ID selected.");
+                MessageBox.Show("所选拍卖ID无效。");
                 return;
             }
 
             var auction = Envir.Main.Auctions.FirstOrDefault(a => a.AuctionID == auctionId);
             if (auction == null)
             {
-                MessageBox.Show("Auction listing not found.");
+                MessageBox.Show("未找到该寄售记录。");
                 return;
             }
 
             var confirmResult = MessageBox.Show(
-                "Are you sure you want to delete this listing?\n\n" +
-                "Warning: This action is irreversible, and neither the item nor the asking price will be returned to the player.",
-                "Confirm Deletion",
+                "确定要删除该寄售吗?\n\n" +
+                "警告: 此操作不可逆，物品和标价都不会返还给玩家。",
+                "确认删除",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Warning
             );
@@ -166,7 +166,7 @@ namespace Server.Database
 
             LoadMarket();
 
-            MessageBox.Show("Listing deleted successfully, and the owner has been notified.");
+            MessageBox.Show("寄售已删除，并已通知卖家。");
         }
         #endregion
     }
