@@ -108,6 +108,7 @@
         ReviveHero,
         SealHero,
         DeleteHero,
+        HeroAscend,
         ConquestRepairAll,
         BuyGT,
         TeleportGT,

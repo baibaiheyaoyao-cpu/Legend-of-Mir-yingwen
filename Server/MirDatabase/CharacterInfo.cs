@@ -276,12 +276,16 @@ namespace Server.MirDatabase
 
                 if (quest == null || quest.Info == null || quest.IsOrphan)
                 {
-                    Console.WriteLine($"[Load] Skipped orphan QuestProgress (Index={quest?.Index}) for character: {Name}");
+                    MessageQueue.Instance.EnqueueDebugging($"[Quest] 角色{Name}加载时丢弃孤儿任务 (Index={quest?.Index}, 定义不在QuestInfoList)");
                     continue;
                 }
                 if (Envir.BindQuest(quest))
                 {
                     CurrentQuests.Add(quest);
+                }
+                else
+                {
+                    MessageQueue.Instance.EnqueueDebugging($"[Quest] 角色{Name}加载时任务{quest.Index}绑定失败(BindQuest)");
                 }
             }
 

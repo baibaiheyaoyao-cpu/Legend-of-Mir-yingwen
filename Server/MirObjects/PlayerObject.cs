@@ -930,6 +930,7 @@ namespace Server.MirObjects
 
                 RefreshLevelStats();
 
+                if (MaxExperience <= 0) break;
                 if (Level >= ushort.MaxValue) break;
             }
 
@@ -6166,6 +6167,23 @@ namespace Server.MirObjects
                             ReceiveChat(GameLanguage.ServerTextMap.GetLocalization(ServerTextKeys.MustBeUsedOnHero), ChatType.Hint);
                             Enqueue(p);
                             break;
+                        case 21: //Hero Ascension Scroll <英1>~<英7>初级解锁卷轴
+                        case 22:
+                        case 23:
+                        case 24:
+                        case 25:
+                        case 26:
+                        case 27:
+                            {
+                                int gate = HeroAscendValidate(item.Info.Shape - Settings.HeroAscensionScrollBaseShape + 1);
+                                if (gate == 0)
+                                {
+                                    Enqueue(p);
+                                    return;
+                                }
+                                HeroAscendApply(gate);
+                            }
+                            break;
                     }
                     break;
                 case ItemType.Book:
@@ -6551,6 +6569,102 @@ namespace Server.MirObjects
             if (!HasHero || !HeroSpawned)
                 return;
             Hero.UseItem(id);
+        }
+
+        public void HeroAscend()
+        {
+            //NPC入口(HEROHUMUP): 自动匹配英雄当前关口, 从背包找对应档解锁卷轴消耗后羽化
+            int gate = HeroAscendValidate(0);
+            if (gate == 0) return;
+
+            int shape = Settings.HeroAscensionScrollBaseShape + gate - 1;
+            UserItem scroll = null;
+            int scrollIndex = -1;
+            for (int i = 0; i < Info.Inventory.Length; i++)
+            {
+                UserItem it = Info.Inventory[i];
+                if (it == null || it.Info.Type != ItemType.Scroll || it.Info.Shape != shape) continue;
+                scroll = it;
+                scrollIndex = i;
+                break;
+            }
+
+            if (scroll == null)
+            {
+                ReceiveChat(string.Format("羽化登仙需要 <英{0}>初级解锁卷轴(第{1}阶段 {2}级关口).",
+                    gate, gate, Settings.HeroAscensionStages[gate - 1]), ChatType.Hint);
+                return;
+            }
+
+            if (scroll.Count > 1) scroll.Count--;
+            else Info.Inventory[scrollIndex] = null;
+            Enqueue(new S.DeleteItem { UniqueID = scroll.UniqueID, Count = 1 });
+
+            HeroAscendApply(gate);
+        }
+
+        private int HeroAscendValidate(int stage)
+        {
+            if (!HeroSpawned || Hero == null)
+            {
+                ReceiveChat("英雄未召唤, 无法羽化登仙.", ChatType.Hint);
+                return 0;
+            }
+
+            if (Hero.Dead)
+            {
+                ReceiveChat("英雄已死亡, 复活后才能羽化登仙.", ChatType.Hint);
+                return 0;
+            }
+
+            int gate = 0;
+            for (int i = 0; i < Settings.HeroAscensionStages.Count; i++)
+                if (Hero.Level == Settings.HeroAscensionStages[i])
+                {
+                    gate = i + 1;
+                    break;
+                }
+
+            if (gate == 0)
+            {
+                ReceiveChat(string.Format("英雄当前等级 {0} 不在羽化关口上(关口等级: {1}).",
+                    Hero.Level, string.Join("/", Settings.HeroAscensionStages)), ChatType.Hint);
+                return 0;
+            }
+
+            if (stage == 0) stage = gate;
+
+            if (stage != gate)
+            {
+                ReceiveChat(string.Format("这张卷轴对应第{0}阶段({1}级关口), 英雄当前关口是第{2}阶段({3}级).",
+                    stage, Settings.HeroAscensionStages[stage - 1], gate, Settings.HeroAscensionStages[gate - 1]), ChatType.Hint);
+                return 0;
+            }
+
+            return gate;
+        }
+
+        private void HeroAscendApply(int gate)
+        {
+            if (Envir.Random.Next(100) < Settings.HeroAscensionSuccessRate)
+            {
+                Hero.Level++;
+                Hero.RefreshStats();
+                Hero.LevelUp();
+                ReceiveChat(string.Format("羽化登仙成功! 英雄突破第{0}阶段, 境界升至 {1} 级.", gate, Hero.Level), ChatType.System);
+            }
+            else if (Envir.Random.Next(100) < Settings.HeroAscensionFailDropRate)
+            {
+                Hero.Level = (ushort)Math.Max(1, Hero.Level - 1);
+                Hero.RefreshStats();
+                Hero.Experience = Hero.MaxExperience;
+                Enqueue(new S.HeroLevelChanged { Level = Hero.Level, Experience = Hero.Experience, MaxExperience = Hero.MaxExperience });
+                ReceiveChat(string.Format("羽化登仙失败! 英雄境界跌落至 {0} 级.", Hero.Level), ChatType.System);
+            }
+            else
+            {
+                ReceiveChat("羽化登仙失败, 英雄境界稳固, 未有跌落.", ChatType.System);
+            }
         }
         public void SplitItem(MirGridType grid, ulong id, ushort count)
         {
@@ -11519,9 +11633,19 @@ namespace Server.MirObjects
         {
             bool canAccept = true;
 
-            if (CurrentQuests.Exists(e => e.Index == index)) return; //e.Info.NpcIndex == npcIndex && 
+            if (CurrentQuests.Exists(e => e.Index == index))
+            {
+                MessageQueue.EnqueueDebugging($"[Quest] {Name} 接取任务{index}失败: 已在任务列表");
+                return;
+            }
 
             QuestInfo info = Envir.QuestInfoList.FirstOrDefault(d => d.Index == index);
+
+            if (info == null)
+            {
+                MessageQueue.EnqueueDebugging($"[Quest] {Name} 接取任务{index}失败: 任务定义不存在(孤儿任务)");
+                return;
+            }
 
             NPCObject npc = null;
 
@@ -11532,7 +11656,16 @@ namespace Server.MirObjects
                 npc = CurrentMap.NPCs[i];
                 break;
             }
-            if (npc == null || !npc.VisibleLog[Info.Index] || !npc.Visible) return;
+            if (npc == null)
+            {
+                MessageQueue.EnqueueDebugging($"[Quest] {Name} 接取任务{index}失败: 发布NPC不在身边(NpcIndex={info.NpcIndex}, 玩家位置{CurrentLocation})");
+                return;
+            }
+            if (!npc.VisibleLog.TryGetValue(Info.Index, out bool acceptVisible) || !acceptVisible || !npc.Visible)
+            {
+                MessageQueue.EnqueueDebugging($"[Quest] {Name} 接取任务{index}失败: NPC不可见(VisibleLog={acceptVisible}, Visible={npc.Visible})");
+                return;
+            }
 
             if (!info.CanAccept(this))
             {
@@ -11566,6 +11699,7 @@ namespace Server.MirObjects
 
             if (!canAccept)
             {
+                MessageQueue.EnqueueDebugging($"[Quest] {Name} 接取任务{index}失败: 条件不足(玩家等级{Level}, 要求{info.RequiredMinLevel}-{info.RequiredMaxLevel}, 职业{info.RequiredClass}, 前置任务{info.RequiredQuest})");
                 ReceiveChat(GameLanguage.ServerTextMap.GetLocalization(ServerTextKeys.CouldNotAcceptQuest), ChatType.System);
                 return;
             }
@@ -11608,6 +11742,8 @@ namespace Server.MirObjects
 
             quest.Init(this);
 
+            MessageQueue.EnqueueDebugging($"[Quest] {Name} 接取任务{index}成功 [{quest.BuildDiagString()}]");
+
             SendUpdateQuest(quest, QuestState.Add, true);
 
             CallDefaultNPC(DefaultNPCType.OnAcceptQuest, index);
@@ -11615,27 +11751,42 @@ namespace Server.MirObjects
 
         public void FinishQuest(int questIndex, int selectedItemIndex = -1)
         {
+            MessageQueue.EnqueueDebugging($"[Quest] {Name} 请求交付任务{questIndex}");
+
             QuestProgressInfo quest = CurrentQuests.FirstOrDefault(e => e.Info.Index == questIndex);
 
-            if (quest == null || !quest.Completed) return;
+            if (quest == null)
+            {
+                MessageQueue.EnqueueDebugging($"[Quest] {Name} 交付任务{questIndex}失败: 任务不在进行列表");
+                return;
+            }
+            if (!quest.Completed)
+            {
+                MessageQueue.EnqueueDebugging($"[Quest] {Name} 交付任务{questIndex}失败: 进度未完成 [{quest.BuildDiagString()}]");
+                return;
+            }
 
             NPCObject npc = null;
 
-            for (int i = Envir.NPCs.Count - 1; i >= 0; i--)
+            //2026-09-18 修复: 恢复官方写法(CurrentMap), 此前误改为Envir全服查找,
+            //而Functions.InRange只比XY坐标不比地图, 导致交付NPC坐标巧合时可以跨图原地交任务
+            for (int i = CurrentMap.NPCs.Count - 1; i >= 0; i--)
             {
-                if (Envir.NPCs[i].ObjectID != quest.Info.FinishNpcIndex) continue;
-                if (!Functions.InRange(Envir.NPCs[i].CurrentLocation, CurrentLocation, Globals.DataRange)) continue;
-                npc = Envir.NPCs[i];
+                if (CurrentMap.NPCs[i].ObjectID != quest.Info.FinishNpcIndex) continue;
+                if (!Functions.InRange(CurrentMap.NPCs[i].CurrentLocation, CurrentLocation, Globals.DataRange)) break;
+                npc = CurrentMap.NPCs[i];
                 break;
             }
             if (npc == null)
             {
+                MessageQueue.EnqueueDebugging($"[Quest] {Name} 交付任务{questIndex}失败: 交付NPC不在身边(FinishNpcIndex={quest.Info.FinishNpcIndex}, 玩家位置{CurrentLocation})");
                 ReceiveChat("任务无法交付: 请找到交付任务的NPC并靠近后再试.", ChatType.System);
                 return;
             }
 
-            if (!npc.VisibleLog[Info.Index] || !npc.Visible)
+            if (!npc.VisibleLog.TryGetValue(Info.Index, out bool finishVisible) || !finishVisible || !npc.Visible)
             {
+                MessageQueue.EnqueueDebugging($"[Quest] {Name} 交付任务{questIndex}失败: NPC不可见(VisibleLog={finishVisible}, Visible={npc.Visible})");
                 ReceiveChat("任务无法交付: 交付任务的NPC当前不可见.", ChatType.System);
                 return;
             }
@@ -11732,6 +11883,8 @@ namespace Server.MirObjects
             GainExp((uint)(quest.Info.ExpReward * Settings.ExpRate));
             GainCredit(quest.Info.CreditReward);
 
+            MessageQueue.EnqueueDebugging($"[Quest] {Name} 交付任务{questIndex}成功");
+
             CallDefaultNPC(DefaultNPCType.OnFinishQuest, questIndex);
         }
         public void AbandonQuest(int questIndex)
@@ -11815,13 +11968,20 @@ namespace Server.MirObjects
         {
             foreach (QuestProgressInfo quest in CurrentQuests.
                 Where(e => e.ItemTaskCount.Count > 0).
-                Where(e => e.NeedItem(item.Info)).
-                Where(e => CanGainQuestItem(item)))
+                Where(e => e.NeedItem(item.Info)))
             {
+                if (!CanGainQuestItem(item))
+                {
+                    MessageQueue.EnqueueDebugging($"[Quest] {Name} 任务{quest.Index}需要{item.FriendlyName}, 但任务包放不下(疑似已满) → 物品按普通掉落处理");
+                    return false;
+                }
+
                 if (gainItem)
                 {
                     GainQuestItem(item);
                     quest.ProcessItem(Info.QuestInventory);
+
+                    MessageQueue.EnqueueDebugging($"[Quest] {Name} 任务{quest.Index}捕获物品{item.FriendlyName} [{quest.BuildDiagString()}]");
 
                     Enqueue(new S.SendOutputMessage { Message = GameLanguage.ServerTextMap.GetLocalization((ServerTextKeys.YouFound), item.FriendlyName), Type = OutputMessageType.Quest });
 
@@ -11916,6 +12076,7 @@ namespace Server.MirObjects
                         CurrentQuests.Add(quest);
                     }
                     quest.SetTimer();
+                    MessageQueue.EnqueueDebugging($"[Quest] {Name} 任务{quest.Index}状态→新增 [{quest.BuildDiagString()}]");
                     break;
                 case QuestState.Remove:
                     if (CurrentQuests.Contains(quest))
@@ -11923,6 +12084,7 @@ namespace Server.MirObjects
                         CurrentQuests.Remove(quest);
                     }
                     quest.RemoveTimer();
+                    MessageQueue.EnqueueDebugging($"[Quest] {Name} 任务{quest.Index}状态→移除 (Completed={quest.Completed})");
                     break;
             }
 
@@ -12354,7 +12516,8 @@ namespace Server.MirObjects
                 if (pet.PetType != pType) continue;
                 if (doUpdate) ReceiveChat(GameLanguage.ServerTextMap.GetLocalization((ServerTextKeys.CreatureDismissed), pet.CustomName), ChatType.System);
 
-                pet.Die();
+                if (pet.Node != null)
+                    pet.Die();
 
                 CreatureSummoned = false;
                 SummonedCreatureType = IntelligentCreatureType.None;

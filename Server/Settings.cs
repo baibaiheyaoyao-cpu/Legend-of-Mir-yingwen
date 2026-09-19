@@ -382,6 +382,12 @@ namespace Server
         public static ushort HeroMaximumSealCount = 5;
         public static byte MaximumHeroCount = 9;
 
+        //Hero ascension (羽化登仙) settings
+        public static List<int> HeroAscensionStages = new List<int> { 11, 22, 33, 44, 55, 66, 75 };
+        public static int HeroAscensionSuccessRate = 60;
+        public static int HeroAscensionFailDropRate = 30;
+        public static int HeroAscensionScrollBaseShape = 21;
+
         public static bool AllowObserve;
 
         //Guild related settings
@@ -1420,6 +1426,19 @@ namespace Server
                 Hero_CanCreateClass[i] = reader.ReadBoolean("Hero", $"CanCreate{Enum.GetName(typeof(MirClass), i)}", true);
             HeroSealItemName = reader.ReadString("Hero", "SealItemName", HeroSealItemName);
             HeroMaximumSealCount = reader.ReadUInt16("Hero", "MaximumSealCount", HeroMaximumSealCount);
+
+            HeroAscensionStages.Clear();
+            string ascStages = reader.ReadString("Ascension", "Stages", "11,22,33,44,55,66,75");
+            foreach (string s in ascStages.Split(','))
+            {
+                if (int.TryParse(s.Trim(), out int stage) && stage > 1)
+                    HeroAscensionStages.Add(stage);
+            }
+            if (HeroAscensionStages.Count == 0)
+                HeroAscensionStages.AddRange(new int[] { 11, 22, 33, 44, 55, 66, 75 });
+            HeroAscensionSuccessRate = Math.Max(1, Math.Min(100, reader.ReadInt32("Ascension", "SuccessRate", HeroAscensionSuccessRate)));
+            HeroAscensionFailDropRate = Math.Max(0, Math.Min(100, reader.ReadInt32("Ascension", "FailDropRate", HeroAscensionFailDropRate)));
+            HeroAscensionScrollBaseShape = reader.ReadInt32("Ascension", "ScrollBaseShape", HeroAscensionScrollBaseShape);
         }
         public static void SaveHeroSettings()
         {
@@ -1433,6 +1452,11 @@ namespace Server
                 reader.Write("Hero", $"CanCreate{Enum.GetName(typeof(MirClass), i)}", Hero_CanCreateClass[i]);
             reader.Write("Hero", "SealItemName", HeroSealItemName);
             reader.Write("Hero", "MaximumSealCount", HeroMaximumSealCount);
+
+            reader.Write("Ascension", "Stages", string.Join(",", HeroAscensionStages));
+            reader.Write("Ascension", "SuccessRate", HeroAscensionSuccessRate);
+            reader.Write("Ascension", "FailDropRate", HeroAscensionFailDropRate);
+            reader.Write("Ascension", "ScrollBaseShape", HeroAscensionScrollBaseShape);
         }
 
         public static void LoadGuildSettings()

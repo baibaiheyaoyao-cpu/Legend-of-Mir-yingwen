@@ -6097,7 +6097,8 @@ namespace Server.MirEnvir
             {
                 if (quest.Type != QuestType.Daily) continue;
 
-                for (var i = 0; i < info.CompletedQuests.Count; i++)
+                //2026-09-18 修复: 倒序遍历, 原正序遍历中RemoveAt会跳过后一项, 导致多个每日任务时漏删(次日无法重接)
+                for (var i = info.CompletedQuests.Count - 1; i >= 0; i--)
                 {
                     if (info.CompletedQuests[i] != quest.Index) continue;
 

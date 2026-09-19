@@ -1058,6 +1058,7 @@ namespace Server.MirObjects
         protected bool CanUseItem(UserItem item)
         {
             if (item == null) return false;
+            if (CurrentMap == null) return false;
 
             switch (Gender)
             {

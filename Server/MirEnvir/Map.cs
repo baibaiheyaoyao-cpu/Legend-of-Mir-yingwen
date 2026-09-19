@@ -2728,10 +2728,12 @@ namespace Server.MirEnvir
 
         public void RemoveObject(MapObject ob)
         {
+            if (ob == null || Cells == null) return;
+
             if (ob.Race == ObjectType.Player)
             {
                 Players.Remove((PlayerObject)ob);
-                LastActiveTime = Envir.Time;
+                LastActiveTime = Envir?.Time ?? LastActiveTime;
             }
 
             if (ob.Race == ObjectType.Merchant) NPCs.Remove((NPCObject)ob);
@@ -2739,7 +2741,7 @@ namespace Server.MirEnvir
             if (ob.Race == ObjectType.Hero)
             {
                 Heroes.Remove((HeroObject)ob);
-                LastActiveTime = Envir.Time;
+                LastActiveTime = Envir?.Time ?? LastActiveTime;
             }
 
             GetCell(ob.CurrentLocation).Remove(ob);
@@ -2773,6 +2775,13 @@ namespace Server.MirEnvir
                     if (monster.Master != null)
                         monster.Master.Pets.Remove(monster);
                     monster.SlaveList.Clear();
+                }
+
+                if (ob.Race == ObjectType.Creature)
+                {
+                    IntelligentCreatureObject creature = (IntelligentCreatureObject)ob;
+                    if (creature.Master != null)
+                        creature.Master.Pets.Remove(creature);
                 }
 
                 if (ob.CurrentMap != null) ob.CurrentMap.RemoveObject(ob);

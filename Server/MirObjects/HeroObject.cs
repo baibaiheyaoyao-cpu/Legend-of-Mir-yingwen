@@ -337,8 +337,6 @@ namespace Server.MirObjects
             UserItem item = null;
             int index = -1;
 
-            if (Owner.Hero != null && Owner.Hero.Dead) return;
-
             for (int i = 0; i < Info.Inventory.Length; i++)
             {
                 item = Info.Inventory[i];
@@ -497,6 +495,7 @@ namespace Server.MirObjects
                             {
                                 MP = Stats[Stat.MP];
                                 Revive(MaxHealth, true);
+                                Owner.Enqueue(new S.UpdateHeroSpawnState { State = HeroSpawnState.Summoned });
                             }
                             else
                             {
@@ -514,7 +513,6 @@ namespace Server.MirObjects
                             }
                             Owner.Enqueue(new S.ResizeInventory { Size = Info.ResizeInventory(), Grid = MirGridType.HeroInventory });
                             ReceiveChat(GameLanguage.ServerTextMap.GetLocalization(ServerTextKeys.HeroInventoryIncreased), ChatType.System);
-                            Owner.Enqueue(p);
                             break;
                         default:
                             Owner.Enqueue(p);
@@ -1207,20 +1205,24 @@ namespace Server.MirObjects
 
             //Calculate increased levels
             var experience = Experience;
+            var levelBefore = Level;
 
             while (experience >= MaxExperience)
             {
+                if (Settings.HeroAscensionStages.Contains(Level)) break;
+
                 Level++;
                 experience -= MaxExperience;
 
                 RefreshLevelStats();
 
+                if (MaxExperience <= 0) break;
                 if (Level >= ushort.MaxValue) break;
             }
 
             Experience = experience;
 
-            LevelUp();
+            if (Level != levelBefore) LevelUp();
         }
 
         private void SendInfo()

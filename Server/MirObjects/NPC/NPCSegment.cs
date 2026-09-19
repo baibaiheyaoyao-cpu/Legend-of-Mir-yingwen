@@ -1179,6 +1179,10 @@ namespace Server.MirObjects
                     acts.Add(new NPCActions(ActionType.ReviveHero));
                     break;
 
+                case "HEROHUMUP":
+                    acts.Add(new NPCActions(ActionType.HeroAscend));
+                    break;
+
                 case "SEALHERO":
                     acts.Add(new NPCActions(ActionType.SealHero));
                     break;
@@ -4674,10 +4678,13 @@ namespace Server.MirObjects
                             }
                         }
                         break;
-                    case ActionType.ReviveHero:
-                        player.ReviveHero();
-                        break;
-                    case ActionType.SealHero:
+                case ActionType.ReviveHero:
+                    player.ReviveHero();
+                    break;
+                case ActionType.HeroAscend:
+                    player.HeroAscend();
+                    break;
+                case ActionType.SealHero:
                         player.SealHero();
                         break;
                     case ActionType.DeleteHero:
