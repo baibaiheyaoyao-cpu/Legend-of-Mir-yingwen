@@ -1,4 +1,4 @@
-﻿using Server.MirEnvir;
+using Server.MirEnvir;
 
 namespace Server
 {
@@ -28,6 +28,11 @@ namespace Server
         private void GameShop_FormClosed(object sender, FormClosedEventArgs e)
         {
             Envir.SaveDB();
+
+            //运行中编辑时, 把编辑实例的最新商城表同步到运行实例,
+            //防止运行实例每5分钟自动保存时用旧表覆盖刚保存的修改
+            if (SMain.Envir.Running)
+                SMain.Envir.ReloadGameShop();
         }
 
         public class ListBoxItem
@@ -403,6 +408,19 @@ namespace Server
         }
         #endregion
 
+        private void Reload_Button_Click(object sender, EventArgs e)
+        {
+            if (!SMain.Envir.Running)
+            {
+                MessageBox.Show("服务器未运行, 无需热重载. (商城改动会在下次启动服务器时自动生效)", "提示", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+                return;
+            }
+
+            SMain.Envir.ReloadGameShop();
+
+            MessageBox.Show("商城已热重载, 已通知所有在线玩家刷新商城!", "完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
         private void Add_Button_Click(object sender, EventArgs e)
         {
             if (SMain.EditEnvir.ItemInfoList == null || SMain.EditEnvir.ItemInfoList.Count == 0)
@@ -415,10 +433,8 @@ namespace Server
             var defaultItem = SMain.EditEnvir.ItemInfoList.First();
             int firstItemIndex = defaultItem.Index;
 
-            // Find the next available GIndex
-            int nextGIndex = SMain.EditEnvir.GameShopList.Count > 0
-                ? SMain.EditEnvir.GameShopList.Max(item => item.GIndex) + 1
-                : 1;
+            // GIndex统一走计数器(与Envir.AddToGameShop一致), 防止与头部计数器脱节产生重复GIndex
+            int nextGIndex = ++SMain.EditEnvir.GameshopIndex;
 
             // Create the new GameShopItem
             var newItem = new GameShopItem
@@ -430,7 +446,9 @@ namespace Server
                 Info = defaultItem,
                 Date = DateTime.Now,
                 Class = "None",
-                Category = "None"
+                Category = "None",
+                CanBuyCredit = true, //默认两种货币都可购买, 否则上架后无人能买(可在编辑器里再调整)
+                CanBuyGold = true
             };
 
             // Add to GameShopList (main data source)

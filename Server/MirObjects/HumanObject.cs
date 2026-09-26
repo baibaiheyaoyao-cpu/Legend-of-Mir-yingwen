@@ -206,8 +206,11 @@ namespace Server.MirObjects
 
         public bool FatalSword, Slaying, TwinDrakeBlade, FlamingSword, MPEater, Hemorrhage, CounterAttack;
         public bool DaMoGunFa;
+        public bool BloodDragon; //血龙震(印技能)
         public int MPEaterCount, HemorrhageAttackCount;
         public long FlamingSwordTime, CounterAttackTime, DaMoGunFaTime;
+        public long BloodDragonTime;
+        public Dictionary<Spell, long> CustomToggle = new Dictionary<Spell, long>(); //自定义攻击强化技能蓄力状态(槽位→到期时间)
         public bool TianLeiZhenOn;
         public long TianLeiZhenTime;
         public bool ActiveBlizzard, ActiveReincarnation, ActiveSwiftFeet, ReincarnationReady;
@@ -273,6 +276,26 @@ namespace Server.MirObjects
             {
                 DaMoGunFa = false;
                 Enqueue(new S.SpellToggle { ObjectID = ObjectID, Spell = Spell.DaMoGunFa, CanUse = false });
+            }
+
+            if (BloodDragon && Envir.Time >= BloodDragonTime)
+            {
+                BloodDragon = false;
+                Enqueue(new S.SpellToggle { ObjectID = ObjectID, Spell = Spell.BloodDragon, CanUse = false });
+            }
+
+            if (CustomToggle.Count > 0)
+            {
+                List<Spell> expiredToggles = null;
+                foreach (var togglePair in CustomToggle)
+                {
+                    if (Envir.Time < togglePair.Value) continue;
+                    if (expiredToggles == null) expiredToggles = new List<Spell>();
+                    expiredToggles.Add(togglePair.Key);
+                    Enqueue(new S.SpellToggle { ObjectID = ObjectID, Spell = togglePair.Key, CanUse = false });
+                }
+                if (expiredToggles != null)
+                    foreach (var expiredSpell in expiredToggles) CustomToggle.Remove(expiredSpell);
             }
 
             if (TianLeiZhenOn && Envir.Time >= TianLeiZhenTime)
@@ -1035,6 +1058,7 @@ namespace Server.MirObjects
         protected bool CanUseItem(UserItem item)
         {
             if (item == null) return false;
+            if (CurrentMap == null) return false;
 
             switch (Gender)
             {
@@ -1287,72 +1311,80 @@ namespace Server.MirObjects
                 case ItemType.Socket:
                     break;
                 case ItemType.Pets:
-                    switch (item.Info.Shape)
                     {
-                        case 20://mirror rename creature
-                            if (Info.IntelligentCreatures.Count == 0) return false;
-                            break;
-                        case 21://creature stone
-                            break;
-                        case 22://nuts maintain food levels
-                            if (!CreatureSummoned)
-                            {
-                                ReceiveChat(GameLanguage.ServerTextMap.GetLocalization(ServerTextKeys.CanUseWithSummonedCreature), ChatType.System);
-                                return false;
-                            }
-                            break;
-                        case 23://basic creature food
-                            if (!CreatureSummoned)
-                            {
-                                ReceiveChat(GameLanguage.ServerTextMap.GetLocalization(ServerTextKeys.CanUseWithSummonedCreature), ChatType.System);
-                                return false;
-                            }
-                            else
-                            {
-                                for (int i = 0; i < Pets.Count; i++)
-                                {
-                                    if (Pets[i].Race != ObjectType.Creature) continue;
+                        int shape = item.Info.Shape;
+                        //creature eggs: base types 0-18 and sacred beast types 21-27
+                        if (shape <= 18 || (shape >= 21 && shape <= 27)) break;
+                        //consumables: legacy shapes 20-28 and extended shapes 120-128
+                        int consumableShape = shape >= 100 ? shape - 100 : shape;
 
-                                    var pet = (IntelligentCreatureObject)Pets[i];
-                                    if (pet.PetType != SummonedCreatureType) continue;
-                                    if (pet.Fullness > 9900)
-                                    {
-                                        ReceiveChat(GameLanguage.ServerTextMap.GetLocalization((ServerTextKeys.PetIsNotHungry), pet.Name), ChatType.System);
-                                        return false;
-                                    }
-                                    return true;
-                                }
-                                return false;
-                            }
-                        case 24://wonderpill vitalize creature
-                            if (!CreatureSummoned)
-                            {
-                                ReceiveChat(GameLanguage.ServerTextMap.GetLocalization(ServerTextKeys.CanUseWithSummonedCreature), ChatType.System);
-                                return false;
-                            }
-                            else
-                            {
-                                for (int i = 0; i < Pets.Count; i++)
+                        switch (consumableShape)
+                        {
+                            case 20://mirror rename creature
+                                if (Info.IntelligentCreatures.Count == 0) return false;
+                                break;
+                            case 21://creature stone
+                                break;
+                            case 22://nuts maintain food levels
+                                if (!CreatureSummoned)
                                 {
-                                    if (Pets[i].Race != ObjectType.Creature) continue;
-
-                                    var pet = (IntelligentCreatureObject)Pets[i];
-                                    if (pet.PetType != SummonedCreatureType) continue;
-                                    if (pet.Fullness > 0)
-                                    {
-                                        ReceiveChat(GameLanguage.ServerTextMap.GetLocalization((ServerTextKeys.PetDoesNotNeedVitalize), pet.Name), ChatType.System);
-                                        return false;
-                                    }
-                                    return true;
+                                    ReceiveChat(GameLanguage.ServerTextMap.GetLocalization(ServerTextKeys.CanUseWithSummonedCreature), ChatType.System);
+                                    return false;
                                 }
-                                return false;
-                            }
-                        case 25://Strongbox
-                            break;
-                        case 26://Wonderdrugs
-                            break;
-                        case 27://Fortunecookies
-                            break;
+                                break;
+                            case 23://basic creature food
+                                if (!CreatureSummoned)
+                                {
+                                    ReceiveChat(GameLanguage.ServerTextMap.GetLocalization(ServerTextKeys.CanUseWithSummonedCreature), ChatType.System);
+                                    return false;
+                                }
+                                else
+                                {
+                                    for (int i = 0; i < Pets.Count; i++)
+                                    {
+                                        if (Pets[i].Race != ObjectType.Creature) continue;
+
+                                        var pet = (IntelligentCreatureObject)Pets[i];
+                                        if (pet.PetType != SummonedCreatureType) continue;
+                                        if (pet.Fullness > 9900)
+                                        {
+                                            ReceiveChat(GameLanguage.ServerTextMap.GetLocalization((ServerTextKeys.PetIsNotHungry), pet.Name), ChatType.System);
+                                            return false;
+                                        }
+                                        return true;
+                                    }
+                                    return false;
+                                }
+                            case 24://wonderpill vitalize creature
+                                if (!CreatureSummoned)
+                                {
+                                    ReceiveChat(GameLanguage.ServerTextMap.GetLocalization(ServerTextKeys.CanUseWithSummonedCreature), ChatType.System);
+                                    return false;
+                                }
+                                else
+                                {
+                                    for (int i = 0; i < Pets.Count; i++)
+                                    {
+                                        if (Pets[i].Race != ObjectType.Creature) continue;
+
+                                        var pet = (IntelligentCreatureObject)Pets[i];
+                                        if (pet.PetType != SummonedCreatureType) continue;
+                                        if (pet.Fullness > 0)
+                                        {
+                                            ReceiveChat(GameLanguage.ServerTextMap.GetLocalization((ServerTextKeys.PetDoesNotNeedVitalize), pet.Name), ChatType.System);
+                                            return false;
+                                        }
+                                        return true;
+                                    }
+                                    return false;
+                                }
+                            case 25://Strongbox
+                                break;
+                            case 26://Wonderdrugs
+                                break;
+                            case 27://Fortunecookies
+                                break;
+                        }
                     }
                     break;
             }
@@ -1604,6 +1636,7 @@ namespace Server.MirObjects
                 {
                     UserItem temp = Info.Inventory[i];
                     if (temp == null || item.Info != temp.Info || temp.Count >= temp.Info.StackSize) continue;
+                    if (item.AddedStats[Stat.Hero] != 0 || temp.AddedStats[Stat.Hero] != 0) continue;
 
                     if (item.Count + temp.Count <= temp.Info.StackSize)
                     {
@@ -1770,6 +1803,7 @@ namespace Server.MirObjects
             RefreshSkills();
             RefreshBuffs();
             RefreshGuildBuffs();
+            RefreshTalentStats();   //天赋系统 - 天赋属性加成(必须位于百分比加成计算之前)
 
             //Add any rate percent changes
 
@@ -1793,6 +1827,12 @@ namespace Server.MirObjects
             if (AttackSpeed < 550) AttackSpeed = 550;
         }
         public virtual void RefreshGuildBuffs() { }
+        /// <summary>
+        /// 天赋系统 - 天赋属性加成刷新钩子.
+        /// 基类(含英雄HeroObject)默认无天赋加成; PlayerObject重写此方法叠加已学天赋的属性.
+        /// 在 RefreshStats 的百分比加成计算之前调用, 使 HPRatePercent 等生效于天赋加成.
+        /// </summary>
+        public virtual void RefreshTalentStats() { }
 
         public virtual void RefreshMaxExperience() { }
         protected virtual void RefreshLevelStats()
@@ -1843,6 +1883,8 @@ namespace Server.MirObjects
 
             var skillsToAdd = new List<string>();
             var skillsToRemove = new List<string> { Settings.HealRing, Settings.FireRing, Settings.BlinkSkill };
+            foreach (var imprintSkill in Settings.GetAllImprintSpells())
+                if (!skillsToRemove.Contains(imprintSkill)) skillsToRemove.Add(imprintSkill);
 
             ItemSets.Clear();
             MirSet.Clear();
@@ -1882,6 +1924,10 @@ namespace Server.MirObjects
 
                 Stats.Add(realItem.Stats);
                 Stats.Add(temp.AddedStats);
+
+                //印系统: 按物品名匹配(ImprintSystem.ini + 自定义技能BindItem), 佩戴在任意装备槽(含符文槽)即激活临时技能
+                if (Settings.TryGetImprintSpell(realItem.Name, out string imprintSkill) && !string.IsNullOrEmpty(imprintSkill))
+                    skillsToAdd.Add(imprintSkill);
 
                 Stats[Stat.MinAC] += temp.Awake.GetAC();
                 Stats[Stat.MaxAC] += temp.Awake.GetAC();
@@ -1989,6 +2035,10 @@ namespace Server.MirObjects
 
                 Stats.Add(RealItem.Stats);
                 Stats.Add(temp.AddedStats);
+
+                //印系统: 镶嵌在装备插槽内的物品同样按配置匹配(不限定Type)
+                if (Settings.TryGetImprintSpell(RealItem.Name, out string socketImprintSkill) && !string.IsNullOrEmpty(socketImprintSkill))
+                    skillsToAdd.Add(socketImprintSkill);
 
                 if (RealItem.Light > Light) Light = RealItem.Light;
                 if (RealItem.Unique != SpecialItemMode.None)
@@ -2292,7 +2342,7 @@ namespace Server.MirObjects
 
                 if (hasSkill) continue;
 
-                var magic = new UserMagic(spelltype) { IsTempSpell = true };
+                var magic = new UserMagic(spelltype) { IsTempSpell = true, Level = 3 };
                 Info.Magics.Add(magic);
                 SendMagicInfo(magic);                
             }
@@ -2947,8 +2997,9 @@ namespace Server.MirObjects
                     break;
                 case Spell.Thrusting:
                 case Spell.FlamingSword:
+                case Spell.BloodDragon:
                     magic = GetMagic(spell);
-                    if ((magic == null) || (!FlamingSword && (spell == Spell.FlamingSword)))
+                    if ((magic == null) || (!FlamingSword && (spell == Spell.FlamingSword)) || (!BloodDragon && (spell == Spell.BloodDragon)))
                     {
                         spell = Spell.None;
                         break;
@@ -2985,7 +3036,19 @@ namespace Server.MirObjects
                     ChangeMP(-(magic.Info.BaseCost + magic.Level * magic.Info.LevelCost));
                     break;
                 default:
-                    spell = Spell.None;
+                    if (Settings.IsCustomSpell(spell))
+                    {
+                        magic = GetMagic(spell);
+                        long toggleExpiry;
+                        if (magic == null || !CustomToggle.TryGetValue(spell, out toggleExpiry) || Envir.Time >= toggleExpiry)
+                        {
+                            spell = Spell.None;
+                            break;
+                        }
+                        level = magic.Level;
+                    }
+                    else
+                        spell = Spell.None;
                     break;
             }
 
@@ -3240,6 +3303,13 @@ namespace Server.MirObjects
                         //ActionList.Add(action);
                         LevelMagic(magic);
                         break;
+                    case Spell.BloodDragon:
+                        magic = GetMagic(Spell.BloodDragon);
+                        damageFinal = magic.GetDamage(damageBase);
+                        BloodDragon = false;
+                        defence = DefenceType.AC;
+                        LevelMagic(magic);
+                        break;
                     case Spell.LuoHanGunFa:
                         magic = GetMagic(Spell.LuoHanGunFa);
                         damageFinal = magic.GetDamage(damageBase);
@@ -3251,6 +3321,25 @@ namespace Server.MirObjects
                         DaMoGunFa = false;
                         defence = DefenceType.AC;
                         LevelMagic(magic);
+                        break;
+                    default:
+                        //自定义技能(攻击强化模板): 按配置倍率结算, 消耗蓄力, 可选命中吸血
+                        if (Settings.IsCustomSpell(spell))
+                        {
+                            magic = GetMagic(spell);
+                            CustomSkillConfig customCfg = Settings.GetCustomSkill(spell);
+                            if (magic != null && customCfg != null && customCfg.Template == 1)
+                            {
+                                damageFinal = damageBase * Math.Max(100, customCfg.P1) / 100;
+                                CustomToggle.Remove(spell);
+                                defence = DefenceType.AC;
+                                if (customCfg.P3 > 0)
+                                {
+                                    int drain = Math.Max(1, damageFinal * customCfg.P3 / 100);
+                                    ChangeHP(drain);
+                                }
+                            }
+                        }
                         break;
                 }
 
@@ -3309,7 +3398,7 @@ namespace Server.MirObjects
                     for (int o = 0; o < cell.Objects.Count; o++)
                     {
                         MapObject ob = cell.Objects[o];
-                        if (ob.Race != ObjectType.Player && ob.Race != ObjectType.Monster) continue;
+                        if (ob.Race != ObjectType.Player && ob.Race != ObjectType.Monster && ob.Race != ObjectType.Hero) continue;
                         if (!ob.IsAttackTarget(this)) continue;
 
                         ob.Attacked(this, damageFinal, DefenceType.Agility, false);
@@ -3338,7 +3427,7 @@ namespace Server.MirObjects
                     for (int o = 0; o < cell.Objects.Count; o++)
                     {
                         MapObject ob = cell.Objects[o];
-                        if (ob.Race != ObjectType.Player && ob.Race != ObjectType.Monster) continue;
+                        if (ob.Race != ObjectType.Player && ob.Race != ObjectType.Monster && ob.Race != ObjectType.Hero) continue;
                         if (!ob.IsAttackTarget(this)) continue;
 
                         ob.Attacked(this, damageFinal, DefenceType.Agility, false);
@@ -3363,7 +3452,7 @@ namespace Server.MirObjects
                     for (int o = 0; o < cell.Objects.Count; o++)
                     {
                         MapObject ob = cell.Objects[o];
-                        if (ob.Race != ObjectType.Player && ob.Race != ObjectType.Monster) continue;
+                        if (ob.Race != ObjectType.Player && ob.Race != ObjectType.Monster && ob.Race != ObjectType.Hero) continue;
                         if (!ob.IsAttackTarget(this)) continue;
 
                         magic = GetMagic(spell);
@@ -3580,6 +3669,19 @@ namespace Server.MirObjects
 
             bool cast = true;
             byte level = magic.Level;
+
+            //CustomMagic数据驱动钩子: INI绑定(MagicID=)且显式配置过伤害键(DamageStat/DamageRate)的技能才按INI执行,
+            //否则回落引擎硬编码实现. 原版水晶端特效INI(无伤害键)只下发客户端特效, 不再接管伤害(防零伤害).
+            CustomSkillDef magicProfile = CustomSkillProfile.Get((int)spell);
+            if (magicProfile != null && magicProfile.HasDamageOverride)
+            {
+                cast = CastCustomMagicProfile(magic, target, location, magicProfile);
+                if (cast) magic.CastTime = Envir.Time;
+                Enqueue(new S.Magic { Spell = spell, TargetID = targetID, Target = location, Cast = cast, Level = level });
+                Broadcast(new S.ObjectMagic { ObjectID = ObjectID, Direction = Direction, Location = CurrentLocation, Spell = spell, TargetID = targetID, Target = location, Cast = cast, Level = level });
+                return;
+            }
+
             switch (spell)
             {
                 case Spell.FireBall:
@@ -3594,6 +3696,14 @@ namespace Server.MirObjects
                         targetID = ObjectID;
                     }
                     Healing(target, magic);
+                    break;
+                case Spell.HealingRare:
+                    if (target == null)
+                    {
+                        target = DefaultMagicTarget;
+                        targetID = ObjectID;
+                    }
+                    HealingRare(target, magic);
                     break;
                 case Spell.Repulsion:
                 case Spell.EnergyRepulsor:
@@ -3634,6 +3744,9 @@ namespace Server.MirObjects
                     break;
                 case Spell.ImmortalSkin:
                     ImmortalSkin(magic, out cast);
+                    break;
+                case Spell.ImmortalSkinRare:
+                    ImmortalSkinRare(magic, out cast);
                     break;
                 case Spell.FireBang:
                 case Spell.IceStorm:
@@ -3698,6 +3811,7 @@ namespace Server.MirObjects
                     Purification(target, magic);
                     break;
                 case Spell.LionRoar:
+                case Spell.LionRoarRare:
                 case Spell.BattleCry:
                     CurrentMap.ActionList.Add(new DelayedAction(DelayedType.Magic, Envir.Time + 500, this, magic, CurrentLocation));
                     break;
@@ -3707,8 +3821,47 @@ namespace Server.MirObjects
                 case Spell.PoisonCloud:
                     PoisonCloud(magic, location, out cast);
                     break;
+                case Spell.WanXiaoFu:
+                case Spell.WanXiaoFuRare:
+                    WanXiaoFu(magic, location, out cast, magic.Spell == Spell.WanXiaoFuRare);
+                    break;
+                case Spell.HeavenlySecrets:
+                    HeavenlySecrets(magic, out cast);
+                    break;
+                case Spell.GreatFireBallRare:
+                    GreatFireBallRare(target, magic, out cast);
+                    break;
+                case Spell.ThunderBoltRare:
+                    ThunderBoltRare(target, location, magic, 0);
+                    break;
+                case Spell.StormEscapeRare:
+                    ThunderStorm(magic);
+                    ActionList.Add(new DelayedAction(DelayedType.Magic, Envir.Time + 750, magic, location));
+                    break;
+                case Spell.SoulflameSiphon:
+                case Spell.SoulflameSiphonRare:
+                    SoulflameSiphon(magic, location, magic.Spell == Spell.SoulflameSiphonRare);
+                    break;
+                case Spell.Yling:   //召唤风灵(615)
+                    SummonSpiritPet(magic, 230, 5, out cast);
+                    break;
+                case Spell.Hling:   //召唤幻灵(616)
+                    SummonSpiritPet(magic, 231, 8, out cast);
+                    break;
+                case Spell.AncientOracle: //召唤上古神谕(415)
+                    SummonSpiritPet(magic, 232, 10, out cast);
+                    break;
                 case Spell.Entrapment:
                     Entrapment(target, magic);
+                    break;
+                case Spell.EntrapmentRare:
+                    EntrapmentRare(target, magic);
+                    break;
+                case Spell.DimensionalSword:
+                    DimensionalSword(target, magic, out cast);
+                    break;
+                case Spell.DimensionalSwordRare:
+                    DimensionalSwordRare(target, magic, out cast);
                     break;
                 case Spell.BladeAvalanche:
                     BladeAvalanche(magic);
@@ -3736,6 +3889,9 @@ namespace Server.MirObjects
                     break;
                 case Spell.PetEnhancer:
                     PetEnhancer(target, magic, out cast);
+                    break;
+                case Spell.PetEnhancerRare:
+                    PetEnhancerRare(magic);
                     break;
                 case Spell.TrapHexagon:
                     TrapHexagon(magic, spellTargetLock ? (target != null ? target.CurrentLocation : location) : location, out cast);
@@ -3783,8 +3939,20 @@ namespace Server.MirObjects
                 case Spell.FlashDash:
                     FlashDash(magic);
                     return;
+                case Spell.FlashDashRare:
+                    FlashDashRare(magic);
+                    return;
                 case Spell.CrescentSlash:
                     CrescentSlash(magic);
+                    break;
+                case Spell.CrescentSlashRare:
+                    CrescentSlashRare(magic);
+                    break;
+                case Spell.ShadowCombo:
+                    ShadowCombo(magic, 6);      
+                    break;
+                case Spell.ShadowComboRare:
+                    ShadowCombo(magic, 10);
                     break;
                 case Spell.StraightShot:
                     if (!StraightShot(target, magic)) targetID = 0;
@@ -3801,8 +3969,20 @@ namespace Server.MirObjects
                 case Spell.DelayedExplosion:
                     if (!DelayedExplosion(target, magic)) targetID = 0;
                     break;
+                case Spell.DelayedExplosionRare:
+                    if (!DelayedExplosionRare(target, magic)) targetID = 0;
+                    break;
                 case Spell.Concentration:
                     Concentration(magic);
+                    break;
+                case Spell.ConcentrationRare:
+                    ConcentrationRare(magic);
+                    break;
+                case Spell.ThunderStrike:
+                    ThunderStrike(target, location, magic, false);
+                    break;
+                case Spell.ThunderStrikeRare:
+                    ThunderStrike(target, location, magic, true);
                     break;
                 case Spell.ElementalShot:
                     if (!ElementalShot(target, magic)) targetID = 0;
@@ -3834,6 +4014,9 @@ namespace Server.MirObjects
                     break;
                 case Spell.MoonMist:
                     MoonMist(magic);
+                    break;
+                case Spell.MoonMistRare:
+                    MoonMistRare(magic);
                     break;
                 case Spell.HealingCircle:
                     HealingCircle(magic, spellTargetLock ? (target != null ? target.CurrentLocation : location) : location);
@@ -3867,7 +4050,10 @@ namespace Server.MirObjects
                     if (!FireBounce(target, magic, this)) targetID = 0;
                     break;
                 default:
-                    cast = false;
+                    if (Settings.IsCustomSpell(spell))
+                        cast = CastCustomSkill(magic, target, location);
+                    else
+                        cast = false;
                     break;
             }
 
@@ -3879,6 +4065,150 @@ namespace Server.MirObjects
             Enqueue(new S.Magic { Spell = spell, TargetID = targetID, Target = location, Cast = cast, Level = level });
             Broadcast(new S.ObjectMagic { ObjectID = ObjectID, Direction = Direction, Location = CurrentLocation, Spell = spell, TargetID = targetID, Target = location, Cast = cast, Level = level });
         }
+
+        #region CustomMagic数据驱动技能(原版CustomMagic INI兼容)
+        /// <summary>
+        /// 按 CustomMagic INI 执行技能行为: 伤害(属性/倍率/模式/范围/延迟) + 持续多跳
+        /// + 状态四件套(毒/红/缓/冻/晕/麻痹/流血/灼烧) + 自增益(XxxAdd+BuffTime) + 全屏吸怪
+        /// </summary>
+        private bool CastCustomMagicProfile(UserMagic magic, MapObject target, Point location, CustomSkillDef def)
+        {
+            if (def == null) return false;
+
+            Point centre;
+            if (def.AttackMode == "SINGLE")
+            {
+                if (target == null || target.Dead) return false; // 单体模式必须有合法目标
+                centre = target.CurrentLocation;
+            }
+            else
+            {
+                centre = location;
+                if (target != null && !target.Dead && centre.X == 0 && centre.Y == 0) centre = target.CurrentLocation;
+                if (centre.X == 0 && centre.Y == 0) centre = CurrentLocation;
+            }
+
+            // 半径防呆: 原版模板存在"100=不限制"占位, 方阵结算必须限界, 超限截断并记日志
+            int radius = Math.Max(1, def.Range);
+            if (radius > 10)
+            {
+                MessageQueue.Enqueue(string.Format("[CustomMagic] {0} 伤害半径{1}格超限, 截断为10 (请检查INI ATTACKNEARRANGE/ATTACKGROUPRANGE)", def.Name, radius));
+                radius = 10;
+            }
+
+            int damage = CustomMagicProfileDamage(magic, def);
+            long firstDelay = Math.Max(200, def.DamageDelay);
+
+            if (def.MagicExpireTime > 0 && def.MagicTickTime > 0)
+            {
+                // 持续型(如吸魔炎风旋风): DamageDelay 首跳, 之后每 MagicTickTime 一跳直至 MagicExpireTime
+                long step = Math.Max(200, def.MagicTickTime);
+                for (long t = firstDelay; t <= def.MagicExpireTime + firstDelay; t += step)
+                {
+                    DelayedAction action = new DelayedAction(DelayedType.Magic, Envir.Time + t, this, magic, damage, centre, radius, def);
+                    CurrentMap.ActionList.Add(action);
+                }
+            }
+            else
+            {
+                DelayedAction action = new DelayedAction(DelayedType.Magic, Envir.Time + firstDelay, this, magic, damage, centre, radius, def);
+                CurrentMap.ActionList.Add(action);
+            }
+
+            ApplyCustomMagicProfileBuff(def);
+            return true;
+        }
+
+        /// <summary>伤害 = 引擎同款公式(攻击力全额 + DB字段 + 等级倍率) × DamageRate%</summary>
+        private int CustomMagicProfileDamage(UserMagic magic, CustomSkillDef def)
+        {
+            int basePower;
+            switch (def.DamageStat)
+            {
+                case "DC": basePower = GetAttackPower(Stats[Stat.MinDC], Stats[Stat.MaxDC]); break;
+                case "SC": basePower = GetAttackPower(Stats[Stat.MinSC], Stats[Stat.MaxSC]); break;
+                default: basePower = GetAttackPower(Stats[Stat.MinMC], Stats[Stat.MaxMC]); break;
+            }
+            //magic.GetDamage = (攻击力 + MPower/4×(等级+1)+Power) × (MultiplierBase+等级×MultiplierBonus), 与引擎switch路线一字不差
+            return magic.GetDamage(basePower) * Math.Max(1, def.DamageRate) / 100;
+        }
+
+        /// <summary>自增益: INI 的 XxxAdd 数值键 + BuffTime 秒(经 WonderDrug 通用属性Buff承载)</summary>
+        private void ApplyCustomMagicProfileBuff(CustomSkillDef def)
+        {
+            if (def.BuffAdds.Count == 0 || def.BuffTime <= 0) return;
+
+            Stats stats = new Stats();
+            foreach (KeyValuePair<string, int> pair in def.BuffAdds)
+            {
+                Stat stat;
+                if (CustomSkillProfile.TryMapStat(pair.Key, out stat))
+                    stats[stat] += pair.Value;
+            }
+
+            if (stats.Count > 0)
+                AddBuff(BuffType.WonderDrug, this, def.BuffTime * Settings.Second, stats);
+        }
+        #endregion
+
+        #region 自定义技能引擎(242-255)
+        /// <summary>自定义技能施放入口, 参数全部来自 Configs\CustomSkills.ini(面板编辑)</summary>
+        private bool CastCustomSkill(UserMagic magic, MapObject target, Point location)
+        {
+            CustomSkillConfig cfg = Settings.GetCustomSkill(magic.Spell);
+            if (cfg == null) return false;
+
+            switch (cfg.Template)
+            {
+                case 1: //攻击强化: 开启蓄力窗口, 强化下次近战(伤害倍率P1%, 吸血P3%)
+                    CustomToggle[magic.Spell] = Envir.Time + (cfg.P2 <= 0 ? 10000 : cfg.P2);
+                    Enqueue(new S.SpellToggle { ObjectID = ObjectID, Spell = magic.Spell, CanUse = true });
+                    return true;
+
+                case 2: //自身爆发: 以自身为中心半径P1格范围伤害
+                    {
+                        int damage = CustomSkillDamage(magic, cfg.P2, cfg.P3, cfg.P4);
+                        DelayedAction action = new DelayedAction(DelayedType.Magic, Envir.Time + 500, this, magic, damage, CurrentLocation, Math.Max(1, cfg.P1));
+                        CurrentMap.ActionList.Add(action);
+                        return true;
+                    }
+
+                case 3: //目标轰炸: 目标点P2段、每段间隔P3ms的范围伤害
+                    {
+                        Point centre = location;
+                        if (target != null && !target.Dead) centre = target.CurrentLocation;
+                        if (centre.X == 0 && centre.Y == 0) centre = CurrentLocation;
+
+                        int radius = Math.Max(1, cfg.P1);
+                        int segments = Math.Max(1, cfg.P2);
+                        int interval = Math.Max(200, cfg.P3);
+
+                        for (int s = 0; s < segments; s++)
+                        {
+                            int damage = CustomSkillDamage(magic, cfg.P4, cfg.P5, cfg.P6);
+                            DelayedAction action = new DelayedAction(DelayedType.Magic, Envir.Time + 500 + s * interval, this, magic, damage, centre, radius);
+                            CurrentMap.ActionList.Add(action);
+                        }
+                        return true;
+                    }
+            }
+            return false;
+        }
+
+        /// <summary>伤害 = 固定值 + 每级成长×技能等级 + 攻击通道(DC/MC/SC)面板值</summary>
+        private int CustomSkillDamage(UserMagic magic, int flat, int perLevel, int channel)
+        {
+            Stat minStat, maxStat;
+            switch (channel)
+            {
+                case 1: minStat = Stat.MinMC; maxStat = Stat.MaxMC; break;
+                case 2: minStat = Stat.MinSC; maxStat = Stat.MaxSC; break;
+                default: minStat = Stat.MinDC; maxStat = Stat.MaxDC; break;
+            }
+            int power = GetAttackPower(Stats[minStat], Stats[maxStat]);
+            return Math.Max(1, flat + perLevel * magic.Level + power);
+        }
+        #endregion
 
         #region Elemental System
         private void Concentration(UserMagic magic)
@@ -4352,7 +4682,7 @@ namespace Server.MirObjects
         }
         private void FlameDisruptor(MapObject target, UserMagic magic)
         {
-            if (target == null || (target.Race != ObjectType.Player && target.Race != ObjectType.Monster) || !target.IsAttackTarget(this)) return;
+            if (target == null || (target.Race != ObjectType.Player && target.Race != ObjectType.Monster && target.Race != ObjectType.Hero) || !target.IsAttackTarget(this)) return;
 
             int damage = magic.GetDamage(GetAttackPower(Stats[Stat.MinMC], Stats[Stat.MaxMC]));
 
@@ -4515,7 +4845,7 @@ namespace Server.MirObjects
                 return;
             }
 
-            if (Pets.Count(x => x.Race == ObjectType.Monster) >= 2) return;
+            if (Pets.Count(x => x.Race == ObjectType.Monster) >= 3) return; //AI-Claude: 2->3 骷髅+神兽+特殊并存
 
             UserItem item = GetAmulet(1);
             if (item == null) return;
@@ -4564,7 +4894,7 @@ namespace Server.MirObjects
                 return;
             }
 
-            if (Pets.Count(x => x.Race == ObjectType.Monster) >= 2) return;
+            if (Pets.Count(x => x.Race == ObjectType.Monster) >= 3) return; //AI-Claude: 2->3 骷髅+神兽+特殊并存
 
             UserItem item = GetAmulet(5);
             if (item == null) return;
@@ -4663,7 +4993,201 @@ namespace Server.MirObjects
             cast = true;
         }
 
-        private void MoonMist(UserMagic magic)
+        //万效符/万效符秘笈: 护符投掷 → 7x7友方4Buff(结算在Map) 数值移植自angelk727
+        private void WanXiaoFu(UserMagic magic, Point location, out bool cast, bool rare)
+        {
+            cast = false;
+
+            UserItem item = GetAmulet(1);
+            if (item == null) return;
+
+            cast = true;
+            int delay = Functions.MaxDistance(CurrentLocation, location) * 50 + 500; //50 MS per Step
+            int buffSeconds = GetAttackPower(Stats[Stat.MinSC], Stats[Stat.MaxSC]) * 4 + (magic.Level + 1) * 50;
+
+            DelayedAction action = new DelayedAction(DelayedType.Magic, Envir.Time + delay, this, magic, buffSeconds, location, rare);
+            CurrentMap.ActionList.Add(action);
+
+            ConsumeItem(item, 1);
+
+            //自身减伤Buff(秘笈更高)
+            var stats = new Stats
+            {
+                [Stat.DamageReductionPercent] = rare ? 20 + magic.Level + 5 : 10
+            };
+            AddBuff(BuffType.MagicShield, this, Settings.Second * 30 + magic.Level * 10000, stats, true);
+            LevelMagic(magic);
+        }
+
+        //天上秘术: 魔力强化同构(原版为法力消耗率改变, 引擎差异改为MaxMC增益)
+        private void HeavenlySecrets(UserMagic magic, out bool cast)
+        {
+            cast = true;
+            ActionList.Add(new DelayedAction(DelayedType.Magic, Envir.Time + 500, magic));
+        }
+
+        //大火球秘籍: 5秒延迟爆炸 非不死系x3(结算挂FireBall组)
+        private void GreatFireBallRare(MapObject target, UserMagic magic, out bool cast)
+        {
+            cast = false;
+            if (target == null || (target.Race != ObjectType.Player && target.Race != ObjectType.Monster) || !target.IsAttackTarget(this)) return;
+
+            int damage = magic.GetDamage(GetAttackPower(Stats[Stat.MinMC], Stats[Stat.MaxMC]));
+            if (!target.Undead) damage = (int)(damage * 3F);
+
+            DelayedAction action = new DelayedAction(DelayedType.Magic, Envir.Time + 5000, magic, damage, target, target.CurrentLocation);
+            ActionList.Add(action);
+            cast = true;
+        }
+
+        //强击秘籍: 连锁闪电(数值移植自angelk727 L4418)
+        private void ThunderBoltRare(MapObject target, Point targetLocation, UserMagic magic, int chainCount = 0)
+        {
+            if (CurrentMap == null) return;
+
+            int range = 5;
+            int extraDamagePercentage = 0;
+            int additionalTriggers = 0;
+            int maxChain = 0;
+
+            switch (magic.Level)
+            {
+                case 0: range = 5; maxChain = 0; break;
+                case 1: range = 5; extraDamagePercentage = 15; maxChain = 0; break;
+                case 2: range = 5; extraDamagePercentage = 15; additionalTriggers = 1; maxChain = 1; break;
+                case 3: range = 6; extraDamagePercentage = 30; additionalTriggers = 1; maxChain = 1; break;
+                case 4: range = 6; extraDamagePercentage = 50; additionalTriggers = 2; maxChain = 2; break;
+                default: range = 7; extraDamagePercentage = 50; additionalTriggers = 2; maxChain = 2; break;
+            }
+
+            if (chainCount > maxChain) return;
+            Point center = target != null ? target.CurrentLocation : targetLocation;
+            List<MapObject> targets = new List<MapObject>();
+
+            for (int x = -range; x <= range; x++)
+            {
+                for (int y = -range; y <= range; y++)
+                {
+                    Point p = new Point(center.X + x, center.Y + y);
+                    if (!CurrentMap.ValidPoint(p)) continue;
+                    if (!Functions.InRange(p, center, range)) continue;
+
+                    Cell cell = CurrentMap.GetCell(p);
+                    if (cell == null || cell.Objects == null) continue;
+
+                    foreach (MapObject obj in cell.Objects)
+                    {
+                        if (obj == null || obj.Dead) continue;
+                        if (obj.Race != ObjectType.Player && obj.Race != ObjectType.Monster) continue;
+                        if (!obj.IsAttackTarget(this)) continue;
+                        targets.Add(obj);
+                    }
+                }
+            }
+
+            if (targets.Count == 0) return;
+            MapObject current = target;
+
+            if (current == null || current.Dead)
+                current = targets[Envir.Random.Next(targets.Count)];
+            if (current == null) return;
+
+            //连锁跳: 广播一次施法动画(远程玩家看到雷劈新位置)
+            if (chainCount > 0)
+                Broadcast(new S.ObjectMagic { ObjectID = ObjectID, Direction = Direction, Location = CurrentLocation, Spell = magic.Spell, TargetID = 0, Target = current.CurrentLocation, Cast = true, Level = magic.Level });
+
+            int damage = magic.GetDamage(GetAttackPower(Stats[Stat.MinMC], Stats[Stat.MaxMC]));
+            damage += damage * extraDamagePercentage / 100;
+            if (current.Undead) damage = (int)(damage * 1.5F);
+            DefenceType defence = magic.Level >= 5 ? DefenceType.None : DefenceType.MAC;
+
+            if (current.Attacked(this, damage, defence, false) > 0)
+                LevelMagic(magic);
+
+            if (additionalTriggers > 0 && Envir.Random.Next(100) < 25)
+            {
+                for (int i = 0; i < additionalTriggers; i++)
+                    ActionList.Add(new DelayedAction(DelayedType.Magic, Envir.Time + 1000, magic, damage, current, current.CurrentLocation, chainCount + 1));
+            }
+        }
+
+        //吸魔炎风/秘籍: 3x3持续法阵+牵引(生成在Map, 数值移植自angelk727; 修复了原版等级参数丢失bug)
+        private void SoulflameSiphon(UserMagic magic, Point location, bool rare)
+        {
+            int delay = Functions.MaxDistance(CurrentLocation, location) * 50 + 500;
+            int magicLevel = magic != null ? magic.Level : 0;
+
+            int baseDamage = magic.GetDamage(GetAttackPower(Stats[Stat.MinMC], Stats[Stat.MaxMC]));
+            float bonus = rare
+                ? (magicLevel == 0 ? 1.0f : 1.5f)
+                : (magicLevel == 0 ? 1.25f : magicLevel == 1 ? 1.50f : 2.00f);
+            int damage = (int)(baseDamage * bonus);
+
+            DelayedAction action = new DelayedAction(DelayedType.Magic, Envir.Time + delay, this, magic, damage, location, (byte)magicLevel);
+            CurrentMap.ActionList.Add(action);
+        }
+
+        //召唤风灵(AI230,护符5)/幻灵(AI231,护符8): 神兽骨架(重召召回→上限/材料→前方生成)
+        //特殊召唤物AI集合: 月灵(38)/风灵(230)/幻灵(231)/上古神谕(232) — 同类召回 异类自动遣散换新
+        private static readonly byte[] SpecialPetAIs = { 38, 230, 231, 232 };
+
+        private void SummonSpiritPet(UserMagic magic, byte ai, int amuletCount, out bool cast)
+        {
+            cast = false;
+            if (CurrentMap.Info.NoPets)
+            {
+                ReceiveChat("You cannot summon pets on this map.", ChatType.System);
+                return;
+            }
+
+            MonsterObject monster;
+            for (int i = Pets.Count - 1; i >= 0; i--)
+            {
+                monster = Pets[i];
+                if (monster.Dead || monster.Node == null) continue;
+                if (!SpecialPetAIs.Contains(monster.Info.AI)) continue;
+
+                if (monster.Info.AI == ai)
+                {
+                    //同类存活: 召回身边
+                    monster.ActionList.Add(new DelayedAction(DelayedType.Recall, Envir.Time + 500));
+                    cast = true;
+                    return;
+                }
+
+                //异类特殊宠物: 自动遣散 换召新的
+                monster.Master = null;
+                monster.CurrentMap.RemoveObject(monster);
+                monster.Despawn();
+                Pets.Remove(monster);
+            }
+
+            //宠物总上限3(骷髅+神兽+特殊)
+            if (Pets.Count(x => x.Race == ObjectType.Monster) >= 3) return;
+
+            UserItem item = GetAmulet(amuletCount);
+            if (item == null) return;
+
+            MonsterInfo info = Envir.MonsterInfoList.FirstOrDefault(t => t.AI == ai);
+            if (info == null) return;
+
+            cast = true;
+            LevelMagic(magic);
+            ConsumeItem(item, (byte)amuletCount);
+
+            monster = MonsterObject.GetMonster(info);
+            monster.PetLevel = magic.Level;
+            monster.Master = this;
+            monster.MaxPetLevel = (byte)(1 + magic.Level * 2);
+            monster.Direction = Direction;
+            monster.ActionTime = Envir.Time + 1000;
+
+            DelayedAction action = new DelayedAction(DelayedType.Magic, Envir.Time + 500, this, magic, monster, Front);
+            CurrentMap.ActionList.Add(action);
+        }
+
+
+        private void MoonMist(UserMagic magic)    //   月影雾基础版  秘籍 在下面.
         {
             for (int i = 0; i < Buffs.Count; i++)
                 if (Buffs[i].Type == BuffType.MoonLight) return;
@@ -4672,13 +5196,409 @@ namespace Server.MirObjects
 
             AddBuff(BuffType.MoonLight, this, (time + (magic.Level + 1) * 5) * 500, new Stats());
 
-            CurrentMap.Broadcast(new S.ObjectEffect { ObjectID = ObjectID, Effect = SpellEffect.MoonMist }, CurrentLocation);
+            //原版: 施法瞬间广播爆炸特效(SpellEffect.MoonMist→客户端GameScene:5067播705帧)——
+            //与"雾聚满再爆"时序冲突(t=0和1.8s各炸一次), 注释掉; 爆炸画面改由客户端施法动作
+            //统一延迟1.8s播放(所有人可见且只播一次); 5067源码保留不动
+            //CurrentMap.Broadcast(new S.ObjectEffect { ObjectID = ObjectID, Effect = SpellEffect.MoonMist }, CurrentLocation);
             int damage = magic.GetDamage(GetAttackPower(Stats[Stat.MinDC], Stats[Stat.MaxDC]));
-            DelayedAction action = new DelayedAction(DelayedType.Magic, Envir.Time + 500, this, magic, damage, CurrentLocation, Direction);
+            //1800ms=雾(24帧/1.8s)聚满之时, 爆炸画面与伤害数字同落(官方"一段时间后雾爆")
+            DelayedAction action = new DelayedAction(DelayedType.Magic, Envir.Time + 1800, this, magic, damage, CurrentLocation, Direction);
             CurrentMap.ActionList.Add(action);
             LevelMagic(magic);
 
         }
+
+        // =====================================================================
+        // 技能书补全计划: 秘籍系技能(实现参考 angelk727 源码 + fork 既有积木)
+        // =====================================================================
+
+        //战士: 金刚不坏-秘籍(强化版, 结算在 CompleteMagic)
+        private void ImmortalSkinRare(UserMagic magic, out bool cast)
+        {
+            cast = true;
+            ActionList.Add(new DelayedAction(DelayedType.Magic, Envir.Time + 500, magic));
+        }
+
+        //战士: 捕绳剑-秘籍(更远距离拉拽+更长麻痹, 结算在 CompleteMagic)
+        private void EntrapmentRare(MapObject target, UserMagic magic)
+        {
+            if (target == null || !target.IsAttackTarget(this)) return;
+            ActionList.Add(new DelayedAction(DelayedType.Magic, Envir.Time + 500, magic, 0, target));
+        }
+
+        //战士: 时空剑(极时空神剑, 瞬身到目标背后攻击)
+        //距离门读DB施法距离(魔法编辑器可调); 落点兜底: 背格优先→目标周身空格→全堵原地出刀, 不再无声失败
+        private void DimensionalSword(MapObject target, UserMagic magic, out bool cast)
+        {
+            cast = false;
+            if (target == null || !target.IsAttackTarget(this)) return;
+            if (target.CurrentMap != CurrentMap) return;
+            int dsRange = magic.Info == null ? 2 : Math.Max(1, (int)magic.Info.Range);
+            if (Functions.MaxDistance(CurrentLocation, target.CurrentLocation) > dsRange) return;
+
+            int damageFinal = magic.GetDamage(GetAttackPower(Stats[Stat.MinDC], Stats[Stat.MaxDC]));
+
+            Point strikeFrom = FindStrikeCell(target);
+            if (strikeFrom != CurrentLocation)
+            {
+                CurrentMap.GetCell(CurrentLocation).Remove(this);
+                RemoveObjects(Direction, 1);
+                CurrentLocation = strikeFrom;
+                CurrentMap.GetCell(CurrentLocation).Add(this);
+                AddObjects(Direction, 1);
+            }
+
+            Direction = Functions.DirectionFromPoint(CurrentLocation, target.CurrentLocation);
+            Enqueue(new S.UserAttackMove { Direction = Direction, Location = CurrentLocation }); //参考源码同款: 瞬闪封包, 特效挂人物身上被一起带走="直接冲出去"的观感
+
+            target.Attacked(this, damageFinal, DefenceType.AC, false);
+            LevelMagic(magic);
+            cast = true;
+        }
+
+        /// <summary>时空剑落点: 目标背后一格优先, 被堵则扫目标周身空格, 全堵返回施法者当前位置(原地出刀)</summary>
+        private Point FindStrikeCell(MapObject target)
+        {
+            Point back = Functions.PointMove(target.CurrentLocation, Functions.ReverseDirection(target.Direction), 1);
+            if (CurrentMap.ValidPoint(back)) return back;
+
+            for (int d = 0; d < 8; d++)
+            {
+                Point p = Functions.PointMove(target.CurrentLocation, (MirDirection)d, 1);
+                if (CurrentMap.ValidPoint(p)) return p;
+            }
+            return CurrentLocation;
+        }
+
+        //战士: 时空剑-秘籍(更远距离+直接改格站位; 距离门同读DB, 落点同兜底)
+        private void DimensionalSwordRare(MapObject target, UserMagic magic, out bool cast)
+        {
+            cast = false;
+            if (target == null || !target.IsAttackTarget(this)) return;
+            if (target.CurrentMap != CurrentMap) return;
+            int dsRange = magic.Info == null ? 3 : Math.Max(1, (int)magic.Info.Range);
+            if (Functions.MaxDistance(CurrentLocation, target.CurrentLocation) > dsRange) return;
+
+            int damageFinal = magic.GetDamage(GetAttackPower(Stats[Stat.MinDC], Stats[Stat.MaxDC]));
+
+            Point strikeFrom = FindStrikeCell(target);
+            if (strikeFrom != CurrentLocation)
+            {
+                CurrentMap.GetCell(CurrentLocation).Remove(this);
+                RemoveObjects(Direction, 1);
+
+                CurrentLocation = strikeFrom;
+                CurrentMap.GetCell(CurrentLocation).Add(this);
+                AddObjects(Direction, 1);
+            }
+
+            Direction = Functions.DirectionFromPoint(CurrentLocation, target.CurrentLocation);
+            Enqueue(new S.UserAttackMove { Direction = Direction, Location = CurrentLocation }); //参考源码同款(秘笈原实现即手动改格+此封包)
+
+            target.Attacked(this, damageFinal, DefenceType.AC, false);
+            LevelMagic(magic);
+            cast = true;
+        }
+
+        //道士: 治愈术-秘籍(大计量恢复, 结算并入 CompleteMagic 的 Healing)
+        private void HealingRare(MapObject target, UserMagic magic)
+        {
+            if (target == null || !target.IsFriendlyTarget(this)) return;
+
+            int health = magic.GetDamage(GetAttackPower(Stats[Stat.MinSC], Stats[Stat.MaxSC]) * 10) + Level;
+            ActionList.Add(new DelayedAction(DelayedType.Magic, Envir.Time + 500, magic, health, target));
+        }
+
+        //道士: 血龙水-秘籍(一次性强化全部存活宠物)
+        private void PetEnhancerRare(UserMagic magic)
+        {
+            bool any = false;
+            for (int i = 0; i < Pets.Count; i++)
+            {
+                MonsterObject pet = Pets[i];
+                if (pet == null || pet.Dead || pet.Node == null) continue;
+
+                int dcInc = 4 + pet.Level * 2;
+                int acInc = 8 + pet.Level;
+
+                var stats = new Stats
+                {
+                    [Stat.MinDC] = dcInc,
+                    [Stat.MaxDC] = dcInc,
+                    [Stat.MinAC] = acInc,
+                    [Stat.MaxAC] = acInc
+                };
+
+                pet.AddBuff(BuffType.PetEnhancer, this, Settings.Second * (60 + magic.Level * 20), stats);
+                any = true;
+            }
+
+            if (any) LevelMagic(magic);
+        }
+
+        //刺客: 拔刀术-秘籍(// 废弃 这个 瞬身背刺+概率眩晕)
+        //拔刀术秘籍: 基础拔刀术强化(原版规格: 最大2格突进, 冲击路径第一目标, 概率麻痹且BOSS时长减半, 伤害/麻痹率/持续时间随等级成长)
+        private void FlashDashRare(UserMagic magic)
+        {
+            ActionTime = Envir.Time;
+
+            int travel = 0;
+            MapObject strikeTarget = null;
+            Point location = CurrentLocation;
+
+            // 最大2格突进, 遇阻挡截断; 路径上的可攻击目标即"冲击第一目标", 停在其前一格
+            for (int i = 0; i < 2; i++)
+            {
+                Point next = Functions.PointMove(location, Direction, 1);
+                if (!CurrentMap.ValidPoint(next)) break;
+
+                Cell cInfo = CurrentMap.GetCell(next);
+                MapObject blocker = null;
+                if (cInfo.Objects != null)
+                {
+                    for (int c = 0; c < cInfo.Objects.Count; c++)
+                    {
+                        MapObject ob = cInfo.Objects[c];
+                        if (!ob.Blocking) continue;
+                        blocker = ob;
+                        if ((ob.Race == ObjectType.Monster || ob.Race == ObjectType.Player) && ob.IsAttackTarget(this))
+                            strikeTarget = ob;
+                        break;
+                    }
+                }
+
+                if (blocker != null) break;
+                location = next;
+                travel++;
+            }
+
+            if (travel > 0)
+            {
+                CurrentMap.GetCell(CurrentLocation).Remove(this);
+                RemoveObjects(Direction, 1); //与基础拔刀术一致(观察者刷新步长固定1)
+                CurrentLocation = Functions.PointMove(CurrentLocation, Direction, travel);
+                CurrentMap.GetCell(CurrentLocation).Add(this);
+                AddObjects(Direction, 1);
+                Enqueue(new S.UserDashAttack { Direction = Direction, Location = CurrentLocation });
+                Broadcast(new S.ObjectDashAttack { ObjectID = ObjectID, Direction = Direction, Location = CurrentLocation, Distance = travel });
+            }
+            else
+            {
+                Broadcast(new S.ObjectAttack { ObjectID = ObjectID, Direction = Direction, Location = CurrentLocation });
+            }
+
+            // 未在移动中撞到目标时, 检查最终面前一格
+            if (strikeTarget == null)
+            {
+                Point front = Functions.PointMove(CurrentLocation, Direction, 1);
+                if (CurrentMap.ValidPoint(front))
+                {
+                    Cell cInfo = CurrentMap.GetCell(front);
+                    if (cInfo.Objects != null)
+                    {
+                        for (int c = 0; c < cInfo.Objects.Count; c++)
+                        {
+                            MapObject ob = cInfo.Objects[c];
+                            if ((ob.Race == ObjectType.Monster || ob.Race == ObjectType.Player) && ob.IsAttackTarget(this))
+                            {
+                                strikeTarget = ob;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            int attackDelay = (AttackSpeed - 120) <= 300 ? 300 : (AttackSpeed - 120);
+            AttackTime = Envir.Time + attackDelay;
+            SpellTime = Envir.Time + 300;
+
+            bool success = false;
+            if (strikeTarget != null)
+            {
+                int damage = magic.GetDamage(GetAttackPower(Stats[Stat.MinDC], Stats[Stat.MaxDC]));
+                if (strikeTarget.Attacked(this, damage, DefenceType.AC, false) > 0)
+                {
+                    success = true;
+
+                    var mob = strikeTarget as MonsterObject;
+                    bool isBoss = mob != null && mob.Info != null && mob.Info.IsBoss;
+
+                    if (Envir.Random.Next(100) < 30 + magic.Level * 10) //麻痹率随等级: L1=40%...L4=70%
+                    {
+                        int duration = 1 + magic.Level;
+                        if (isBoss) duration = Math.Max(1, duration / 2); //对BOSS麻痹持续时间减少50%
+                        strikeTarget.ApplyPoison(new Poison { PType = PoisonType.Stun, Duration = duration, TickSpeed = 1000 }, this);
+                    }
+                }
+            }
+
+            if (success)
+                LevelMagic(magic);
+
+            magic.CastTime = Envir.Time;
+            Enqueue(new S.MagicCast { Spell = magic.Spell });
+        }
+
+        //刺客: 月影雾-秘籍(原效果+双倍时长+周身2格减速)
+        private void MoonMistRare(UserMagic magic)
+        {
+            MoonMist(magic); //原效果(隐身+范围伤害)
+
+            //时长加层(秘籍双倍)
+            var time = GetAttackPower(Stats[Stat.MinAC], Stats[Stat.MaxAC]);
+            AddBuff(BuffType.MoonLight, this, (time + (magic.Level + 1) * 10) * 500, new Stats());
+
+            //周身敌人减速
+            for (int x = CurrentLocation.X - 2; x <= CurrentLocation.X + 2; x++)
+            {
+                for (int y = CurrentLocation.Y - 2; y <= CurrentLocation.Y + 2; y++)
+                {
+                    if (!CurrentMap.ValidPoint(x, y)) continue;
+                    Cell cell = CurrentMap.GetCell(x, y);
+                    if (cell.Objects == null) continue;
+
+                    for (int i = 0; i < cell.Objects.Count; i++)
+                    {
+                        MapObject ob = cell.Objects[i];
+                        if (ob.Race != ObjectType.Monster && ob.Race != ObjectType.Player) continue;
+                        if (!ob.IsAttackTarget(this)) continue;
+                        ob.ApplyPoison(new Poison { PType = PoisonType.Slow, Duration = 2 + magic.Level, TickSpeed = 1000 }, this);
+                    }
+                }
+            }
+        }
+
+        //刺客: 月华乱舞-秘籍(月华乱舞+眩晕+双段伤害)       
+        private void CrescentSlashRare(UserMagic magic)
+        {
+            int damageBase = GetAttackPower(Stats[Stat.MinDC], Stats[Stat.MaxDC]);
+            if (Envir.Random.Next(0, 100) <= Stats[Stat.Accuracy])
+                damageBase += damageBase; //暴击
+            int damageFinal = magic.GetDamage(damageBase);
+
+            MirDirection backDir = Functions.ReverseDirection(Direction);
+            MirDirection preBackDir = Functions.PreviousDir(backDir);
+            MirDirection nextBackDir = Functions.NextDir(backDir);
+
+            for (int i = 0; i < 8; i++)
+            {
+                MirDirection dir = (MirDirection)i;
+                if (dir == backDir || dir == preBackDir || dir == nextBackDir) continue;
+
+                Point hitPoint = Functions.PointMove(CurrentLocation, dir, 1);
+                if (!CurrentMap.ValidPoint(hitPoint)) continue;
+
+                Cell cell = CurrentMap.GetCell(hitPoint);
+                if (cell.Objects == null) continue;
+
+                for (int j = 0; j < cell.Objects.Count; j++)
+                {
+                    MapObject target = cell.Objects[j];
+                    if (target.Race != ObjectType.Monster && target.Race != ObjectType.Player) continue;
+                    if (!target.IsAttackTarget(this)) continue;
+
+                    ActionList.Add(new DelayedAction(DelayedType.Damage, Envir.Time + AttackSpeed, target, damageFinal, DefenceType.AC, true));
+                    target.ApplyPoison(new Poison { PType = PoisonType.Stun, Duration = magic.Level + 2, TickSpeed = 6000 }, this);
+                    target.OperateTime = 0;
+                    ActionList.Add(new DelayedAction(DelayedType.Damage, Envir.Time + AttackSpeed + 900, target, damageFinal, DefenceType.AC, true));
+                }
+                LevelMagic(magic);
+            }
+        }
+
+        //刺客: 闪影连击(前方直线3格穿透多段斩击; 秘籍3段/普通2段)
+        private void ShadowCombo(UserMagic magic, int hits)
+        {
+            int damageBase = GetAttackPower(Stats[Stat.MinDC], Stats[Stat.MaxDC]);
+            if (Envir.Random.Next(0, 100) <= Stats[Stat.Accuracy]) damageBase += damageBase;
+            int damageFinal = magic.GetDamage(damageBase);
+
+            bool hitAny = false;
+            for (int d = 1; d <= 3; d++)
+            {
+                Point p = Functions.PointMove(CurrentLocation, Direction, d);
+                if (!CurrentMap.ValidPoint(p)) break;
+
+                Cell cell = CurrentMap.GetCell(p);
+                if (cell.Objects == null) continue;
+
+                for (int i = 0; i < cell.Objects.Count; i++)
+                {
+                    MapObject ob = cell.Objects[i];
+                    if (ob.Race != ObjectType.Monster && ob.Race != ObjectType.Player) continue;
+                    if (!ob.IsAttackTarget(this)) continue;
+
+                    for (int h = 0; h < hits; h++)
+                        ActionList.Add(new DelayedAction(DelayedType.Damage, Envir.Time + AttackSpeed + h * 400, ob, damageFinal, DefenceType.AC, true));
+                    hitAny = true;
+                }
+            }
+
+            if (hitAny) LevelMagic(magic);
+        }
+
+        //弓手: 爆闪-秘籍(伤害加成40%, 结算并入 CompleteMagic 的 DelayedExplosion)
+        private bool DelayedExplosionRare(MapObject target, UserMagic magic)
+        {
+            if (target == null || !target.IsAttackTarget(this) || !CanFly(target.CurrentLocation)) return false;
+
+            int power = magic.GetDamage((int)(GetAttackPower(Stats[Stat.MinMC], Stats[Stat.MaxMC]) * 1.4));
+            int delay = Functions.MaxDistance(CurrentLocation, target.CurrentLocation) * 50 + 500;
+
+            ActionList.Add(new DelayedAction(DelayedType.Magic, Envir.Time + delay, magic, power, target, target.CurrentLocation));
+            return true;
+        }
+
+        //弓手: 气流术-秘籍(聚气强化: 双倍时长+魔力加成)
+        private void ConcentrationRare(UserMagic magic)
+        {
+            int duration = (45 + (15 * magic.Level)) * 2;
+
+            var buff = AddBuff(BuffType.Concentration, this, Settings.Second * duration, new Stats { [Stat.MinMC] = magic.Level * 2, [Stat.MaxMC] = magic.Level * 2 });
+
+            buff.Set("InterruptTime", (long)0);
+            buff.Set("Interrupted", false);
+
+            LevelMagic(magic);
+            OperateTime = 0;
+
+            UpdateConcentration(true, false);
+        }
+
+        //弓手: 落雷击(对目标落雷; 秘籍版3x3范围+减速, 结算并入 DelayedExplosion)
+        private void ThunderStrike(MapObject target, Point location, UserMagic magic, bool rare)
+        {
+            Point strike = target != null ? target.CurrentLocation : location;
+            int range = rare ? 1 : 0;
+            int power = magic.GetDamage((int)(GetAttackPower(Stats[Stat.MinMC], Stats[Stat.MaxMC]) * (rare ? 1.3 : 1.0)));
+
+            bool hitAny = false;
+            for (int x = strike.X - range; x <= strike.X + range; x++)
+            {
+                for (int y = strike.Y - range; y <= strike.Y + range; y++)
+                {
+                    if (!CurrentMap.ValidPoint(x, y)) continue;
+                    Cell cell = CurrentMap.GetCell(x, y);
+                    if (cell.Objects == null) continue;
+
+                    for (int i = 0; i < cell.Objects.Count; i++)
+                    {
+                        MapObject ob = cell.Objects[i];
+                        if (ob.Race != ObjectType.Monster && ob.Race != ObjectType.Player) continue;
+                        if (!ob.IsAttackTarget(this)) continue;
+
+                        ActionList.Add(new DelayedAction(DelayedType.Magic, Envir.Time + 600, magic, power, ob, new Point(x, y)));
+                        if (rare)
+                            ob.ApplyPoison(new Poison { PType = PoisonType.Slow, Duration = 2 + magic.Level, TickSpeed = 1000 }, this);
+                        hitAny = true;
+                    }
+                }
+            }
+
+            if (hitAny) LevelMagic(magic);
+        }
+
         private bool CatTongue(MapObject target, UserMagic magic)
         {
             if (target == null || !target.IsAttackTarget(this) || !CanFly(target.CurrentLocation)) return false;
@@ -4815,7 +5735,7 @@ namespace Server.MirObjects
                 return;
             }
 
-            if (Pets.Count(x => x.Race == ObjectType.Monster) >= 2) return;
+            if (Pets.Count(x => x.Race == ObjectType.Monster) >= 3) return; //AI-Claude: 2->3 骷髅+神兽+特殊并存
 
             UserItem item = GetAmulet(2);
             if (item == null) return;
@@ -5680,7 +6600,7 @@ namespace Server.MirObjects
 
             int travel = 0;
             bool blocked = false;
-            int jumpDistance = (magic.Level <= 1) ? 0 : 1;//3 max
+            int jumpDistance = Math.Min(Math.Max((int)magic.Level, 1), 3);//按等级突进1-3格(原版设计上限3)
             Point location = CurrentLocation;
             for (int i = 0; i < jumpDistance; i++)
             {
@@ -5726,36 +6646,39 @@ namespace Server.MirObjects
             AttackTime = Envir.Time + attackDelay;
             SpellTime = Envir.Time + 300;
 
-            location = Functions.PointMove(location, Direction, 1);
-            if (CurrentMap.ValidPoint(location))
+            //路径扫击: 起点后1格起到落点前1格, 突进路径上的敌人全部受击(原只打落点前1格)
+            for (int step = 1; step <= jumpDistance + 1; step++)
             {
-                Cell cInfo = CurrentMap.GetCell(location);
-                if (cInfo.Objects != null)
+                Point hitLocation = Functions.PointMove(CurrentLocation, Direction, step);
+                if (!CurrentMap.ValidPoint(hitLocation)) break;
+
+                Cell cInfo = CurrentMap.GetCell(hitLocation);
+                if (cInfo.Objects == null) continue;
+
+                for (int c = 0; c < cInfo.Objects.Count; c++)
                 {
-                    for (int c = 0; c < cInfo.Objects.Count; c++)
+                    MapObject ob = cInfo.Objects[c];
+                    switch (ob.Race)
                     {
-                        MapObject ob = cInfo.Objects[c];
-                        switch (ob.Race)
-                        {
-                            case ObjectType.Monster:
-                            case ObjectType.Player:
-                                //Only targets
-                                if (ob.IsAttackTarget(this))
+                        case ObjectType.Monster:
+                        case ObjectType.Player:
+                            //Only targets
+                            if (ob.IsAttackTarget(this))
+                            {
+                                DelayedAction action = new DelayedAction(DelayedType.Damage, AttackTime, ob, magic.GetDamage(GetAttackPower(Stats[Stat.MinDC], Stats[Stat.MaxDC])), DefenceType.AC, true);
+                                ActionList.Add(action);
+                                success = true;
+                                if ((((ob.Race != ObjectType.Player) || Settings.PvpCanResistPoison) && (Envir.Random.Next(Settings.PoisonAttackWeight) >= ob.Stats[Stat.PoisonResist])) && (Envir.Random.Next(15) <= magic.Level + 1))
                                 {
-                                    DelayedAction action = new DelayedAction(DelayedType.Damage, AttackTime, ob, magic.GetDamage(GetAttackPower(Stats[Stat.MinDC], Stats[Stat.MaxDC])), DefenceType.AC, true);
-                                    ActionList.Add(action);
-                                    success = true;
-                                    if ((((ob.Race != ObjectType.Player) || Settings.PvpCanResistPoison) && (Envir.Random.Next(Settings.PoisonAttackWeight) >= ob.Stats[Stat.PoisonResist])) && (Envir.Random.Next(15) <= magic.Level + 1))
-                                    {
-                                        DelayedAction pa = new DelayedAction(DelayedType.Poison, AttackTime, ob, PoisonType.Stun, SpellEffect.TwinDrakeBlade, magic.Level + 1, 1000);
-                                        ActionList.Add(pa);
-                                    }
+                                    DelayedAction pa = new DelayedAction(DelayedType.Poison, AttackTime, ob, PoisonType.Stun, SpellEffect.TwinDrakeBlade, magic.Level + 1, 1000);
+                                    ActionList.Add(pa);
                                 }
-                                break;
-                        }
+                            }
+                            break;
                     }
                 }
             }
+
             if (success) //technicaly this makes flashdash lvl when it casts rather then when it hits (it wont lvl if it's not hitting!)
                 LevelMagic(magic);
 
@@ -6179,6 +7102,7 @@ namespace Server.MirObjects
 
                 case Spell.FireBall:
                 case Spell.GreatFireBall:
+                case Spell.GreatFireBallRare: //大火球秘籍: 5秒延迟到点结算(目标移动≤2格才命中)
                 case Spell.ThunderBolt:
                 case Spell.SoulFireBall:
                 case Spell.FlameDisruptor:
@@ -6191,6 +7115,42 @@ namespace Server.MirObjects
 
                     if (target == null || !target.IsAttackTarget(this) || target.CurrentMap != CurrentMap || target.Node == null || !Functions.InRange(target.CurrentLocation, targetLocation, 2)) return;
                     if (target.Attacked(this, value, DefenceType.MAC, false) > 0) LevelMagic(magic);
+                    break;
+
+                #endregion
+
+                #region 法师奥义
+
+                case Spell.HeavenlySecrets: //天上秘术: 自身buff(参考源码行为: 专属BuffType, 30秒+10/级, 与深延术共存互不顶)
+                    {
+                        var stats = new Stats { [Stat.MaxMC] = 17 + magic.Level * 3 };
+                        AddBuff(BuffType.HeavenlySecrets, this, Settings.Second * 30 + magic.Level * 10000, stats, true);
+                        LevelMagic(magic);
+                    }
+                    break;
+
+                case Spell.ThunderBoltRare: //强击秘籍: 连锁再触发
+                    {
+                        target = (MapObject)data[2];
+                        targetLocation = (Point)data[3];
+                        int chainCount = data.Count > 4 && data[4] is int ? (int)data[4] : 0;
+                        ThunderBoltRare(target, targetLocation, magic, chainCount);
+                    }
+                    break;
+
+                case Spell.StormEscapeRare: //雷仙风秘籍: 750ms后传送到落点+时间之殇
+                    {
+                        location = (Point)data[1];
+                        if (CurrentMap.Info.NoTeleport)
+                        {
+                            ReceiveChat("You cannot teleport on this map.", ChatType.System);
+                            return;
+                        }
+                        if (!CurrentMap.ValidPoint(location) || Envir.Random.Next(4) >= magic.Level + 1 || !Teleport(CurrentMap, location, false)) return;
+                        CurrentMap.Broadcast(new S.ObjectEffect { ObjectID = ObjectID, Effect = SpellEffect.StormEscape }, CurrentLocation);
+                        AddBuff(BuffType.TemporalFlux, this, Settings.Second * 30, new Stats { [Stat.TeleportManaPenaltyPercent] = 30 });
+                        LevelMagic(magic);
+                    }
                     break;
 
                 #endregion
@@ -6280,6 +7240,7 @@ namespace Server.MirObjects
                 #region Healing
 
                 case Spell.Healing:
+                case Spell.HealingRare: //技能书补全: 治愈术-秘籍(大计量, cast侧已放大数值)
                     value = (int)data[1];
                     target = (MapObject)data[2];
 
@@ -6446,6 +7407,22 @@ namespace Server.MirObjects
                     break;
                 #endregion
 
+                #region ImmortalSkinRare
+
+                case Spell.ImmortalSkinRare: //技能书补全: 金刚不坏-秘籍(减伤更高/持续更久)
+                    {
+                        var stats = new Stats
+                        {
+                            [Stat.MaxDC] = (int)Math.Round(Stats[Stat.MaxDC] * (0.04 + (0.01 * magic.Level))) * -1,
+                            [Stat.MaxAC] = (int)Math.Round(Stats[Stat.MaxAC] * (0.15 + (0.08 * magic.Level)))
+                        };
+
+                        AddBuff(BuffType.ImmortalSkin, this, (Settings.Second * 90) + (magic.Level * 2000), stats);
+                        LevelMagic(magic);
+                    }
+                    break;
+                #endregion
+
                 #region LightBody
 
                 case Spell.LightBody:
@@ -6597,6 +7574,33 @@ namespace Server.MirObjects
                     if (duration > 0) target.ApplyPoison(new Poison { PType = PoisonType.Paralysis, Duration = duration, TickSpeed = 1000 }, this);
                     CurrentMap.Broadcast(new S.ObjectEffect { ObjectID = target.ObjectID, Effect = SpellEffect.Entrapment }, target.CurrentLocation);
                     if (target.Pushed(this, pulldirection, pulldistance) > 0) LevelMagic(magic);
+                    break;
+
+                #endregion
+
+                #region EntrapmentRare
+
+                case Spell.EntrapmentRare: //技能书补全: 捕绳剑-秘籍(更远(9格)+更长麻痹+玩家也可拉)
+                    value = (int)data[1];
+                    target = (MapObject)data[2];
+
+                    if (target == null || !target.IsAttackTarget(this) || target.CurrentMap != CurrentMap || target.Node == null ||
+                        Functions.MaxDistance(CurrentLocation, target.CurrentLocation) > 9 || target.Level >= Level + 6 + Envir.Random.Next(8)) return;
+
+                    MirDirection rarepulldirection = (MirDirection)((byte)(Direction - 4) % 8);
+                    int rarepulldistance;
+                    if ((byte)rarepulldirection % 2 > 0)
+                        rarepulldistance = Math.Max(0, Math.Min(Math.Abs(CurrentLocation.X - target.CurrentLocation.X), Math.Abs(CurrentLocation.Y - target.CurrentLocation.Y)));
+                    else
+                        rarepulldistance = rarepulldirection == MirDirection.Up || rarepulldirection == MirDirection.Down ? Math.Abs(CurrentLocation.Y - target.CurrentLocation.Y) - 2 : Math.Abs(CurrentLocation.X - target.CurrentLocation.X) - 2;
+
+                    int levelgapRare = target.Race == ObjectType.Player ? Level - target.Level + 6 : Level - target.Level + 11;
+                    if (Envir.Random.Next(30) >= ((magic.Level + 1) * 3) + levelgapRare) return;
+
+                    int durationRare = target.Race == ObjectType.Player ? (int)Math.Round((magic.Level + 1) * 2.4) : (int)Math.Round((magic.Level + 1) * 1.2);
+                    if (durationRare > 0) target.ApplyPoison(new Poison { PType = PoisonType.Paralysis, Duration = durationRare, TickSpeed = 1000 }, this);
+                    CurrentMap.Broadcast(new S.ObjectEffect { ObjectID = target.ObjectID, Effect = SpellEffect.Entrapment }, target.CurrentLocation);
+                    if (target.Pushed(this, rarepulldirection, rarepulldistance) > 0) LevelMagic(magic);
                     break;
 
                 #endregion
@@ -6790,6 +7794,9 @@ namespace Server.MirObjects
                 #region DelayedExplosion
 
                 case Spell.DelayedExplosion:
+                case Spell.DelayedExplosionRare: //技能书补全: 爆闪-秘籍(cast侧伤害+40%)
+                case Spell.ThunderStrike:        //技能书补全: 落雷击
+                case Spell.ThunderStrikeRare:    //技能书补全: 落雷击-秘籍(范围/减速在cast侧已处理)
                     value = (int)data[1];
                     target = (MapObject)data[2];
                     targetLocation = (Point)data[3];
@@ -7090,6 +8097,7 @@ namespace Server.MirObjects
 
             }
         }
+
         protected void CompleteMine(IList<object> data)
         {
             MapObject target = (MapObject)data[0];
@@ -7372,7 +8380,7 @@ namespace Server.MirObjects
                 MountType = Mount.MountType
             };
         }
-        protected Packet GetUpdateInfo()
+        public Packet GetUpdateInfo()
         {
             return new S.PlayerUpdate
             {
@@ -8889,6 +9897,18 @@ namespace Server.MirObjects
                     DaMoGunFa = true;
                     DaMoGunFaTime = Envir.Time + 9000;
                     Enqueue(new S.SpellToggle { ObjectID = ObjectID, Spell = Spell.DaMoGunFa, CanUse = true });
+                    ChangeMP(-cost);
+                    break;
+                case Spell.BloodDragon:
+                    if (BloodDragon || Envir.Time < BloodDragonTime) return;
+                    magic = GetMagic(spell);
+                    if (magic == null) return;
+                    cost = magic.Info.BaseCost + magic.Level * magic.Info.LevelCost;
+                    if (cost >= MP) return;
+
+                    BloodDragon = true;
+                    BloodDragonTime = Envir.Time + 10000;
+                    Enqueue(new S.SpellToggle { ObjectID = ObjectID, Spell = Spell.BloodDragon, CanUse = true });
                     ChangeMP(-cost);
                     break;
                 case Spell.TianLeiZhen:

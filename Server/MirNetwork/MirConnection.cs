@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Net.Sockets;
 using Server.MirDatabase;
 using Server.MirEnvir;
@@ -750,6 +750,15 @@ namespace Server.MirNetwork
                     return;
                 case (short)ClientPacketIds.DeleteItem:
                     DeleteItem((C.DeleteItem)p);
+                    break;
+                case (short)ClientPacketIds.ClientTalent:
+                    ClientTalent();
+                    break;
+                case (short)ClientPacketIds.LearnTalent:
+                    LearnTalent((C.LearnTalent)p);
+                    break;
+                case (short)ClientPacketIds.ResetTalentPoints:
+                    ResetTalentPoints();
                     break;
                 default:
                     MessageQueue.Enqueue(GameLanguage.ServerTextMap.GetLocalization((ServerTextKeys.InvalidPacketReceived), p.Index));
@@ -1913,7 +1922,10 @@ namespace Server.MirNetwork
         {
             if (Stage != GameStage.Game) return;
 
-            Player.AcceptQuest(p.QuestIndex); //p.NPCIndex,
+            // [任务接取修复] 恢复原版语义: 把客户端上报的NPC运行时ID(ObjectID)一并传入,
+            // 服务端用它做就近校验 —— 此前被注释掉后改用任务表的静态NpcIndex对比NPC运行时ObjectID,
+            // 导致服务器运行一段时间(怪物刷高ID计数器)后全场无ObjectID==NpcIndex的NPC, 接任务必失败需重启
+            Player.AcceptQuest(p.QuestIndex, p.NPCIndex);
         }
 
         private void FinishQuest(C.FinishQuest p)
@@ -2198,6 +2210,35 @@ namespace Server.MirNetwork
 
             Player.GetRentedItems();
         }
+
+        #region 天赋系统 - 客户端包处理(实际逻辑都在 PlayerObject.Talents.cs)
+        /// <summary>客户端请求天赋数据: 下发全表 + 玩家状态</summary>
+        private void ClientTalent()
+        {
+            if (Stage != GameStage.Game)
+                return;
+
+            Player.SendTalentInfo();
+        }
+
+        /// <summary>客户端请求学习/升级一个天赋</summary>
+        private void LearnTalent(C.LearnTalent p)
+        {
+            if (Stage != GameStage.Game)
+                return;
+
+            Player.LearnTalent(p.TalentId);
+        }
+
+        /// <summary>客户端请求洗点</summary>
+        private void ResetTalentPoints()
+        {
+            if (Stage != GameStage.Game)
+                return;
+
+            Player.ResetTalents();
+        }
+        #endregion
 
         private void ItemRentalRequest()
         {

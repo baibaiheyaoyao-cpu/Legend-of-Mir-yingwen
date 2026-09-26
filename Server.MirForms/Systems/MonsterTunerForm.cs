@@ -48,41 +48,62 @@ namespace Server.MirForms.Systems
             MSpeedTextBox.Text = monster.MoveSpeed.ToString();
         }
 
-        private void updateButton_Click(object sender, EventArgs e)
+        private bool TryApplyValues(out string errorField)
         {
+            errorField = null;
+
             MonsterInfo monster = (MonsterInfo)SelectMonsterComboBox.SelectedItem;
+            if (monster == null) return false;
 
-            if (monster == null) return;
+            int hp, effect, level, viewRange, coolEye;
+            int minAC, maxAC, minMAC, maxMAC, minDC, maxDC, minMC, maxMC, minSC, maxSC;
+            int accuracy, agility, aSpeed, mSpeed;
 
-            try
-            {
-                monster.Stats[Stat.HP] = int.Parse(HPTextBox.Text);
-                monster.Effect = byte.Parse(EffectTextBox.Text);
-                monster.Level = ushort.Parse(LevelTextBox.Text);
-                monster.ViewRange = byte.Parse(ViewRangeTextBox.Text);
-                monster.CoolEye = byte.Parse(CoolEyeTextBox.Text);
-                monster.Stats[Stat.MinAC] = ushort.Parse(MinACTextBox.Text);
-                monster.Stats[Stat.MaxAC] = ushort.Parse(MaxACTextBox.Text);
-                monster.Stats[Stat.MinMAC] = ushort.Parse(MinMACTextBox.Text);
-                monster.Stats[Stat.MaxMAC] = ushort.Parse(MaxMACTextBox.Text);
-                monster.Stats[Stat.MinDC] = ushort.Parse(MinDCTextBox.Text);
-                monster.Stats[Stat.MaxDC] = ushort.Parse(MaxDCTextBox.Text);
-                monster.Stats[Stat.MinMC] = ushort.Parse(MinMCTextBox.Text);
-                monster.Stats[Stat.MaxMC] = ushort.Parse(MaxMCTextBox.Text);
-                monster.Stats[Stat.MinSC] = ushort.Parse(MinSCTextBox.Text);
-                monster.Stats[Stat.MaxSC] = ushort.Parse(MaxSCTextBox.Text);
-                monster.Stats[Stat.Accuracy] = byte.Parse(AccuracyTextBox.Text);
-                monster.Stats[Stat.Agility] = byte.Parse(AgilityTextBox.Text);
-                monster.AttackSpeed = ushort.Parse(ASpeedTextBox.Text);
-                monster.MoveSpeed = ushort.Parse(MSpeedTextBox.Text);
-            }
-            catch
-            {
-                MessageBox.Show("数值校验失败，请修正后再刷新", "提示",
-                MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
-                return;
-            }
+            if (!int.TryParse(HPTextBox.Text, out hp)) { errorField = "HP"; return false; }
+            if (!int.TryParse(EffectTextBox.Text, out effect) || effect < 0 || effect > 255) { errorField = "Effect"; return false; }
+            if (!int.TryParse(LevelTextBox.Text, out level) || level < 0 || level > 65535) { errorField = "Level"; return false; }
+            if (!int.TryParse(ViewRangeTextBox.Text, out viewRange) || viewRange < 0 || viewRange > 255) { errorField = "ViewRange"; return false; }
+            if (!int.TryParse(CoolEyeTextBox.Text, out coolEye) || coolEye < 0 || coolEye > 255) { errorField = "CoolEye"; return false; }
+            if (!int.TryParse(MinACTextBox.Text, out minAC)) { errorField = "MinAC"; return false; }
+            if (!int.TryParse(MaxACTextBox.Text, out maxAC)) { errorField = "MaxAC"; return false; }
+            if (!int.TryParse(MinMACTextBox.Text, out minMAC)) { errorField = "MinMAC"; return false; }
+            if (!int.TryParse(MaxMACTextBox.Text, out maxMAC)) { errorField = "MaxMAC"; return false; }
+            if (!int.TryParse(MinDCTextBox.Text, out minDC)) { errorField = "MinDC"; return false; }
+            if (!int.TryParse(MaxDCTextBox.Text, out maxDC)) { errorField = "MaxDC"; return false; }
+            if (!int.TryParse(MinMCTextBox.Text, out minMC)) { errorField = "MinMC"; return false; }
+            if (!int.TryParse(MaxMCTextBox.Text, out maxMC)) { errorField = "MaxMC"; return false; }
+            if (!int.TryParse(MinSCTextBox.Text, out minSC)) { errorField = "MinSC"; return false; }
+            if (!int.TryParse(MaxSCTextBox.Text, out maxSC)) { errorField = "MaxSC"; return false; }
+            if (!int.TryParse(AccuracyTextBox.Text, out accuracy) || accuracy < 0 || accuracy > 255) { errorField = "Accuracy"; return false; }
+            if (!int.TryParse(AgilityTextBox.Text, out agility) || agility < 0 || agility > 255) { errorField = "Agility"; return false; }
+            if (!int.TryParse(ASpeedTextBox.Text, out aSpeed)) { errorField = "AttackSpeed"; return false; }
+            if (!int.TryParse(MSpeedTextBox.Text, out mSpeed)) { errorField = "MoveSpeed"; return false; }
 
+            monster.Stats[Stat.HP] = hp;
+            monster.Effect = (byte)effect;
+            monster.Level = (ushort)level;
+            monster.ViewRange = (byte)viewRange;
+            monster.CoolEye = (byte)coolEye;
+            monster.Stats[Stat.MinAC] = minAC;
+            monster.Stats[Stat.MaxAC] = maxAC;
+            monster.Stats[Stat.MinMAC] = minMAC;
+            monster.Stats[Stat.MaxMAC] = maxMAC;
+            monster.Stats[Stat.MinDC] = minDC;
+            monster.Stats[Stat.MaxDC] = maxDC;
+            monster.Stats[Stat.MinMC] = minMC;
+            monster.Stats[Stat.MaxMC] = maxMC;
+            monster.Stats[Stat.MinSC] = minSC;
+            monster.Stats[Stat.MaxSC] = maxSC;
+            monster.Stats[Stat.Accuracy] = accuracy;
+            monster.Stats[Stat.Agility] = agility;
+            monster.AttackSpeed = (ushort)aSpeed;
+            monster.MoveSpeed = (ushort)mSpeed;
+
+            return true;
+        }
+
+        private void RefreshLiveMonsters()
+        {
             foreach (var item in Envir.Objects)
             {
                 if (item.Race != ObjectType.Monster) continue;
@@ -93,20 +114,71 @@ namespace Server.MirForms.Systems
             }
         }
 
-        private void SaveButton_Click(object sender, EventArgs e)
+        private void SyncToEditEnvir(MonsterInfo monster)
         {
-            for (int i = 0; i < SelectMonsterComboBox.Items.Count; i++)
+            var editList = SMain.EditEnvir.MonsterInfoList;
+
+            for (int i = 0; i < editList.Count; i++)
             {
-                MonsterInfo mob = (MonsterInfo)SelectMonsterComboBox.Items[i];
+                if (editList[i].Index != monster.Index) continue;
 
-                if (mob == null) continue;
+                MonsterInfo edit = editList[i];
 
-                if (Envir.MonsterInfoList[i].Index != mob.Index) break;
+                edit.Effect = monster.Effect;
+                edit.Level = monster.Level;
+                edit.ViewRange = monster.ViewRange;
+                edit.CoolEye = monster.CoolEye;
+                edit.AttackSpeed = monster.AttackSpeed;
+                edit.MoveSpeed = monster.MoveSpeed;
 
-                Envir.MonsterInfoList[i] = mob;
+                edit.Stats.Clear();
+                edit.Stats.Add(monster.Stats);
+
+                break;
+            }
+        }
+
+        private void updateButton_Click(object sender, EventArgs e)
+        {
+            MonsterInfo monster = (MonsterInfo)SelectMonsterComboBox.SelectedItem;
+
+            if (monster == null) return;
+
+            string errorField;
+            if (!TryApplyValues(out errorField))
+            {
+                if (errorField != null)
+                    MessageBox.Show("字段[" + errorField + "]数值校验失败, 未做任何修改", "提示",
+                    MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+                return;
             }
 
+            RefreshLiveMonsters();
+            SyncToEditEnvir(monster);
+        }
+
+        private void SaveButton_Click(object sender, EventArgs e)
+        {
+            MonsterInfo monster = (MonsterInfo)SelectMonsterComboBox.SelectedItem;
+
+            if (monster == null) return;
+
+            string errorField;
+            if (!TryApplyValues(out errorField))
+            {
+                if (errorField != null)
+                    MessageBox.Show("字段[" + errorField + "]数值校验失败, 未做任何修改", "提示",
+                    MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+                return;
+            }
+
+            RefreshLiveMonsters();
+            SyncToEditEnvir(monster);
+
             Envir.SaveDB();
+
+            MessageBox.Show("已应用并保存到数据库", "怪物调整器",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
     }
 }

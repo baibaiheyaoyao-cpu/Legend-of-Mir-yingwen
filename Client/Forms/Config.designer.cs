@@ -1,6 +1,6 @@
 ﻿namespace Launcher
 {
-    partial class Config
+    partial class Config   //设置面板?
     {
         /// <summary>
         /// Required designer variable.
@@ -222,9 +222,9 @@
             Fullscreen_label.Location = new Point(40, 67);
             Fullscreen_label.Margin = new Padding(4, 0, 4, 0);
             Fullscreen_label.Name = "Fullscreen_label";
-            Fullscreen_label.Size = new Size(56, 13);
+            Fullscreen_label.Size = new Size(31, 13);
             Fullscreen_label.TabIndex = 14;
-            Fullscreen_label.Text = "Fullscreen";
+            Fullscreen_label.Text = "全屏";
             Fullscreen_label.Click += Fullscreen_pb_Click;
             // 
             // Fullscreen_pb
@@ -247,9 +247,9 @@
             OnTop_label.Location = new Point(40, 128);
             OnTop_label.Margin = new Padding(4, 0, 4, 0);
             OnTop_label.Name = "OnTop_label";
-            OnTop_label.Size = new Size(72, 13);
+            OnTop_label.Size = new Size(67, 13);
             OnTop_label.TabIndex = 16;
-            OnTop_label.Text = "Always on top";
+            OnTop_label.Text = "总是在最前";
             OnTop_label.Click += OnTop_pb_Click;
             // 
             // OnTop_pb
@@ -326,9 +326,10 @@
             label9.Location = new Point(23, 48);
             label9.Margin = new Padding(4, 0, 4, 0);
             label9.Name = "label9";
-            label9.Size = new Size(55, 14);
+            label9.Size = new Size(31, 14);
             label9.TabIndex = 21;
-            label9.Text = "Graphics";
+            label9.Text = "窗口";
+            label9.Click += label9_Click;
             // 
             // label10
             // 
@@ -339,9 +340,9 @@
             label10.Location = new Point(157, 48);
             label10.Margin = new Padding(4, 0, 4, 0);
             label10.Name = "label10";
-            label10.Size = new Size(66, 14);
+            label10.Size = new Size(43, 14);
             label10.TabIndex = 22;
-            label10.Text = "Resolution";
+            label10.Text = "分辨率";
             // 
             // label11
             // 

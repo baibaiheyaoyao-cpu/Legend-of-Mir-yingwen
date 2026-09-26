@@ -78,6 +78,7 @@ namespace Server
             DCharacterCheckBox = new CheckBox();
             AllowAssassinCheckBox = new CheckBox();
             AllowArcherCheckBox = new CheckBox();
+            AllowMonkCheckBox = new CheckBox();
             gbLoginScreen = new GroupBox();
             AccountCheckBox = new CheckBox();
             PasswordCheckBox = new CheckBox();
@@ -625,9 +626,10 @@ namespace Server
             gbCharacterScreen.Controls.Add(DCharacterCheckBox);
             gbCharacterScreen.Controls.Add(AllowAssassinCheckBox);
             gbCharacterScreen.Controls.Add(AllowArcherCheckBox);
+            gbCharacterScreen.Controls.Add(AllowMonkCheckBox);
             gbCharacterScreen.Location = new Point(17, 154);
             gbCharacterScreen.Name = "gbCharacterScreen";
-            gbCharacterScreen.Size = new Size(157, 162);
+            gbCharacterScreen.Size = new Size(157, 190);
             gbCharacterScreen.TabIndex = 1;
             gbCharacterScreen.TabStop = false;
             gbCharacterScreen.Text = "选人界面";
@@ -686,6 +688,17 @@ namespace Server
             AllowArcherCheckBox.TabIndex = 13;
             AllowArcherCheckBox.Text = "允许弓手职业";
             AllowArcherCheckBox.UseVisualStyleBackColor = true;
+            // 
+            // AllowMonkCheckBox
+            // 
+            AllowMonkCheckBox.AutoSize = true;
+            AllowMonkCheckBox.Location = new Point(6, 158);
+            AllowMonkCheckBox.Margin = new Padding(3, 4, 3, 4);
+            AllowMonkCheckBox.Name = "AllowMonkCheckBox";
+            AllowMonkCheckBox.Size = new Size(100, 19);
+            AllowMonkCheckBox.TabIndex = 32;
+            AllowMonkCheckBox.Text = "允许武僧职业";
+            AllowMonkCheckBox.UseVisualStyleBackColor = true;
             // 
             // gbLoginScreen
             // 
@@ -1159,6 +1172,7 @@ namespace Server
         private System.Windows.Forms.CheckBox SafeZoneHealingCheckBox;
         private System.Windows.Forms.CheckBox AllowArcherCheckBox;
         private System.Windows.Forms.CheckBox AllowAssassinCheckBox;
+        private System.Windows.Forms.CheckBox AllowMonkCheckBox;
         private System.Windows.Forms.Label label9;
         private System.Windows.Forms.Label label8;
         private System.Windows.Forms.TextBox Resolution_textbox;

@@ -2,7 +2,7 @@
 using Client.MirScenes;
 using Client.MirSounds;
 
-namespace Client.MirObjects
+namespace Client.MirObjects       //传奇客户端里的"游戏对象"
 {
     public class Effect
     {
@@ -456,6 +456,36 @@ namespace Client.MirObjects
                 MapControl.Effects.Remove(this);
         }
 
+    }
+
+    /// <summary>
+    /// 带方向分组的独立特效(如 MagicD 8方向×20帧的印技能素材), 节奏自定不受攻击动作帧率约束.
+    /// </summary>
+    public class DirectionalEffect : Effect
+    {
+        public int Direction;
+        public int Stride;
+
+        public DirectionalEffect(MLibrary library, int baseIndex, int count, int duration, MapObject owner, int direction, int stride)
+            : base(library, baseIndex, count, duration, owner)
+        {
+            Direction = direction;
+            Stride = stride;
+        }
+
+        public override void Draw()
+        {
+            if (CMain.Time < Start) return;
+
+            DrawLocation = Owner.DrawLocation;
+
+            int index = BaseIndex + Direction * Stride + CurrentFrame;
+
+            if (Blend)
+                Library.DrawBlend(index, DrawLocation, Color.White, true, Rate);
+            else
+                Library.Draw(index, DrawLocation, Color.White, true);
+        }
     }
 
     public class LightEffect : Effect

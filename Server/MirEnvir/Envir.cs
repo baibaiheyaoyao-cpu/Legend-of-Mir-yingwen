@@ -15,7 +15,7 @@ using S = ServerPackets;
 
 namespace Server.MirEnvir
 {
-    public class MobThread
+    public class MobThread  //  
     {
         public int Id = 0;
         public long LastRunTime = 0;
@@ -53,8 +53,13 @@ namespace Server.MirEnvir
         public static object LoadLock = new object();
 
         public const int MinVersion = 60;
-        public const int Version = 118;
-        public const int CustomVersion = 0;
+        //版本119: CharacterInfo 新增天赋存档字段(TalentList/TalentPoints/TalentPointsGranted)
+        //注意: 版本118已被罗汉棍法(LuoHanGunFa)字段占用, 旧库按版本判断自动兼容
+        //版本120: RespawnInfo 新增"无人不刷怪"字段(NoPlayerNoSpawn), 旧库按版本判断默认False
+        //版本121: MapInfo 新增地图级"无人不刷怪"字段(NoPlayerNoSpawn), 整张地图无玩家时不补怪, 旧库按版本判断默认False
+        public const int Version = 121;
+        //自定义版本1: UserItem 的 BreakthroughCount 字段(装备突破系统已移除, 字段仅为旧档读写兼容保留, 恒为0)
+        public const int CustomVersion = 1;
         public static readonly string DatabasePath = Path.Combine(".", "Server.MirDB");
         public static readonly string AccountPath = Path.Combine(".", "Server.MirADB");
         public static readonly string BackUpPath = Path.Combine(".", "Back Up");
@@ -63,6 +68,20 @@ namespace Server.MirEnvir
         public static readonly string ArchivePath = Path.Combine(".", "Archive");
         public bool ResetGS = false;
         public bool GuildRefreshNeeded;
+
+        /// <summary>
+        /// 物品热同步: 编辑器(Envir.Edit)保存时排队的同步动作, 由运行库(Main)的 WorkLoop
+        /// 在服务器线程内执行, 保证与周期存盘(SaveDB)串行无竞争.
+        /// </summary>
+        private Action _pendingItemSync;
+        private Action _pendingMainAction; //通用主线程任务队列(控制面板等UI线程投递)
+
+        /// <summary>
+        /// 物品防回滚: 编辑器里已删除、但运行库内存中仍可能被在线玩家引用的物品编号.
+        /// SaveDB 落盘时跳过这些编号, 避免运行中的服务器把已删物品"写活";
+        /// 重新 LoadDB(重启/重启服务)后自动清空.
+        /// </summary>
+        public readonly HashSet<int> SuppressedItemIndexes = new HashSet<int>();
 
         private static readonly Regex AccountIDReg, PasswordReg, EMailReg, CharacterReg;
 
@@ -115,9 +134,12 @@ namespace Server.MirEnvir
         public List<MagicInfo> MagicInfoList = new List<MagicInfo>();
         public List<NPCInfo> NPCInfoList = new List<NPCInfo>();
         public DragonInfo DragonInfo = new DragonInfo();
+        public List<FieldBossInfo> FieldBossInfoList = new List<FieldBossInfo>();
         public List<QuestInfo> QuestInfoList = new List<QuestInfo>();
         public List<GameShopItem> GameShopList = new List<GameShopItem>();
         public List<RecipeInfo> RecipeInfoList = new List<RecipeInfo>();
+        //天赋系统 - 全局天赋表(Envir\Talents.txt)
+        public List<Server.MirDatabase.TalentInfo> TalentInfoList = new List<Server.MirDatabase.TalentInfo>();
         public List<BuffInfo> BuffInfoList = new List<BuffInfo>();
         public List<ConquestInfo> ConquestInfoList = new List<ConquestInfo>();
         public List<GTMap> GTMapList = new List<GTMap>();
@@ -138,6 +160,7 @@ namespace Server.MirEnvir
         //Live Info
         public bool Saving = false;
         public List<Map> MapList = new List<Map>();
+        public List<Map> MapUnloadQueue = new List<Map>();
         public List<SafeZoneInfo> StartPoints = new List<SafeZoneInfo>();
         public List<ItemInfo> StartItems = new List<ItemInfo>();
 
@@ -155,13 +178,14 @@ namespace Server.MirEnvir
 
         //multithread vars
         readonly object _locker = new object();
-        public MobThread[] MobThreads = new MobThread[Settings.ThreadLimit];
-        private readonly Thread[] MobThreading = new Thread[Settings.ThreadLimit];
+        public MobThread[] MobThreads = new MobThread[Math.Max(2, Settings.ThreadLimit)];
+        private Thread[] MobThreading = new Thread[Math.Max(2, Settings.ThreadLimit)];
         public int SpawnMultiplier = 1;//set this to 2 if you want double spawns (warning this can easily lag your server far beyond what you imagine)
 
         public List<string> CustomCommands = new List<string>();
 
         public Dragon DragonSystem;
+        public FieldBossSystem FieldBossSystem;
         public NPCScript DefaultNPC, MonsterNPC, RobotNPC;
 
         public List<DropInfo> FishingDrops = new List<DropInfo>();
@@ -292,6 +316,44 @@ namespace Server.MirEnvir
 
         private void FillMagicInfoList()
         {
+            // ==== 技能书补全计划: 秘籍系注册(数值取自参考源码/技能书体系, 图标可用GUI再调) ====
+            //战士秘籍
+            if (!MagicExists(Spell.ImmortalSkinRare))
+                MagicInfoList.Add(new MagicInfo { Name = "金刚不坏-秘籍", Spell = Spell.ImmortalSkinRare, Icon = 84, Level1 = 62, Level2 = 64, Level3 = 66, Need1 = 1000, Need2 = 1560, Need3 = 2200, BaseCost = 10, LevelCost = 4, DelayBase = 600000, DelayReduction = 120000, Range = 0 });
+            if (!MagicExists(Spell.EntrapmentRare))
+                MagicInfoList.Add(new MagicInfo { Name = "捕绳剑-秘籍", Spell = Spell.EntrapmentRare, Icon = 107, Level1 = 55, Level2 = 60, Level3 = 65, Need1 = 10000, Need2 = 13000, Need3 = 16000, BaseCost = 15, LevelCost = 3, DelayBase = 15000, DelayReduction = 3000, Range = 9 });
+            if (!MagicExists(Spell.LionRoarRare))
+                MagicInfoList.Add(new MagicInfo { Name = "狮子吼-秘籍", Spell = Spell.LionRoarRare, Icon = 112, Level1 = 95, Level2 = 97, Level3 = 102, Need1 = 8900, Need2 = 15000, Need3 = 21600, BaseCost = 14, LevelCost = 4, DelayBase = 30000, DelayReduction = 5000, Range = 0 });
+            if (!MagicExists(Spell.DimensionalSword))
+                MagicInfoList.Add(new MagicInfo { Name = "时空剑", Spell = Spell.DimensionalSword, Icon = 117, Level1 = 90, Level2 = 92, Level3 = 94, Need1 = 3800, Need2 = 6300, Need3 = 9300, BaseCost = 32, LevelCost = 4, MPowerBase = 1, PowerBase = 3, DelayBase = 14000, DelayReduction = 4000, Range = 2, MultiplierBase = 1f, MultiplierBonus = 0.25f });
+            if (!MagicExists(Spell.DimensionalSwordRare))
+                MagicInfoList.Add(new MagicInfo { Name = "时空剑-秘籍", Spell = Spell.DimensionalSwordRare, Icon = 122, Level1 = 100, Level2 = 105, Level3 = 110, Need1 = 8800, Need2 = 13000, Need3 = 21600, BaseCost = 32, LevelCost = 4, MPowerBase = 1, PowerBase = 3, DelayBase = 14000, DelayReduction = 4000, Range = 3, MultiplierBase = 1f, MultiplierBonus = 0.25f });
+            //道士秘籍
+            if (!MagicExists(Spell.HealingRare))
+                MagicInfoList.Add(new MagicInfo { Name = "治愈术-秘籍", Spell = Spell.HealingRare, Icon = 109, Level1 = 55, Level2 = 60, Level3 = 65, Need1 = 17000, Need2 = 22000, Need3 = 27000, BaseCost = 3, LevelCost = 2, MPowerBase = 14, DelayBase = 3000, DelayReduction = 500, Range = 9 });
+            if (!MagicExists(Spell.PetEnhancerRare))
+                MagicInfoList.Add(new MagicInfo { Name = "血龙水-秘籍", Spell = Spell.PetEnhancerRare, Icon = 115, Level1 = 95, Level2 = 97, Level3 = 102, Need1 = 23600, Need2 = 38900, Need3 = 57900, BaseCost = 12, LevelCost = 4, DelayBase = 60000, DelayReduction = 10000, Range = 0 });
+            //刺客秘籍
+            if (!MagicExists(Spell.FlashDashRare))
+                MagicInfoList.Add(new MagicInfo { Name = "拔刀术-秘籍", Spell = Spell.FlashDashRare, Icon = 94, Level1 = 70, Level2 = 72, Level3 = 74, Need1 = 12000, Need2 = 18000, Need3 = 26000, BaseCost = 12, LevelCost = 3, DelayBase = 11000, DelayReduction = 2000, Range = 3 });
+            if (!MagicExists(Spell.MoonMistRare))
+                MagicInfoList.Add(new MagicInfo { Name = "月影雾-秘籍", Spell = Spell.MoonMistRare, Icon = 106, Level1 = 60, Level2 = 62, Level3 = 64, Need1 = 14000, Need2 = 21000, Need3 = 30000, BaseCost = 22, LevelCost = 3, DelayBase = 20000, DelayReduction = 4000, Range = 0 });
+            if (!MagicExists(Spell.CrescentSlashRare))
+                MagicInfoList.Add(new MagicInfo { Name = "月华乱舞-秘籍", Spell = Spell.CrescentSlashRare, Icon = 113, Level1 = 95, Level2 = 97, Level3 = 102, Need1 = 23600, Need2 = 38900, Need3 = 57600, BaseCost = 19, LevelCost = 3, DelayBase = 13000, DelayReduction = 3000, Range = 0 });
+            if (!MagicExists(Spell.ShadowCombo))
+                MagicInfoList.Add(new MagicInfo { Name = "闪影连击", Spell = Spell.ShadowCombo, Icon = 105, Level1 = 85, Level2 = 88, Level3 = 91, Need1 = 15000, Need2 = 24000, Need3 = 36000, BaseCost = 14, LevelCost = 3, DelayBase = 13000, DelayReduction = 3000, Range = 3 });
+            if (!MagicExists(Spell.ShadowComboRare))
+                MagicInfoList.Add(new MagicInfo { Name = "闪影连击-秘籍", Spell = Spell.ShadowComboRare, Icon = 105, Level1 = 95, Level2 = 98, Level3 = 101, Need1 = 24000, Need2 = 39000, Need3 = 57600, BaseCost = 18, LevelCost = 3, DelayBase = 13000, DelayReduction = 3000, Range = 3 });
+            //弓手秘籍
+            if (!MagicExists(Spell.DelayedExplosionRare))
+                MagicInfoList.Add(new MagicInfo { Name = "爆闪-秘籍", Spell = Spell.DelayedExplosionRare, Icon = 125, Level1 = 95, Level2 = 97, Level3 = 100, Need1 = 20000, Need2 = 32000, Need3 = 46000, BaseCost = 18, LevelCost = 3, DelayBase = 12000, DelayReduction = 3000, Range = 9 });
+            if (!MagicExists(Spell.ConcentrationRare))
+                MagicInfoList.Add(new MagicInfo { Name = "气流术-秘籍", Spell = Spell.ConcentrationRare, Icon = 129, Level1 = 60, Level2 = 62, Level3 = 64, Need1 = 12000, Need2 = 19000, Need3 = 28000, BaseCost = 30, LevelCost = 5, DelayBase = 30000, DelayReduction = 5000, Range = 0 });
+            if (!MagicExists(Spell.ThunderStrike))
+                MagicInfoList.Add(new MagicInfo { Name = "落雷击", Spell = Spell.ThunderStrike, Icon = 140, Level1 = 85, Level2 = 88, Level3 = 91, Need1 = 18000, Need2 = 29000, Need3 = 42000, BaseCost = 25, LevelCost = 4, DelayBase = 12000, DelayReduction = 3000, Range = 9 });
+            if (!MagicExists(Spell.ThunderStrikeRare))
+                MagicInfoList.Add(new MagicInfo { Name = "落雷击-秘籍", Spell = Spell.ThunderStrikeRare, Icon = 140, Level1 = 95, Level2 = 98, Level3 = 101, Need1 = 24000, Need2 = 39000, Need3 = 57600, BaseCost = 32, LevelCost = 4, DelayBase = 12000, DelayReduction = 3000, Range = 9 });
+
             //Warrior
             if (!MagicExists(Spell.Fencing))
                 MagicInfoList.Add(new MagicInfo { Name = "Fencing", Spell = Spell.Fencing, Icon = 2, Level1 = 7, Level2 = 9, Level3 = 12, Need1 = 270, Need2 = 600, Need3 = 1300, Range = 0 });
@@ -387,6 +449,23 @@ namespace Server.MirEnvir
                     Name = "FlamingSword",
                     Spell = Spell.FlamingSword,
                     Icon = 25,
+                    Level1 = 35,
+                    Level2 = 37,
+                    Level3 = 40,
+                    Need1 = 2000,
+                    Need2 = 4000,
+                    Need3 = 6000,
+                    BaseCost = 7,
+                    Range = 0,
+                    MultiplierBase = 1.4f,
+                    MultiplierBonus = 0.4f
+                });
+            if (!MagicExists(Spell.BloodDragon))
+                MagicInfoList.Add(new MagicInfo
+                {
+                    Name = "血龙震",
+                    Spell = Spell.BloodDragon,
+                    Icon = 37,
                     Level1 = 35,
                     Level2 = 37,
                     Level3 = 40,
@@ -1264,6 +1343,101 @@ namespace Server.MirEnvir
                     DelayReduction = 2000,
                     Range = 9
                 });
+
+            //万效符(87)/秘笈(88) + 法师奥义x6: 数值移植自angelk727
+            //(20260922改) 原为"找到即覆写"式启动覆写(清理实验期DB残留用), 迁移已完成,
+            //副作用是魔法编辑器/DbTool对这些技能的修改每次启动被无声回滚——现改为
+            //"缺则补"式注册, DB为唯一权威, 面板改完点"保存DB"即长期生效。
+            if (!MagicExists(Spell.WanXiaoFu))
+                MagicInfoList.Add(new MagicInfo { Spell = Spell.WanXiaoFu, Name = "万效符", Icon = 120, Level1 = 90, Level2 = 92, Level3 = 94, Need1 = 18500, Need2 = 29900, Need3 = 43200, BaseCost = 2, LevelCost = 2, DelayBase = 3000, DelayReduction = 250, Range = 9 });
+            if (!MagicExists(Spell.WanXiaoFuRare))
+                MagicInfoList.Add(new MagicInfo { Spell = Spell.WanXiaoFuRare, Name = "万效符秘笈", Icon = 125, Level1 = 100, Level2 = 105, Level3 = 110, Need1 = 23600, Need2 = 38900, Need3 = 57600, BaseCost = 2, LevelCost = 2, DelayBase = 3000, DelayReduction = 250, Range = 9 });
+            if (!MagicExists(Spell.HeavenlySecrets))
+                MagicInfoList.Add(new MagicInfo { Spell = Spell.HeavenlySecrets, Name = "天上秘术", Icon = 77, Level1 = 50, Level2 = 63, Level3 = 56, Need1 = 1000, Need2 = 2000, Need3 = 3500, BaseCost = 28, LevelCost = 2, DelayBase = 600000, DelayReduction = 100000, Range = 0 });
+            if (!MagicExists(Spell.GreatFireBallRare))
+                MagicInfoList.Add(new MagicInfo { Spell = Spell.GreatFireBallRare, Name = "大火球秘籍", Icon = 108, Level1 = 55, Level2 = 60, Level3 = 65, Need1 = 17000, Need2 = 22000, Need3 = 27000, BaseCost = 5, LevelCost = 1, MPowerBase = 15, PowerBase = 18, DelayBase = 5000, DelayReduction = 1000, Range = 9 });
+            if (!MagicExists(Spell.ThunderBoltRare))
+                MagicInfoList.Add(new MagicInfo { Spell = Spell.ThunderBoltRare, Name = "强击秘籍", Icon = 114, Level1 = 95, Level2 = 97, Level3 = 102, Need1 = 7410, Need2 = 12540, Need3 = 19200, BaseCost = 9, LevelCost = 2, MPowerBase = 8, MPowerBonus = 20, PowerBase = 9, DelayBase = 8000, DelayReduction = 2000, Range = 9 });
+            if (!MagicExists(Spell.StormEscapeRare))
+                MagicInfoList.Add(new MagicInfo { Spell = Spell.StormEscapeRare, Name = "雷仙风秘籍", Icon = 85, Level1 = 62, Level2 = 64, Level3 = 66, Need1 = 2200, Need2 = 3300, Need3 = 4400, BaseCost = 65, LevelCost = 8, MPowerBase = 30, PowerBase = 10, DelayBase = 300000, DelayReduction = 40000, Range = 9 });
+            if (!MagicExists(Spell.SoulflameSiphon))
+                MagicInfoList.Add(new MagicInfo { Spell = Spell.SoulflameSiphon, Name = "吸魔炎风", Icon = 119, Level1 = 90, Level2 = 92, Level3 = 94, Need1 = 6300, Need2 = 9300, Need3 = 15200, BaseCost = 30, LevelCost = 5, MPowerBase = 3, PowerBase = 3, DelayBase = 12000, DelayReduction = 3000, Range = 9 });
+            if (!MagicExists(Spell.SoulflameSiphonRare))
+                MagicInfoList.Add(new MagicInfo { Spell = Spell.SoulflameSiphonRare, Name = "吸魔炎风秘籍", Icon = 124, Level1 = 100, Level2 = 105, Level3 = 110, Need1 = 8800, Need2 = 13000, Need3 = 21600, BaseCost = 30, LevelCost = 5, MPowerBase = 3, PowerBase = 3, DelayBase = 12000, DelayReduction = 3000, Range = 9 });
+
+            //---- 道士宠物召唤: 风灵(615)/幻灵(616) [AI-Claude 2026-08-30] ----
+            //宠物MonsterInfo: find-or-create + 每次启动覆写可调参数(DB会持久化旧记录 直接改创建代码不生效)
+            MonsterInfo windInfo = MonsterInfoList.FirstOrDefault(t => t.Name == "风灵" && t.AI == 230);
+            if (windInfo == null)
+            {
+                MonsterInfoList.Add(windInfo = new MonsterInfo { Index = ++MonsterIndex, Name = "风灵", Image = (Monster)615, AI = 230 });
+                MessageQueue.Instance.Enqueue("[宠物注册] 风灵(615) MonsterInfo已创建 AI=230");
+            }
+            windInfo.Level = 30;
+            windInfo.ViewRange = 7;
+            windInfo.CanTame = false;
+            windInfo.CanRecall = true;
+            windInfo.AttackSpeed = 1600;
+            windInfo.MoveSpeed = 500;
+            windInfo.Stats = new Stats { [Stat.HP] = 600, [Stat.MinDC] = 30, [Stat.MaxDC] = 45, [Stat.MinAC] = 10, [Stat.MaxAC] = 20, [Stat.MinMAC] = 10, [Stat.MaxMAC] = 20 };
+
+            MonsterInfo phantomInfo = MonsterInfoList.FirstOrDefault(t => t.Name == "幻灵" && t.AI == 231);
+            if (phantomInfo == null)
+            {
+                MonsterInfoList.Add(phantomInfo = new MonsterInfo { Index = ++MonsterIndex, Name = "幻灵", Image = (Monster)616, AI = 231 });
+                MessageQueue.Instance.Enqueue("[宠物注册] 幻灵(616) MonsterInfo已创建 AI=231");
+            }
+            phantomInfo.Level = 60;
+            phantomInfo.ViewRange = 7;
+            phantomInfo.CanTame = false;
+            phantomInfo.CanRecall = true;
+            phantomInfo.AttackSpeed = 2000;
+            phantomInfo.MoveSpeed = 600;
+            phantomInfo.Stats = new Stats { [Stat.HP] = 1200, [Stat.MinDC] = 60, [Stat.MaxDC] = 90, [Stat.MinAC] = 20, [Stat.MaxAC] = 40, [Stat.MinMAC] = 20, [Stat.MaxMAC] = 40 };
+
+            //上古神谕(415): 远程弹道 复用风灵AI(232)
+            MonsterInfo oracleInfo = MonsterInfoList.FirstOrDefault(t => t.Name == "上古神谕" && t.AI == 232);
+            if (oracleInfo == null)
+            {
+                MonsterInfoList.Add(oracleInfo = new MonsterInfo { Index = ++MonsterIndex, Name = "上古神谕", Image = (Monster)415, AI = 232 });
+                MessageQueue.Instance.Enqueue("[宠物注册] 上古神谕(415) MonsterInfo已创建 AI=232");
+            }
+            oracleInfo.Level = 55;
+            oracleInfo.ViewRange = 7;
+            oracleInfo.CanTame = false;
+            oracleInfo.CanRecall = true;
+            oracleInfo.AttackSpeed = 1600;
+            oracleInfo.MoveSpeed = 500;
+            oracleInfo.Stats = new Stats { [Stat.HP] = 1200, [Stat.MinDC] = 40, [Stat.MaxDC] = 60, [Stat.MinAC] = 15, [Stat.MaxAC] = 30, [Stat.MinMAC] = 15, [Stat.MaxMAC] = 30 };
+
+            //技能注册: 召唤风灵(108) / 召唤幻灵(109)
+            MagicInfo ylInfo = MagicInfoList.FirstOrDefault(t => t.Spell == Spell.Yling);
+            if (ylInfo == null) MagicInfoList.Add(ylInfo = new MagicInfo { Spell = Spell.Yling });
+            ylInfo.Name = "召唤风灵"; ylInfo.Icon = 116;
+            ylInfo.Level1 = 45; ylInfo.Level2 = 47; ylInfo.Level3 = 50;
+            ylInfo.Need1 = 8000; ylInfo.Need2 = 13000; ylInfo.Need3 = 20000;
+            ylInfo.BaseCost = 25; ylInfo.LevelCost = 5;
+            ylInfo.DelayBase = 3000; ylInfo.DelayReduction = 250;
+            ylInfo.Range = 0;
+
+            MagicInfo hlInfo = MagicInfoList.FirstOrDefault(t => t.Spell == Spell.Hling);
+            if (hlInfo == null) MagicInfoList.Add(hlInfo = new MagicInfo { Spell = Spell.Hling });
+            hlInfo.Name = "召唤幻灵"; hlInfo.Icon = 117;
+            hlInfo.Level1 = 75; hlInfo.Level2 = 77; hlInfo.Level3 = 80;
+            hlInfo.Need1 = 20000; hlInfo.Need2 = 30000; hlInfo.Need3 = 40000;
+            hlInfo.BaseCost = 40; hlInfo.LevelCost = 5;
+            hlInfo.DelayBase = 3000; hlInfo.DelayReduction = 250;
+            hlInfo.Range = 0;
+
+            MagicInfo aoInfo = MagicInfoList.FirstOrDefault(t => t.Spell == Spell.AncientOracle);
+            if (aoInfo == null) MagicInfoList.Add(aoInfo = new MagicInfo { Spell = Spell.AncientOracle });
+            aoInfo.Name = "召唤上古神谕"; aoInfo.Icon = 118;
+            aoInfo.Level1 = 55; aoInfo.Level2 = 57; aoInfo.Level3 = 60;
+            aoInfo.Need1 = 12000; aoInfo.Need2 = 20000; aoInfo.Need3 = 30000;
+            aoInfo.BaseCost = 30; aoInfo.LevelCost = 5;
+            aoInfo.DelayBase = 3000; aoInfo.DelayReduction = 250;
+            aoInfo.Range = 0;
+
             if (!MagicExists(Spell.EnergyShield))
                 MagicInfoList.Add(new MagicInfo
                 {
@@ -2072,6 +2246,58 @@ namespace Server.MirEnvir
                 });
         }
 
+        /// <summary>
+        /// (已移除 20260922) 原SyncRareSkillCooldowns: 7技能(捕绳剑/狮子吼/治愈术/血龙水/月影雾/
+        /// 月华乱舞/爆闪-秘籍)启动时按硬编码表强制覆写DelayBase/DelayReduction——历史上为修复
+        /// "旧DB记录无CD"的迁移逻辑, 副作用是魔法编辑器/DbTool对这些技能的修改在下次启动被
+        /// 无声回滚("DB改不动"假象的根因, 排查记录见更新日志20260922)。现已删除, DB为唯一权威,
+        /// 这些技能的冷却请在魔法编辑器面板修改后点"保存DB"。
+        /// </summary>
+
+        /// <summary>
+        /// 自定义技能槽(242-255)MagicInfo同步: 缺则播种, 有则按面板配置刷新名称/图标/耗蓝/冷却.
+        /// 服务器启动(LoadDB后)与"自定义技能"面板保存时调用.
+        /// </summary>
+        public void SyncCustomSkillMagicInfo()
+        {
+            foreach (var cfg in Settings.CustomSkills)
+            {
+                if (!cfg.Enabled) continue;
+
+                MagicInfo info = null;
+                for (int i = 0; i < MagicInfoList.Count; i++)
+                    if (MagicInfoList[i].Spell == cfg.Spell) { info = MagicInfoList[i]; break; }
+
+                if (info == null)
+                {
+                    MagicInfoList.Add(new MagicInfo
+                    {
+                        Name = string.IsNullOrEmpty(cfg.Name) ? cfg.Spell.ToString() : cfg.Name,
+                        Spell = cfg.Spell,
+                        Icon = cfg.Icon,
+                        Level1 = 35,
+                        Level2 = 37,
+                        Level3 = 40,
+                        Need1 = 2000,
+                        Need2 = 4000,
+                        Need3 = 6000,
+                        BaseCost = (byte)Math.Min(255, (int)cfg.BaseCost),
+                        Range = 9,
+                        DelayBase = Math.Max(500, cfg.DelayMs),
+                        MultiplierBase = 1.0f,
+                        MultiplierBonus = 0.1f
+                    });
+                }
+                else
+                {
+                    info.Name = string.IsNullOrEmpty(cfg.Name) ? cfg.Spell.ToString() : cfg.Name;
+                    info.Icon = cfg.Icon;
+                    info.BaseCost = (byte)Math.Min(255, (int)cfg.BaseCost);
+                    info.DelayBase = Math.Max(500, cfg.DelayMs);
+                }
+            }
+        }
+
         private string CanStartEnvir()
         {
             if (StartPoints.Count == 0) return GameLanguage.ServerTextMap.GetLocalization(ServerTextKeys.CannotStartServerWithoutMapAndStartPoint);
@@ -2153,6 +2379,8 @@ namespace Server.MirEnvir
                 var saveTime = Time + Settings.SaveDelay * Settings.Minute;
                 var userTime = Time + Settings.Minute * 5;
                 var lineMessageTime = Time + Settings.Minute * Settings.LineMessageTimer;
+                var mapUnloadTime = Time + 30 * Settings.Second;
+                var mapProcessTime = Time + 100;
                 var processTime = Time + 1000;
                 var startTime = Time;
 
@@ -2163,6 +2391,12 @@ namespace Server.MirEnvir
 
                 if (Settings.Multithreaded)
                 {
+                    //每次启动按当前配置重建怪物线程数组(最低2: 仅1条时主循环每圈只处理1只怪=全体冻结);
+                    //此前数组仅在进程构造时分配一次, "保存并重启"重读ThreadLimit后新旧值错位,
+                    //地图Random.Next(新值)分到不存在的线程→Spawned越界/怪物冻结, 此处根治
+                    var threadLimit = Math.Max(2, Settings.ThreadLimit);
+                    MobThreads = new MobThread[threadLimit];
+                    MobThreading = new Thread[threadLimit];
                     for (var j = 0; j < MobThreads.Length; j++)
                     {
                         MobThreads[j] = new MobThread();
@@ -2174,12 +2408,14 @@ namespace Server.MirEnvir
                 var canstartserver = CanStartEnvir();
                 if (canstartserver != "true")
                 {
+                    LastStartError = canstartserver; //SMain 面板轮询此值弹窗, 启动失败不再只写一行日志
                     MessageQueue.Enqueue(canstartserver);
                     StopEnvir();
                     _thread = null;
                     Stop();
                     return;
                 }
+                LastStartError = null;
 
                 if (Settings.Multithreaded)
                 {
@@ -2203,6 +2439,34 @@ namespace Server.MirEnvir
                     while (Running)
                     {
                         Time = Stopwatch.ElapsedMilliseconds;
+
+                        //物品热同步: 执行编辑器排队过来的同步动作(与下方周期存盘同线程, 串行安全)
+                        var pendingItemSync = Interlocked.Exchange(ref _pendingItemSync, null);
+                        if (pendingItemSync != null)
+                        {
+                            try
+                            {
+                                pendingItemSync();
+                            }
+                            catch (Exception syncEx)
+                            {
+                                MessageQueue.Enqueue("物品热同步失败: " + syncEx);
+                            }
+                        }
+
+                        //通用主线程任务(控制面板投递, 如战场手动开战/结束)
+                        var mainAction = Interlocked.Exchange(ref _pendingMainAction, null);
+                        if (mainAction != null)
+                        {
+                            try
+                            {
+                                mainAction();
+                            }
+                            catch (Exception mainEx)
+                            {
+                                MessageQueue.Enqueue("主线程任务失败: " + mainEx);
+                            }
+                        }
 
                         if (Time >= processTime)
                         {
@@ -2287,10 +2551,18 @@ namespace Server.MirEnvir
                             current = next;
                         }
 
-                        for (var i = 0; i < MapList.Count; i++)
-                            MapList[i].Process();
+                        //地图处理节流: 刷怪/门/地图特效按100ms一轮(原本每圈空转都全图扫, 803图白烧CPU)
+                        if (Time >= mapProcessTime)
+                        {
+                            mapProcessTime = Time + 100;
+                            for (var i = 0; i < MapList.Count; i++)
+                                MapList[i].Process();
+                        }
 
                         DragonSystem?.Process();
+                        FieldBossSystem?.Process();
+
+                        BattleField.Process(); //战场系统(每秒节流)
 
                         Process();
 
@@ -2324,8 +2596,14 @@ namespace Server.MirEnvir
                             });
                         }
 
-                        //   if (Players.Count == 0) Thread.Sleep(1);
-                        //   GC.Collect();
+                        if (Settings.MapUnloadEnabled && Time >= mapUnloadTime)
+                        {
+                            mapUnloadTime = Time + 30 * Settings.Second;
+                            UnloadIdleMaps();
+                        }
+
+                        //主循环节流: 每圈睡1ms, 避免满速空转烧满一个核
+                        Thread.Sleep(1);
                     }
                 }
                 catch (Exception ex)
@@ -2416,7 +2694,11 @@ namespace Server.MirEnvir
                                 stopping = false;
                             }
                         }
-                        if (!stopping) continue;
+                        if (!stopping)
+                        {
+                            Thread.Sleep(0); //仅让出时间片立即返回, 等待期间继续全速处理本线程怪物(Sleep(1)实际睡15ms导致怪物冻结)
+                            continue;
+                        }
                         Info.Stop = stopping;
                         return;
                     }
@@ -2586,23 +2868,15 @@ namespace Server.MirEnvir
             }
         }
 
-        public void SaveDB()
+        private long _lastDbBackupTime;
+        private int _dbIoRunning;
+
+        public void SaveDB(bool sync = false)
         {
-            if (File.Exists(DatabasePath))
-            {
-                if (!Directory.Exists(DatabaseBackUpPath)) Directory.CreateDirectory(DatabaseBackUpPath);
-
-                var fileName =
-                    $"Database {Now.Year:0000}-{Now.Month:00}-{Now.Day:00} {Now.Hour:00}-{Now.Minute:00}-{Now.Second:00}.bak";
-
-                var backupFile = Path.Combine(DatabaseBackUpPath, fileName);
-
-                if (File.Exists(backupFile)) File.Delete(backupFile);
-                File.Copy(DatabasePath, backupFile);
-            }
-
-            using (var stream = File.Create(DatabasePath))
-            using (var writer = new BinaryWriter(stream))
+            //序列化留主线程(集合非线程安全); 磁盘IO挪后台+临时文件原子替换, 备份降为每小时1次
+            byte[] data;
+            var mStream = new MemoryStream();
+            using (var writer = new BinaryWriter(mStream))
             {
                 writer.Write(Version);
                 writer.Write(CustomVersion);
@@ -2619,9 +2893,16 @@ namespace Server.MirEnvir
                 for (var i = 0; i < MapInfoList.Count; i++)
                     MapInfoList[i].Save(writer);
 
-                writer.Write(ItemInfoList.Count);
+                var itemCount = 0;
                 for (var i = 0; i < ItemInfoList.Count; i++)
+                    if (!SuppressedItemIndexes.Contains(ItemInfoList[i].Index)) itemCount++;
+
+                writer.Write(itemCount);
+                for (var i = 0; i < ItemInfoList.Count; i++)
+                {
+                    if (SuppressedItemIndexes.Contains(ItemInfoList[i].Index)) continue;
                     ItemInfoList[i].Save(writer);
+                }
 
                 writer.Write(MonsterInfoList.Count);
                 for (var i = 0; i < MonsterInfoList.Count; i++)
@@ -2654,6 +2935,58 @@ namespace Server.MirEnvir
                 for (var i = 0; i < GTMapList.Count; i++)
                     GTMapList[i].Save(writer);
             }
+            data = mStream.ToArray();
+
+            bool doBackup = false;
+            string backupFile = null;
+            if (File.Exists(DatabasePath) && Time - _lastDbBackupTime >= Settings.Hour)
+            {
+                _lastDbBackupTime = Time;
+                doBackup = true;
+                if (!Directory.Exists(DatabaseBackUpPath)) Directory.CreateDirectory(DatabaseBackUpPath);
+                var fileName =
+                    $"Database {Now.Year:0000}-{Now.Month:00}-{Now.Day:00} {Now.Hour:00}-{Now.Minute:00}-{Now.Second:00}.bak";
+                backupFile = Path.Combine(DatabaseBackUpPath, fileName);
+            }
+
+            if (!sync && Interlocked.CompareExchange(ref _dbIoRunning, 1, 0) != 0)
+                return; //上一轮后台落盘未完成, 跳过本轮(下个存盘周期再写)
+
+            Action ioWork = () =>
+            {
+                try
+                {
+                    if (doBackup && backupFile != null)
+                    {
+                        if (File.Exists(backupFile)) File.Delete(backupFile);
+                        File.Copy(DatabasePath, backupFile, true);
+                    }
+
+                    //先写临时文件, 再原子替换, 任意时刻被杀都不会损坏主库
+                    var tmpPath = DatabasePath + "n";
+                    using (var fStream = new FileStream(tmpPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                        fStream.Write(data, 0, data.Length);
+
+                    var oldPath = DatabasePath + "o";
+                    if (File.Exists(oldPath)) File.Delete(oldPath);
+                    if (File.Exists(DatabasePath)) File.Move(DatabasePath, oldPath);
+                    File.Move(tmpPath, DatabasePath);
+                    if (File.Exists(oldPath)) File.Delete(oldPath);
+                }
+                catch (Exception ex)
+                {
+                    MessageQueue.Enqueue("存盘DB失败: " + ex.Message);
+                }
+                finally
+                {
+                    if (!sync) Interlocked.Exchange(ref _dbIoRunning, 0);
+                }
+            };
+
+            if (sync)
+                ioWork();
+            else
+                Task.Run(ioWork);
         }
 
 
@@ -2824,40 +3157,43 @@ namespace Server.MirEnvir
 
             for (var i = 0; i < MapList.Count; i++)
             {
-                var map = MapList[i];
+                SaveGoodsForMap(MapList[i], forced);
+            }
+        }
 
-                if (map.NPCs.Count == 0) continue;
+        public void SaveGoodsForMap(Map map, bool forced = false)
+        {
+            if (map == null || map.NPCs.Count == 0) return;
 
-                for (var j = 0; j < map.NPCs.Count; j++)
+            for (var j = 0; j < map.NPCs.Count; j++)
+            {
+                var npc = map.NPCs[j];
+
+                if (forced)
                 {
-                    var npc = map.NPCs[j];
-
-                    if (forced)
-                    {
-                        npc.ProcessGoods(forced);
-                    }
-
-                    if (!npc.NeedSave) continue;
-
-                    var path = Path.Combine(Settings.GoodsPath, npc.Info.Index + ".msdn");
-
-                    var mStream = new MemoryStream();
-                    var writer = new BinaryWriter(mStream);
-                    var Temp = 9999;
-                    writer.Write(Temp);
-                    writer.Write(Version);
-                    writer.Write(CustomVersion);
-                    writer.Write(npc.UsedGoods.Count);
-
-                    for (var k = 0; k < npc.UsedGoods.Count; k++)
-                    {
-                        npc.UsedGoods[k].Save(writer);
-                    }
-
-                    var fStream = new FileStream(path, FileMode.Create);
-                    var data = mStream.ToArray();
-                    fStream.BeginWrite(data, 0, data.Length, EndSaveGoodsAsync, fStream);
+                    npc.ProcessGoods(forced);
                 }
+
+                if (!npc.NeedSave) continue;
+
+                var path = Path.Combine(Settings.GoodsPath, npc.Info.Index + ".msdn");
+
+                var mStream = new MemoryStream();
+                var writer = new BinaryWriter(mStream);
+                var Temp = 9999;
+                writer.Write(Temp);
+                writer.Write(Version);
+                writer.Write(CustomVersion);
+                writer.Write(npc.UsedGoods.Count);
+
+                for (var k = 0; k < npc.UsedGoods.Count; k++)
+                {
+                    npc.UsedGoods[k].Save(writer);
+                }
+
+                var fStream = new FileStream(path, FileMode.Create);
+                var data = mStream.ToArray();
+                fStream.BeginWrite(data, 0, data.Length, EndSaveGoodsAsync, fStream);
             }
         }
         private void EndSaveGoodsAsync(IAsyncResult result)
@@ -2974,7 +3310,7 @@ namespace Server.MirEnvir
             {
                 if (!File.Exists(DatabasePath))
                 {
-                    SaveDB();
+                    SaveDB(true);
                 }
 
                 using (var stream = File.OpenRead(DatabasePath))
@@ -3031,8 +3367,8 @@ namespace Server.MirEnvir
                         }
                     }
 
-                    EnsureMonkSkillBooks();
-                    EnsureMonkEquipment();
+                    //数据库文件是最新口径(已删物品不在其中), 清空防回滚抑制表
+                    SuppressedItemIndexes.Clear();
 
                     count = reader.ReadInt32();
                     MonsterInfoList.Clear();
@@ -3040,6 +3376,8 @@ namespace Server.MirEnvir
                         MonsterInfoList.Add(new MonsterInfo(reader));
 
                     EnsureMonkCloneExists();
+                    EnsureArcherSummonsExists();
+                    EnsurePetSkillBooks();
 
                     count = reader.ReadInt32();
                     NPCInfoList.Clear();
@@ -3061,6 +3399,7 @@ namespace Server.MirEnvir
                     }
 
                     FillMagicInfoList();
+                    SyncCustomSkillMagicInfo();
                     if (LoadVersion <= 70)
                         UpdateMagicInfo();
 
@@ -3078,8 +3417,6 @@ namespace Server.MirEnvir
                         }
                     }
 
-                    EnsureMonkGameShop();
-
                     if (LoadVersion >= 66)
                     {
                         ConquestInfoList.Clear();
@@ -3094,6 +3431,15 @@ namespace Server.MirEnvir
                         RespawnTick = new RespawnTimer(reader);
                 }
                 Settings.LinkGuildCreationItems(ItemInfoList);
+
+                //计数器兜底: 历史批量导入会让头部计数器落后于列表实际最大值, 不同步则新建条目会撞号
+                //(商城GIndex重复的根源; 物品/怪物等计数器存在同样的隐患)
+                if (MapInfoList.Count > 0) MapIndex = Math.Max(MapIndex, MapInfoList.Max(x => x.Index));
+                if (ItemInfoList.Count > 0) ItemIndex = Math.Max(ItemIndex, ItemInfoList.Max(x => x.Index));
+                if (MonsterInfoList.Count > 0) MonsterIndex = Math.Max(MonsterIndex, MonsterInfoList.Max(x => x.Index));
+                if (NPCInfoList.Count > 0) NPCIndex = Math.Max(NPCIndex, NPCInfoList.Max(x => x.Index));
+                if (QuestInfoList.Count > 0) QuestIndex = Math.Max(QuestIndex, QuestInfoList.Max(x => x.Index));
+                if (GameShopList.Count > 0) GameshopIndex = Math.Max(GameshopIndex, GameShopList.Max(x => x.GIndex));
             }
 
             return true;
@@ -3215,33 +3561,73 @@ namespace Server.MirEnvir
                         if (ResetGS) ClearGameshopLog();
                     }
 
-                    if (LoadVersion >= 68)
-                    {
-                        var saveCount = reader.ReadInt32();
-                        for (var i = 0; i < saveCount; i++)
+                        if (LoadVersion >= 68)
                         {
-                            var saved = new RespawnSave(reader);
-                            foreach (var respawn in SavedSpawns)
+                            var saveCount = reader.ReadInt32();
+                            for (var i = 0; i < saveCount; i++)
                             {
-                                if (respawn.Info.RespawnIndex != saved.RespawnIndex) continue;
-
-                                respawn.NextSpawnTick = saved.NextSpawnTick;
-
-                                if (!saved.Spawned || respawn.Info.Count * SpawnMultiplier <= respawn.Count)
+                                var saved = new RespawnSave(reader);
+                                foreach (var respawn in SavedSpawns)
                                 {
-                                    continue;
-                                }
+                                    if (respawn.Info.RespawnIndex != saved.RespawnIndex) continue;
 
-                                var mobcount = respawn.Info.Count * SpawnMultiplier - respawn.Count;
-                                for (var j = 0; j < mobcount; j++)
-                                {
-                                    respawn.Spawn();
+                                    respawn.NextSpawnTick = saved.NextSpawnTick;
+
+                                    if (!saved.Spawned || respawn.Info.Count * SpawnMultiplier <= respawn.Count)
+                                    {
+                                        continue;
+                                    }
+
+                                    var mobcount = respawn.Info.Count * SpawnMultiplier - respawn.Count;
+                                    for (var j = 0; j < mobcount; j++)
+                                    {
+                                        respawn.Spawn();
+                                    }
                                 }
                             }
                         }
                     }
+
+                FixDuplicateMonsterIndexes();
+            }
+        }
+
+        //修复重复的怪物Index(如重导入怪物表后,代码注册的宠物条目与原有条目撞号):
+        //保留每组第一条(刷怪点/地图引用先出现的条目),后面的条目换新号,并同步重映射角色存档里的宠物
+        private void FixDuplicateMonsterIndexes()
+        {
+            if (MonsterInfoList.Count == 0) return;
+
+            MonsterIndex = Math.Max(MonsterIndex, MonsterInfoList.Max(x => x.Index));
+
+            var seen = new HashSet<int>();
+            var remap = new Dictionary<int, int>();
+
+            foreach (var info in MonsterInfoList)
+            {
+                if (seen.Add(info.Index)) continue;
+
+                var oldIndex = info.Index;
+                info.Index = ++MonsterIndex;
+                remap[oldIndex] = info.Index;
+                MessageQueue.Instance.Enqueue($"[怪物Index修复] {info.Name}: {oldIndex} -> {info.Index} (与前面的条目撞号)");
+            }
+
+            if (remap.Count == 0) return;
+
+            var fixedPets = 0;
+            foreach (var character in CharacterList)
+            {
+                foreach (var pet in character.Pets)
+                {
+                    if (!remap.TryGetValue(pet.MonsterIndex, out var newIndex)) continue;
+
+                    pet.MonsterIndex = newIndex;
+                    fixedPets++;
                 }
             }
+
+            MessageQueue.Instance.Enqueue($"[怪物Index修复] 共重分配 {remap.Count} 条怪物,重映射 {fixedPets} 条存档宠物");
         }
 
         public void LoadGuilds()
@@ -3409,6 +3795,9 @@ namespace Server.MirEnvir
             return bound;
         }
 
+        //最近一次启动失败原因(CanStartEnvir), null=启动成功或从未失败; SMain面板轮询后弹窗展示
+        public string LastStartError;
+
         public void Start()
         {
             if (Running || _thread != null) return;
@@ -3455,6 +3844,18 @@ namespace Server.MirEnvir
             {
                 MessageQueue.Enqueue(GameLanguage.ServerTextMap.GetLocalization(ServerTextKeys.ServerRebooting));
                 Stop();
+
+                try
+                {
+                    //重启 = 完整重读 Setup.ini(语言/倍率/开关/端口等立即生效), 不再需要关闭整个程序
+                    Settings.Load();
+                    MessageQueue.Enqueue("配置(Setup.ini)已重新加载。");
+                }
+                catch (Exception ex)
+                {
+                    MessageQueue.Enqueue("配置重读失败, 沿用当前配置: " + ex.Message);
+                }
+
                 Start();
             }).Start();
         }
@@ -3466,10 +3867,15 @@ namespace Server.MirEnvir
 
         private void StartEnvir()
         {
+            //战场系统: 重启环境时重置状态并读取配置(Configs\BattleField.ini)
+            BattleField.Reset();
+            BattleField.LoadSettings();
+
             Players.Clear();
             StartPoints.Clear();
             StartItems.Clear();
             MapList.Clear();
+            MapUnloadQueue.Clear();
             GTMapList.Clear();
             GameshopLog.Clear();
             CustomCommands.Clear();
@@ -3498,17 +3904,34 @@ namespace Server.MirEnvir
 
             for (var i = 0; i < MapInfoList.Count; i++)
             {
+                for (var j = 0; j < MapInfoList[i].SafeZones.Count; j++)
+                {
+                    if (MapInfoList[i].SafeZones[j].StartPoint)
+                        StartPoints.Add(MapInfoList[i].SafeZones[j]);
+                }
+            }
+
+            for (var i = 0; i < MapInfoList.Count; i++)
+            {
+                MapInfo info = MapInfoList[i];
+
+                //地图卸载开启时仅延迟加载 GT/安全区之外的地图, 带NPC的野外/任务图允许
+                //运行期懒加载+过期卸载(保内存); 任务NPC绑定随重建变化的失配问题由
+                //LoadMap 重建后检测并 RefreshPlayersQuestInfo 刷新在线客户端, 无需重登
+                if (Settings.MapUnloadEnabled && !info.GT && !info.SafeZones.Any(sz => sz.StartPoint))
+                    continue;
+
                 // Call CreateMap(), which adds the map to Envir.MapList
-                MapInfoList[i].CreateMap();
+                info.CreateMap();
 
                 // Fetch the created map from Envir.MapList
-                Map map = MapList.FirstOrDefault(m => m.Info == MapInfoList[i]);
+                Map map = MapList.FirstOrDefault(m => m.Info == info);
 
                 if (map != null)
                 {
-                    if (MapInfoList[i].GT)
+                    if (info.GT)
                     {
-                        GTMap gt = GTMapList.FirstOrDefault(x => x.Index == MapInfoList[i].GTIndex);
+                        GTMap gt = GTMapList.FirstOrDefault(x => x.Index == info.GTIndex);
                         if (gt != null)
                         {
                             gt.Maps.Add(map);
@@ -3517,8 +3940,8 @@ namespace Server.MirEnvir
                         {
                             var GT = new GTMap()
                             {
-                                Index = MapInfoList[i].GTIndex,
-                                Name = MapInfoList[i].Title,
+                                Index = info.GTIndex,
+                                Name = info.Title,
                                 Price = Settings.BuyGTGold,
                                 Days = 0,
                                 Begin = 0,
@@ -3533,7 +3956,7 @@ namespace Server.MirEnvir
                 }
             }
 
-            MessageQueue.Enqueue(GameLanguage.ServerTextMap.GetLocalization((ServerTextKeys.MapsLoaded), MapInfoList.Count));
+            MessageQueue.Enqueue(GameLanguage.ServerTextMap.GetLocalization((ServerTextKeys.MapsLoaded), MapList.Count));
 
             for (var i = 0; i < ItemInfoList.Count; i++)
             {
@@ -3544,6 +3967,8 @@ namespace Server.MirEnvir
             }
 
             ReloadDrops();
+
+            ReloadTalents();
 
             LoadDisabledChars();
             LoadLineMessages();
@@ -3557,6 +3982,18 @@ namespace Server.MirEnvir
                 }
 
                 MessageQueue.Enqueue(GameLanguage.ServerTextMap.GetLocalization(ServerTextKeys.DragonLoaded));
+            }
+
+            FieldBossInfoList = FieldBossLoader.Load();
+
+            if (FieldBossInfoList.Count > 0)
+            {
+                FieldBossSystem = new FieldBossSystem(FieldBossInfoList);
+                MessageQueue.Enqueue(string.Format("野外Boss系统已加载, 共{0}条配置。", FieldBossInfoList.Count));
+            }
+            else
+            {
+                FieldBossSystem = null;
             }
 
             DefaultNPC = NPCScript.GetOrAdd((uint)Random.Next(1000000, 1999999), Settings.DefaultNPCFilename, NPCScriptType.AutoPlayer);
@@ -3658,11 +4095,65 @@ namespace Server.MirEnvir
             MessageQueue.Enqueue(GameLanguage.ServerTextMap.GetLocalization(ServerTextKeys.NetworkStopped));
         }
 
+        public void QueueForFree(Map map)
+        {
+            MapUnloadQueue.Add(map);
+        }
+
+        private void FreeQueuedMaps()
+        {
+            if (MapUnloadQueue.Count == 0) return;
+
+            for (var i = 0; i < MapUnloadQueue.Count; i++)
+                MapUnloadQueue[i].FreeMemory();
+
+            MapUnloadQueue.Clear();
+        }
+
+        private bool MapIsProtected(Map map)
+        {
+            if (map.Info.GT) return true;
+            if (map.Info.SafeZones.Any(sz => sz.StartPoint)) return true;
+
+            for (var i = 0; i < ConquestInfoList.Count; i++)
+            {
+                var info = ConquestInfoList[i];
+                if (info.MapIndex == map.Info.Index || info.PalaceIndex == map.Info.Index) return true;
+                if (info.ExtraMaps.Contains(map.Info.Index)) return true;
+            }
+
+            if (DragonSystem != null && DragonSystem.Info != null &&
+                string.Equals(DragonSystem.Info.MapFileName, map.Info.FileName, StringComparison.CurrentCultureIgnoreCase))
+                return true;
+
+            return false;
+        }
+
+        private void UnloadIdleMaps()
+        {
+            FreeQueuedMaps();
+
+            long threshold = Time - (long)Settings.MapUnloadDelay * Settings.Minute;
+
+            //所有非保护地图均可卸载(含挂任务NPC的地图):
+            //任务NPC绑定随重建变化的失配由 LoadMap 的变化检测 + RefreshPlayersQuestInfo 处理,
+            //在此保留常驻保护会把大量带NPC的野外图锁在内存里, 卸载机制失去意义
+            for (var i = MapList.Count - 1; i >= 0; i--)
+            {
+                Map map = MapList[i];
+
+                if (MapIsProtected(map)) continue;
+                if (map.Players.Count > 0 || map.Heroes.Count > 0) continue;
+                if (map.LastActiveTime > threshold) continue;
+
+                map.Unload();
+            }
+        }
+
         private void CleanUp()
         {
             for (var i = 0; i < CharacterList.Count; i++)
-            {
-                var info = CharacterList[i];
+            {                var info = CharacterList[i];
 
                 if (info.Deleted)
                 {
@@ -4081,6 +4572,13 @@ namespace Server.MirEnvir
 
             MessageQueue.Enqueue(GameLanguage.ServerTextMap.GetLocalization((ServerTextKeys.UserLoggedIn), account.Connection.SessionID, account.Connection.IPAddress));
             c.Enqueue(new ServerPackets.LoginSuccess { Characters = account.GetSelectInfo() });
+            c.Enqueue(new ServerPackets.ClassAvailability
+            {
+                AllowedClasses = (byte)((Settings.AllowCreateAssassin ? 1 << (byte)MirClass.Assassin : 0) |
+                                        (Settings.AllowCreateArcher ? 1 << (byte)MirClass.Archer : 0) |
+                                        (Settings.AllowCreateMonk ? 1 << (byte)MirClass.Monk : 0) |
+                                        (1 << (byte)MirClass.Warrior) | (1 << (byte)MirClass.Wizard) | (1 << (byte)MirClass.Taoist))
+            });
         }
 
         public int HTTPLogin(string AccountID, string Password)
@@ -4277,6 +4775,16 @@ namespace Server.MirEnvir
                 {
                     c.Enqueue(new S.NewHero { Result = 5 });
                     return false;
+                }
+
+                for (int i = 0; i < HeroList.Count; i++)
+                {
+                    if (HeroList[i].Deleted) continue;
+                    if (string.Equals(HeroList[i].Name, p.Name, StringComparison.OrdinalIgnoreCase))
+                    {
+                        c.Enqueue(new S.NewHero { Result = 5 });
+                        return false;
+                    }
                 }
             }
 
@@ -4511,7 +5019,9 @@ namespace Server.MirEnvir
                 Info = Info,
                 Date = Now,
                 Class = "All",
-                Category = Info.Type.ToString()
+                Category = Info.Type.ToString(),
+                CanBuyCredit = true, //默认两种货币都可购买, 否则上架后无人能买(可在商城编辑器里再调整)
+                CanBuyGold = true
             });
         }
 
@@ -4749,19 +5259,100 @@ namespace Server.MirEnvir
             return false;
         }
 
+        public Map LoadMap(MapInfo info)
+        {
+            if (info == null) return null;
+
+            Map map = MapList.FirstOrDefault(m => m.Info == info);
+            if (map != null) return map;
+
+            //快照全部任务的接取/交付NPC绑定(ObjectID), CreateMap重建NPC后对比,
+            //仅绑定真变化时才重发在线玩家任务缓存, 避免无变化也全服重发
+            int questCount = QuestInfoList.Count;
+            uint[] questBindings = new uint[questCount * 2];
+            for (var i = 0; i < questCount; i++)
+            {
+                questBindings[i * 2] = QuestInfoList[i].NpcIndex;
+                questBindings[i * 2 + 1] = QuestInfoList[i].FinishNpcIndex;
+            }
+
+            info.CreateMap();
+
+            map = MapList.FirstOrDefault(m => m.Info == info);
+
+            //运行期重建了NPC(懒加载/副本): NPC脚本重新解析后, 任务的接取/交付NPC绑定可能已变,
+            //检测到变化才刷新在线客户端(新客户端即时生效; 旧客户端出地图视野再进即恢复), 无需重登
+            if (map != null && map.NPCs.Count > 0)
+            {
+                bool bindingsChanged = false;
+                for (var i = 0; i < QuestInfoList.Count && i < questCount; i++)
+                {
+                    if (QuestInfoList[i].NpcIndex != questBindings[i * 2] ||
+                        QuestInfoList[i].FinishNpcIndex != questBindings[i * 2 + 1])
+                    {
+                        bindingsChanged = true;
+                        break;
+                    }
+                }
+
+                if (bindingsChanged)
+                    RefreshPlayersQuestInfo();
+            }
+            if (map != null && info.GT)
+            {
+                GTMap gt = GTMapList.FirstOrDefault(x => x.Index == info.GTIndex);
+                if (gt != null)
+                {
+                    gt.Maps.Add(map);
+                }
+                else
+                {
+                    var GT = new GTMap()
+                    {
+                        Index = info.GTIndex,
+                        Name = info.Title,
+                        Price = Settings.BuyGTGold,
+                        Days = 0,
+                        Begin = 0,
+                        Leader = "None",
+                        Owner = "None",
+                    };
+                    GT.Maps.Add(map);
+                    GTMapList.Add(GT);
+                }
+            }
+
+            return map;
+        }
+
         public Map GetMap(int index)
         {
-            return MapList.FirstOrDefault(t => t.Info.Index == index);
+            Map map = MapList.FirstOrDefault(t => t.Info.Index == index);
+            if (map == null && Settings.MapUnloadEnabled)
+                map = LoadMap(GetMapInfo(index));
+            return map;
         }
 
         public Map GetMap(string name, bool strict = true)
         {
-            return MapList.FirstOrDefault(t => strict ? string.Equals(t.Info.Title, name, StringComparison.CurrentCultureIgnoreCase) : t.Info.Title.StartsWith(name, StringComparison.CurrentCultureIgnoreCase));
+            Map map = MapList.FirstOrDefault(t => strict ? string.Equals(t.Info.Title, name, StringComparison.CurrentCultureIgnoreCase) : t.Info.Title.StartsWith(name, StringComparison.CurrentCultureIgnoreCase));
+            if (map == null && Settings.MapUnloadEnabled)
+            {
+                MapInfo info = MapInfoList.FirstOrDefault(t => strict ? string.Equals(t.Title, name, StringComparison.CurrentCultureIgnoreCase) : t.Title.StartsWith(name, StringComparison.CurrentCultureIgnoreCase));
+                map = LoadMap(info);
+            }
+            return map;
         }
 
         public Map GetWorldMap(string name)
         {
-            return MapList.FirstOrDefault(t => t.Info.Title.StartsWith(name, StringComparison.CurrentCultureIgnoreCase) && t.Info.BigMap > 0);
+            Map map = MapList.FirstOrDefault(t => t.Info.Title.StartsWith(name, StringComparison.CurrentCultureIgnoreCase) && t.Info.BigMap > 0);
+            if (map == null && Settings.MapUnloadEnabled)
+            {
+                MapInfo info = MapInfoList.FirstOrDefault(t => t.Title.StartsWith(name, StringComparison.CurrentCultureIgnoreCase) && t.BigMap > 0);
+                map = LoadMap(info);
+            }
+            return map;
         }
 
         public MapInfo GetMapInfo(int index)
@@ -4775,7 +5366,15 @@ namespace Server.MirEnvir
             if (instanceValue > 0) instanceValue--;
 
             var instanceMapList = MapList.Where(t => string.Equals(t.Info.FileName, name, StringComparison.CurrentCultureIgnoreCase)).ToList();
-            return instanceValue < instanceMapList.Count() ? instanceMapList[instanceValue] : null;
+            if (instanceValue < instanceMapList.Count) return instanceMapList[instanceValue];
+
+            if (Settings.MapUnloadEnabled)
+            {
+                MapInfo info = MapInfoList.FirstOrDefault(t => string.Equals(t.FileName, name, StringComparison.CurrentCultureIgnoreCase));
+                return LoadMap(info);
+            }
+
+            return null;
         }
 
         public MapObject GetObject(uint objectID)
@@ -4899,6 +5498,150 @@ namespace Server.MirEnvir
             MessageQueue.Enqueue("MonkClone monster created automatically (LuoHanZhen summon).");
         }
 
+        // [AI-Claude] 弓手召唤系怪物兜底: fuwu的MirDB无VampireSpider/SpittingToad/SnakeTotem/StoneTrap
+        // (字节级验证缺失, 原版水晶端DB同样没有), 施法处GetMonsterInfo==null静默return="放了没反应"根因;
+        // 且CanStartEnvir校验这三个怪存在、缺失会拒绝启动——注入必须在MonsterInfoList加载后立即(先于校验)。
+        private void EnsureArcherSummonsExists()
+        {
+            if (GetMonsterInfo(Settings.VampireName, true) == null)
+            {
+                MonsterInfo info = new MonsterInfo
+                {
+                    Index = ++MonsterIndex,
+                    Name = Settings.VampireName,
+                    Image = Monster.VampireSpider,
+                    AI = 60,            //工厂60=VampireSpider类(吸血压主近战)
+                    Effect = 0,
+                    Level = 30,
+                    ViewRange = 8,
+                    CoolEye = 0,
+                    Light = 0,
+                    AttackSpeed = 1400,
+                    MoveSpeed = 1200,
+                    Experience = 0,
+                    CanTame = false,
+                    CanPush = false,
+                    AutoRev = false,
+                    Undead = false,
+                    CanRecall = true,
+                    IsBoss = false
+                };
+                info.Stats = new Stats();
+                info.Stats[Stat.HP] = 400;
+                info.Stats[Stat.MinAC] = 10;
+                info.Stats[Stat.MaxAC] = 20;
+                info.Stats[Stat.MinMAC] = 10;
+                info.Stats[Stat.MaxMAC] = 20;
+                info.Stats[Stat.MinDC] = 18;
+                info.Stats[Stat.MaxDC] = 30;
+                info.Stats[Stat.Accuracy] = 15;
+                info.Stats[Stat.Agility] = 15;
+                MonsterInfoList.Add(info);
+                MessageQueue.Enqueue("Archer summon monster created automatically: " + Settings.VampireName);
+            }
+
+            if (GetMonsterInfo(Settings.ToadName, true) == null)
+            {
+                MonsterInfo info = new MonsterInfo
+                {
+                    Index = ++MonsterIndex,
+                    Name = Settings.ToadName,
+                    Image = Monster.SpittingToad,
+                    AI = 61,            //工厂61=SpittingToad类(远程喷毒, 不可移动, 主人离开视野自爆)
+                    Effect = 0,
+                    Level = 40,
+                    ViewRange = 8,
+                    CoolEye = 0,
+                    Light = 0,
+                    AttackSpeed = 1600,
+                    MoveSpeed = 1800,
+                    Experience = 0,
+                    CanTame = false,
+                    CanPush = false,
+                    AutoRev = false,
+                    Undead = false,
+                    CanRecall = true,
+                    IsBoss = false
+                };
+                info.Stats = new Stats();
+                info.Stats[Stat.HP] = 500;
+                info.Stats[Stat.MinAC] = 12;
+                info.Stats[Stat.MaxAC] = 22;
+                info.Stats[Stat.MinMAC] = 12;
+                info.Stats[Stat.MaxMAC] = 22;
+                info.Stats[Stat.MinDC] = 20;
+                info.Stats[Stat.MaxDC] = 35;
+                info.Stats[Stat.Accuracy] = 15;
+                info.Stats[Stat.Agility] = 10;
+                MonsterInfoList.Add(info);
+                MessageQueue.Enqueue("Archer summon monster created automatically: " + Settings.ToadName);
+            }
+
+            if (GetMonsterInfo(Settings.SnakeTotemName, true) == null)
+            {
+                MonsterInfo info = new MonsterInfo
+                {
+                    Index = ++MonsterIndex,
+                    Name = Settings.SnakeTotemName,
+                    Image = Monster.SnakeTotem,
+                    AI = 62,            //工厂62=SnakeTotem类(图腾, 定期生成CharmedSnake蛇群引怪)
+                    Effect = 0,
+                    Level = 45,
+                    ViewRange = 9,
+                    CoolEye = 0,
+                    Light = 0,
+                    AttackSpeed = 2000,
+                    MoveSpeed = 1800,
+                    Experience = 0,
+                    CanTame = false,
+                    CanPush = false,
+                    AutoRev = false,
+                    Undead = false,
+                    CanRecall = true,
+                    IsBoss = false
+                };
+                info.Stats = new Stats();
+                info.Stats[Stat.HP] = 600;
+                info.Stats[Stat.MinAC] = 15;
+                info.Stats[Stat.MaxAC] = 25;
+                info.Stats[Stat.MinMAC] = 15;
+                info.Stats[Stat.MaxMAC] = 25;
+                info.Stats[Stat.MinDC] = 0;
+                info.Stats[Stat.MaxDC] = 0;   //图腾不攻击, 战斗交给蛇群
+                MonsterInfoList.Add(info);
+                MessageQueue.Enqueue("Archer summon monster created automatically: " + Settings.SnakeTotemName);
+            }
+
+            if (GetMonsterInfo(Settings.StoneName, true) == null)
+            {
+                MonsterInfo info = new MonsterInfo
+                {
+                    Index = ++MonsterIndex,
+                    Name = Settings.StoneName,
+                    Image = Monster.StoningSpider,   //StoneTrap类GetInfo固定用此图
+                    AI = 255,           //工厂255=StoneTrap类(Stonetrap技能的放置陷阱)
+                    Effect = 0,
+                    Level = 1,
+                    ViewRange = 3,
+                    CoolEye = 0,
+                    Light = 0,
+                    AttackSpeed = 2500,
+                    MoveSpeed = 1800,
+                    Experience = 0,
+                    CanTame = false,
+                    CanPush = false,
+                    AutoRev = false,
+                    Undead = false,
+                    CanRecall = false,
+                    IsBoss = false
+                };
+                info.Stats = new Stats();
+                info.Stats[Stat.HP] = 1;      //陷阱一碰即碎
+                MonsterInfoList.Add(info);
+                MessageQueue.Enqueue("Archer summon monster created automatically: " + Settings.StoneName);
+            }
+        }
+
         private void EnsureMonkSkillBooks()
         {
             Spell[] monkSpells = { Spell.JiBenGunFa, Spell.LuoHanGunFa, Spell.JinGangGunFa, Spell.DaMoGunFa, Spell.XiangLongGunFa, Spell.Taunt, Spell.TianLeiZhen, Spell.ShiBuYiSha, Spell.LuoHanZhen };
@@ -4944,6 +5687,55 @@ namespace Server.MirEnvir
 
             if (created > 0)
                 MessageQueue.Enqueue(created + " Monk skill books created automatically.");
+        }
+
+        // [AI-Claude] 道士特殊召唤技能书兜底: 召唤风灵/幻灵/上古神谕(技能MagicInfo已注册但DB无书, "幻灵学不了"根因)
+        private void EnsurePetSkillBooks()
+        {
+            Spell[] petSpells = { Spell.Yling, Spell.Hling, Spell.AncientOracle };
+            string[] bookNames = { "召唤风灵", "召唤幻灵", "召唤上古神谕" };
+            byte[] reqLevels = { 45, 75, 55 };
+
+            ushort bookImage = 631;
+            ItemInfo template = ItemInfoList.Find(i => i.Type == ItemType.Book);
+            if (template != null) bookImage = template.Image;
+
+            int created = 0;
+            for (int s = 0; s < petSpells.Length; s++)
+            {
+                Spell spell = petSpells[s];
+
+                bool exists = false;
+                for (int i = 0; i < ItemInfoList.Count; i++)
+                    if (ItemInfoList[i].Type == ItemType.Book && ItemInfoList[i].Shape == (short)spell)
+                    {
+                        exists = true;
+                        break;
+                    }
+                if (exists) continue;
+
+                ItemInfo info = new ItemInfo
+                {
+                    Index = ++ItemIndex,
+                    Name = bookNames[s],
+                    Type = ItemType.Book,
+                    Grade = ItemGrade.None,
+                    RequiredType = RequiredType.Level,
+                    RequiredClass = RequiredClass.Taoist,
+                    RequiredGender = RequiredGender.None,
+                    Shape = (short)spell,
+                    Weight = 1,
+                    RequiredAmount = reqLevels[s],
+                    Image = bookImage,
+                    StackSize = 1,
+                    Price = 5000
+                };
+                ItemInfoList.Add(info);
+                created++;
+            }
+
+            if (created > 0)
+                MessageQueue.Enqueue(created + " Taoist pet skill books created automatically.");
         }
 
         private void EnsureMonkEquipment()
@@ -5151,7 +5943,19 @@ namespace Server.MirEnvir
         }
         public HeroInfo GetHeroInfo(int index)
         {
-            return HeroList.FirstOrDefault(x => x.Index == index);
+            return HeroList.FirstOrDefault(x => x.Index == index && !x.Deleted);
+        }
+        public bool HeroIsOwnedByOther(CharacterInfo character, HeroInfo hero)
+        {
+            for (int i = 0; i < CharacterList.Count; i++)
+            {
+                CharacterInfo c = CharacterList[i];
+                if (c == character || c.Deleted || c.Heroes == null) continue;
+
+                for (int j = 0; j < c.Heroes.Length; j++)
+                    if (c.Heroes[j] == hero) return true;
+            }
+            return false;
         }
 
         public ItemInfo GetItemInfo(int index)
@@ -5435,7 +6239,8 @@ namespace Server.MirEnvir
             {
                 if (quest.Type != QuestType.Daily) continue;
 
-                for (var i = 0; i < info.CompletedQuests.Count; i++)
+                //2026-09-18 修复: 倒序遍历, 原正序遍历中RemoveAt会跳过后一项, 导致多个每日任务时漏删(次日无法重接)
+                for (var i = info.CompletedQuests.Count - 1; i >= 0; i--)
                 {
                     if (info.CompletedQuests[i] != quest.Index) continue;
 
@@ -5822,7 +6627,38 @@ namespace Server.MirEnvir
                 Scripts[key].Load();
             }
 
+            RefreshPlayersQuestInfo();
+
             MessageQueue.Enqueue(GameLanguage.ServerTextMap.GetLocalization(ServerTextKeys.NpcScriptsReloaded));
+        }
+
+        // 脚本重载会重新绑定任务的接取/交付NPC(以及任务内容), 但在线客户端的任务信息缓存不会自动刷新,
+        // 旧的表现是玩家必须完整重启客户端(建立新连接)才能看到新的可接/可交状态。
+        // 这里对每个在线玩家重发任务信息, 并刷新进行中任务的进度与完成状态。
+        public void RefreshPlayersQuestInfo()
+        {
+            var players = Players.ToArray(); //遍历快照, 避免中途上下线导致集合变动
+
+            foreach (var player in players)
+            {
+                if (player == null || player.Node == null || player.Connection == null) continue;
+
+                try
+                {
+                    player.Connection.SentQuestInfo.Clear();
+                    player.GetQuestInfo();
+
+                    for (int i = 0; i < player.CurrentQuests.Count; i++)
+                    {
+                        //必须用 Update: 客户端对 Add 是无条件插入会重复, Update 按任务Id替换
+                        player.SendUpdateQuest(player.CurrentQuests[i], QuestState.Update);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageQueue.Enqueue(string.Format("刷新玩家[{0}]任务信息失败: {1}", player.Name, ex.Message));
+                }
+            }
         }
 
         public void ReloadDrops()
@@ -5884,6 +6720,115 @@ namespace Server.MirEnvir
 
                 MessageQueue.Enqueue(GameLanguage.ServerTextMap.GetLocalization(ServerTextKeys.LineMessagesReloaded));
             }
+        }
+
+        /// <summary>
+        /// 天赋系统 - 加载(或热重载)天赋表 Envir\Talents.txt.
+        /// 重载后需要刷新在线玩家的属性, 使已删/改天赋的属性加成立即生效.
+        /// </summary>
+        public void ReloadTalents()
+        {
+            TalentInfoList = Server.MirDatabase.TalentLoader.Load();
+
+            MessageQueue.Enqueue(GameLanguage.ServerTextMap.GetLocalization((ServerTextKeys.TalentsLoaded), TalentInfoList.Count));
+
+            //通知在线玩家重发天赋表(客户端会刷新天赋窗口), 并重算属性
+            for (var i = 0; i < Players.Count; i++)
+            {
+                Players[i].RefreshStats();
+                Players[i].SendTalentInfo();
+            }
+        }
+
+        /// <summary>
+        /// 商城 - 热重载商城表: 把DB工具(Envir.Edit)里最新编辑的商城表同步到运行中的表,
+        /// 并给所有在线玩家重发完整商城数据(客户端按GIndex去重替换, 无需重启/重登).
+        /// 注意: 请先在DB工具里编辑商城并保存, 再执行 @ReloadGameShop.
+        /// </summary>
+        public void ReloadGameShop()
+        {
+            GameShopList = new List<GameShopItem>(Envir.Edit.GameShopList);
+
+            MessageQueue.Enqueue(string.Format("商城表已热重载, 共 {0} 条商品, 已通知 {1} 名在线玩家刷新.", GameShopList.Count, Players.Count));
+
+            for (var i = 0; i < Players.Count; i++)
+            {
+                Players[i].GetGameShop();
+            }
+        }
+
+        /// <summary>
+        /// 物品管理器 - 排队热同步: 由编辑器在保存后调用.
+        /// 同步动作会在运行库(通常是 Envir.Main)的服务器线程内执行,
+        /// 与 WorkLoop 里的周期存盘串行, 不存在文件覆盖竞争.
+        /// </summary>
+        public void QueueItemSync(List<int> deletedItemIndexes)
+        {
+            var deleted = deletedItemIndexes ?? new List<int>();
+
+            Interlocked.Exchange(ref _pendingItemSync, () =>
+            {
+                foreach (var idx in deleted)
+                    SuppressedItemIndexes.Add(idx);
+
+                MessageQueue.Enqueue(SyncItemsFromEdit());
+            });
+        }
+
+        /// <summary>
+        /// 把任意任务投递到游戏主线程执行(线程安全).
+        /// 控制面板等UI线程需要触碰玩家/地图等运行时数据时必须走这里, 避免和游戏循环抢数据.
+        /// </summary>
+        public void QueueMainAction(Action action)
+        {
+            if (action == null) return;
+            Interlocked.Exchange(ref _pendingMainAction, action);
+        }
+
+        /// <summary>
+        /// 物品管理器 - 热同步执行体(务必在服务器线程内调用):
+        /// 把编辑库(Envir.Edit)的最新物品表同步到本实例:
+        /// 1. 按 Index 原地复制字段(在线玩家 UserItem 引用不断链);
+        /// 2. 编辑器新增的物品克隆追加;
+        /// 3. 已删物品靠 SuppressedItemIndexes 防止周期存盘复活(下次重启彻底消失);
+        /// 4. 全体在线玩家刷新属性, 使攻防变化立即生效.
+        /// </summary>
+        public string SyncItemsFromEdit()
+        {
+            if (ReferenceEquals(this, Edit))
+                return "物品热同步跳过: 不能在编辑实例(Envir.Edit)上执行。";
+
+            int updated = 0, added = 0;
+
+            var editById = new Dictionary<int, ItemInfo>(Edit.ItemInfoList.Count);
+            foreach (var e in Edit.ItemInfoList)
+                editById[e.Index] = e;
+
+            var known = new HashSet<int>(ItemInfoList.Count);
+            for (var i = 0; i < ItemInfoList.Count; i++)
+            {
+                var item = ItemInfoList[i];
+                known.Add(item.Index);
+
+                if (editById.TryGetValue(item.Index, out var src))
+                {
+                    if (!ReferenceEquals(item, src))
+                        item.CopyFieldsFrom(src);
+                    updated++;
+                }
+            }
+
+            foreach (var e in Edit.ItemInfoList)
+            {
+                if (known.Contains(e.Index)) continue;
+                ItemInfoList.Add(e.CloneItemInfo());
+                added++;
+            }
+
+            for (var i = 0; i < Players.Count; i++)
+                Players[i].RefreshStats();
+
+            return $"物品热同步完成: 更新 {updated} 件, 新增 {added} 件, 删除标记 {SuppressedItemIndexes.Count} 件, 已刷新 {Players.Count} 名在线玩家属性。";
         }
 
         private WorldMapIcon ValidateWorldMap()

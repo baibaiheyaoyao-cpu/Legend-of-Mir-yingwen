@@ -1,4 +1,4 @@
-﻿using Client.MirGraphics;
+using Client.MirGraphics;
 using Client.MirScenes;
 using Client.MirSounds;
 using S = ServerPackets;
@@ -62,6 +62,22 @@ namespace Client.MirObjects
                     Light = 3;
                     Blend = true;
                     break;
+                case Spell.SoulflameSiphon: // [AI-Claude] 吸魔炎风: 龙卷法阵循环
+                    BodyLibrary = Libraries.Magic_32bit;
+                    DrawFrame = 1590;
+                    FrameInterval = 120;
+                    FrameCount = 12;
+                    Light = 3;
+                    Blend = false;
+                    break;
+                case Spell.SoulflameSiphonRare:
+                    BodyLibrary = Libraries.Magic_32bit;
+                    DrawFrame = 1640;
+                    FrameInterval = 120;
+                    FrameCount = 12;
+                    Light = 3;
+                    Blend = false;
+                    break;
                 case Spell.DigOutZombie:
                     BodyLibrary = (ushort)Monster.DigOutZombie < Libraries.Monsters.Count() ? Libraries.Monsters[(ushort)Monster.DigOutZombie] : Libraries.Magic;
                     DrawFrame = 304 + (byte) Direction;
@@ -69,7 +85,7 @@ namespace Client.MirObjects
                     Blend = false;
                     break;
                 case Spell.Blizzard:
-                    AnimationOffset = new Point(0, -20);
+                    AnimationOffset = Point.Empty; //原(0,-20)格偏移与图库帧自带-727px"从天而降"锚点双重叠加=雨柱悬空"屏幕上面释放"根因; 本套图(原作者系)帧锚点已内置, 代码层归零
                     BodyLibrary = Libraries.Magic2;
                     DrawFrame = 1550;
                     FrameInterval = 100;
@@ -79,7 +95,7 @@ namespace Client.MirObjects
                     Repeat = false;
                     break;
                 case Spell.MeteorStrike:
-                    AnimationOffset = new Point(0, -20);
+                    AnimationOffset = Point.Empty; //同Blizzard: 帧自带-775~-841px锚点, 不再叠加代码层偏移
                     MapControl.Effects.Add(new Effect(Libraries.Magic2, 1600, 10, 800, CurrentLocation) { Repeat = true, RepeatUntil = CMain.Time + 3000 });
                     BodyLibrary = Libraries.Magic2;
                     DrawFrame = 1610;

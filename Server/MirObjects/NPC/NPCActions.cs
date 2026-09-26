@@ -17,6 +17,9 @@
     {
         Move,
         InstanceMove,
+        BattleJoin,
+        BattleLeave,
+        BattleClaimReward,
         GiveGold,
         TakeGold,
         GiveGuildGold,
@@ -105,6 +108,7 @@
         ReviveHero,
         SealHero,
         DeleteHero,
+        HeroAscend,
         ConquestRepairAll,
         BuyGT,
         TeleportGT,

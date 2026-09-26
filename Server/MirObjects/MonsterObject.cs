@@ -1,10 +1,10 @@
-using System;
-using System.Drawing;
-﻿using Server.MirDatabase;
+using Server.MirDatabase;
 using Server.MirEnvir;
 using Server.MirObjects.Monsters;
-using System.Diagnostics.Eventing.Reader;
 using Shared;
+using System;
+using System.Diagnostics.Eventing.Reader;
+using System.Drawing;
 using S = ServerPackets;
 
 namespace Server.MirObjects
@@ -391,7 +391,8 @@ namespace Server.MirObjects
                 case 175:
                     return new ChieftainArcher(info);
 
-                //case 176: ChieftainSword
+                case 176:                              // 弦月门战士ai ← 替换注释桩
+                    return new ChieftainSword(info);   // 
 
                 case 177:
                     return new FrozenKnight(info);
@@ -453,7 +454,14 @@ namespace Server.MirObjects
                 case 203:
                     return new GlacierWarrior(info);
 
+                case 204:                              // 金胜战士ai
+                    return new JinshengWarrior(info);  // ←
 
+                case 205:                              // 阳龙王ai
+                    return new MasterYangDragon(info); //
+
+                case 224:                              // [AI-Claude 2026-08-29] 数据驱动通用ai 配方见Envir\MonsterConfigs\<怪名>.ini
+                    return new ConfiguredMonster(info); 
 
                 case 210:
                     return new HoodedSummonerScrolls(info);
@@ -485,8 +493,15 @@ namespace Server.MirObjects
                 case 223:
                     return new SepHighArcher(info); //TODO
 
-                case 255://Skill 
+                case 255://Skill
                     return new StoneTrap(info);
+
+                // [AI 230/231/232] 道士召唤宠物: 风灵(615) 5x5弹道AOE / 幻灵(616) 7x7自身AOE / 上古神谕(415) 复用风灵弹道类
+                case 230:
+                case 232:
+                    return new WindSpiritPet(info);
+                case 231:
+                    return new PhantomSpiritPet(info);
 
                 default:
                     return new MonsterObject(info);
@@ -599,12 +614,12 @@ namespace Server.MirObjects
                 }
             }
         }
-        public const int RegenDelay = 10000, EXPOwnerDelay = 5000, AloneDelay = 3000, SearchDelay = 3000, RoamDelay = 1000, HealDelay = 600, RevivalDelay = 2000;
-        public long ActionTime, MoveTime, AttackTime, RegenTime, DeadTime, AloneTime, SearchTime, RoamTime, HealTime;
+        public const int RegenDelay = 10000, EXPOwnerDelay = 5000, SearchDelay = 3000, RoamDelay = 1000, HealDelay = 600, RevivalDelay = 2000;
+        public long ActionTime, MoveTime, AttackTime, RegenTime, DeadTime, SearchTime, RoamTime, HealTime;
         public long ShockTime, RageTime, HallucinationTime;
         public bool BindingShotCenter, PoisonStopRegen = true;
 
-        protected bool Alone = false, Stacking = false;
+        protected bool Stacking = false;
 
         public byte PetLevel;
         public uint PetExperience;
@@ -983,12 +998,13 @@ namespace Server.MirObjects
             {
                 EXPOwner.WinExp(Experience, Level);
 
-                if (EXPOwner.Race != ObjectType.Hero)
-                {
-                    PlayerObject playerObj = (PlayerObject)EXPOwner;
-                    playerObj.CheckGroupQuestKill(Info);
-                }
+                //英雄拿到归属时, 任务击杀计数记到英雄主人(玩家)头上, 否则带英雄打怪杀怪任务不涨进度
+                PlayerObject creditPlayer = EXPOwner.Race == ObjectType.Hero ? ((HeroObject)EXPOwner).Owner : (PlayerObject)EXPOwner;
 
+                if (creditPlayer != null && creditPlayer.Node != null)
+                {
+                    creditPlayer.CheckGroupQuestKill(Info);
+                }
             }
 
             if (Respawn != null)
@@ -1233,9 +1249,6 @@ namespace Server.MirObjects
         {
             long time = Envir.Time + 2000;
 
-            if (AloneTime < time && AloneTime > Envir.Time)
-                time = AloneTime;
-
             if (DeadTime < time && DeadTime > Envir.Time)
                 time = DeadTime;
 
@@ -1360,17 +1373,14 @@ namespace Server.MirObjects
             Target = null;
             PMode = PetMode.Both;
 
-            // Only teleport if needed
-            if (CurrentMap != Master.CurrentMap)
-            {
-                if (!Teleport(Master.CurrentMap, Master.Back))
-                    Teleport(Master.CurrentMap, Master.CurrentLocation);
+            // Recall pet to master's side (same map or cross map, any distance)
+            if (!Teleport(Master.CurrentMap, Master.Back))
+                Teleport(Master.CurrentMap, Master.CurrentLocation);
 
-                // Only show message if returning from frozen/waiting state
-                if (wasFrozen)
-                {
-                    Master.ReceiveChat(GameLanguage.ServerTextMap.GetLocalization(ServerTextKeys.HasReturnedToYourSide,Name), ChatType.System);
-                }
+            // Only show message if returning from frozen/waiting state
+            if (wasFrozen)
+            {
+                Master.ReceiveChat(GameLanguage.ServerTextMap.GetLocalization(ServerTextKeys.HasReturnedToYourSide, Name), ChatType.System);
             }
         }
         protected virtual void CompleteAttack(IList<object> data)
@@ -1720,46 +1730,11 @@ namespace Server.MirObjects
                 }
             }
 
-            CheckAlone();
+            ProcessStacking();
 
-            if (!Alone || Settings.MonsterProcessWhenAlone)
-            {
-                ProcessStacking();
-
-                ProcessSearch();
-                ProcessRoam();
-                ProcessTarget();
-            }
-        }
-
-        protected virtual void CheckAlone()
-        {
-            if (Envir.Time < AloneTime) return;
-
-            AloneTime = Envir.Time + AloneDelay;
-
-            if (Route.Count > 0)
-            {
-                Alone = false;
-                return;
-            }
-
-            if (CurrentMap.Players.Count == 0)
-            {
-                Alone = true;
-                return;
-            }
-
-            for (int i = 0; i < CurrentMap.Players.Count; i++)
-            {
-                if (Functions.InRange(CurrentLocation, CurrentMap.Players[i].CurrentLocation, Globals.DataRange * 2))
-                {
-                    Alone = false;
-                    return;
-                }
-            }
-
-            Alone = true;
+            ProcessSearch();
+            ProcessRoam();
+            ProcessTarget();
         }
 
         protected virtual void ProcessStacking()
@@ -1806,9 +1781,10 @@ namespace Server.MirObjects
             if (Envir.Time < SearchTime) return;
             if (Master != null && (Master.PMode == PetMode.MoveOnly || Master.PMode == PetMode.None || Master.PMode == PetMode.FocusMasterTarget)) return;
 
-            SearchTime = Envir.Time + SearchDelay;
+            //宠物搜索更快(1秒 vs 普通怪3秒), 且没目标时必搜(去掉33%随机)
+            SearchTime = Envir.Time + (Master != null ? 1000 : SearchDelay);
 
-            if (Target == null || Envir.Random.Next(3) == 0)
+            if (Target == null || (Master == null && Envir.Random.Next(3) == 0))
                 FindTarget();
         }
 
@@ -1826,7 +1802,7 @@ namespace Server.MirObjects
 
             RoamTime = Envir.Time + RoamDelay;
 
-            if (Envir.Random.Next(10) != 0) return;
+            if (Envir.Random.Next(10) != 0) return; //原版设计: 90%待机 防止无目标乱走
 
             switch (Envir.Random.Next(3)) //Face Walk
             {

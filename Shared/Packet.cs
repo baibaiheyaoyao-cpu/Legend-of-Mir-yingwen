@@ -1,4 +1,4 @@
-﻿using C = ClientPackets;
+using C = ClientPackets;
 using S = ServerPackets;
 
 public abstract class Packet
@@ -399,6 +399,12 @@ public abstract class Packet
                 return new C.GuildTerritoryPage();
             case (short)ClientPacketIds.DeleteItem:
                 return new C.DeleteItem();
+            case (short)ClientPacketIds.ClientTalent:
+                return new C.ClientTalent();
+            case (short)ClientPacketIds.LearnTalent:
+                return new C.LearnTalent();
+            case (short)ClientPacketIds.ResetTalentPoints:
+                return new C.ResetTalentPoints();
             default:
                 return null;
         }
@@ -684,6 +690,8 @@ public abstract class Packet
                 return new S.GroupMembersMap();
             case (short)ServerPacketIds.SendMemberLocation:
                 return new S.SendMemberLocation();
+            case (short)ServerPacketIds.GroupMemberHealth:
+                return new S.GroupMemberHealth();
             case (short)ServerPacketIds.Revived:
                 return new S.Revived();
             case (short)ServerPacketIds.ObjectRevived:
@@ -964,6 +972,20 @@ public abstract class Packet
                 return new S.SetCompass();
             case (short)ServerPacketIds.GuildTerritoryPage:
                 return new S.GuildTerritoryPage();
+            case (short)ServerPacketIds.TalentInfo:
+                return new S.TalentInfo();
+            case (short)ServerPacketIds.PlayerTalentInfo:
+                return new S.PlayerTalentInfo();
+            case (short)ServerPacketIds.TalentChange:
+                return new S.TalentChange();
+            case (short)ServerPacketIds.TalentReset:
+                return new S.TalentReset();
+            case (short)ServerPacketIds.ClassAvailability:
+                return new S.ClassAvailability();
+            case (short)ServerPacketIds.CustomSkillConfigs:
+                return new S.CustomSkillConfigs();
+            case (short)ServerPacketIds.CustomMagicConfigs:
+                return new S.CustomMagicConfigs();
             default:
                 return null;
         }

@@ -1665,7 +1665,13 @@ namespace Client.MirControls
                                     {
                                         if ((GameScene.SelectedCell.Item.Info.Type == ItemType.Weapon ||
                                             GameScene.SelectedCell.Item.Info.Type == ItemType.Helmet ||
-                                            GameScene.SelectedCell.Item.Info.Type == ItemType.Armour) &&
+                                            GameScene.SelectedCell.Item.Info.Type == ItemType.Armour ||
+                                            GameScene.SelectedCell.Item.Info.Type == ItemType.Necklace ||
+                                            GameScene.SelectedCell.Item.Info.Type == ItemType.Bracelet ||
+                                            GameScene.SelectedCell.Item.Info.Type == ItemType.Ring ||
+                                            GameScene.SelectedCell.Item.Info.Type == ItemType.Amulet ||
+                                            GameScene.SelectedCell.Item.Info.Type == ItemType.Belt ||
+                                            GameScene.SelectedCell.Item.Info.Type == ItemType.Boots) &&
                                             GameScene.SelectedCell.Item.Info.Grade != ItemGrade.None &&
                                             _itemSlot == 0)
                                         {
@@ -1748,16 +1754,19 @@ namespace Client.MirControls
                                 //AllCashItem Korea Server Not Implementation.
                                 case 5:
                                 case 6:
-                                    if (GameScene.SelectedCell.Item.Info.Type == ItemType.Awakening &&
-                                            GameScene.SelectedCell.Item.Info.Shape == 200)
+                                    if (GameScene.SelectedCell.GridType == MirGridType.Inventory)
                                     {
-                                        Item = GameScene.SelectedCell.Item;
-                                        GameScene.SelectedCell.Locked = true;
-                                        NPCAwakeDialog.ItemsIdx[_itemSlot] = GameScene.SelectedCell._itemSlot;
-                                    }
-                                    else
-                                    {
-                                        errorCode = -2;
+                                        if (GameScene.SelectedCell.Item.Info.Type == ItemType.Awakening &&
+                                            GameScene.SelectedCell.Item.Info.Shape < 200 && NPCAwakeDialog.ItemsIdx[_itemSlot] == 0)
+                                        {
+                                            Item = GameScene.SelectedCell.Item;
+                                            GameScene.SelectedCell.Locked = true;
+                                            NPCAwakeDialog.ItemsIdx[_itemSlot] = GameScene.SelectedCell._itemSlot;
+                                        }
+                                        else
+                                        {
+                                            errorCode = -2;
+                                        }
                                     }
                                     break;
                                 default:

@@ -351,6 +351,8 @@ namespace Server.MirDatabase
             {
                 EndDateTime = Envir.Now;
 
+                MessageQueue.Instance.EnqueueDebugging($"[Quest] {(Owner != null ? Owner.Name + "的" : "")}任务{Index}[{Info.Name}] 进度达成 → 标记完成");
+
                 if (Info.TimeLimitInSeconds > 0)
                 {
                     Owner.ExpireTimer($"Quest-{Index}");
@@ -359,6 +361,15 @@ namespace Server.MirDatabase
 // updatetask again to show gototask
             UpdateTasks();
             return true;
+        }
+
+        public string BuildDiagString()
+        {
+            var sb = new System.Text.StringBuilder($"任务{Index}[{Info?.Name ?? "??"}] Completed={Completed}");
+            foreach (var k in KillTaskCount) sb.Append($" 杀{k.MonsterID}:{k.Count}/{k.Info?.Count ?? -1}{(k.Info == null ? "(绑定丢失)" : "")}");
+            foreach (var i in ItemTaskCount) sb.Append($" 物{i.ItemID}:{i.Count}/{i.Info?.Count ?? -1}{(i.Info == null ? "(绑定丢失)" : "")}");
+            foreach (var f in FlagTaskSet) sb.Append($" 旗{f.Number}:{(f.State ? 1 : 0)}{(f.Info == null ? "(绑定丢失)" : "")}");
+            return sb.ToString();
         }
 
         #region Need Requirement

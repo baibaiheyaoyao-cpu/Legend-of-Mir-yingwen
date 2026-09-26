@@ -640,6 +640,27 @@ public enum ClientTextKeys
     PlagueSkillDescription,
     HealingCircleSkillDescription,
     PetEnhancerSkillDescription,
+    //秘籍技能说明(技能页悬停; 文案取自对应技能书tooltip)
+    ImmortalSkinRareSkillDescription,
+    EntrapmentRareSkillDescription,
+    LionRoarRareSkillDescription,
+    DimensionalSwordRareSkillDescription,
+    HealingRareSkillDescription,
+    PetEnhancerRareSkillDescription,
+    GreatFireBallRareSkillDescription,
+    ThunderBoltRareSkillDescription,
+    StormEscapeRareSkillDescription,
+    FlashDashRareSkillDescription,
+    MoonMistRareSkillDescription,
+    CrescentSlashRareSkillDescription,
+    ShadowComboRareSkillDescription,
+    DelayedExplosionRareSkillDescription,
+    ConcentrationRareSkillDescription,
+    ThunderStrikeRareSkillDescription,
+    WanXiaoFuRareSkillDescription,
+    SoulflameSiphonRareSkillDescription,
+    HeavenlySecretsSkillDescription,
+    CatTongueSkillDescription,
     FatalSwordPassiveSkillDescription,
     DoubleSlashToggleSkillDescription,
     HasteBuffSkillDescription,
@@ -1065,6 +1086,17 @@ public enum ClientTextKeys
     RankingOpenClose,
     HelpOpenClose,
     KeybindsOpenClose,
+
+    //天赋系统 - 客户端文案
+    TalentOpenClose,    //热键提示: 天赋 开/关
+    TalentEntry,        //主界面入口文字
+    TalentTitle,        //窗口标题
+    TalentPoints,       //剩余点数
+    TalentResetButton,  //洗点按钮
+    TalentResetConfirm, //洗点确认框
+    TalentNotOpen,      //天赋暂未开放
+    TalentRequiredLevel,//需求等级
+    TalentPreLine,      //前置行(勾/叉 名称 当前/需求)
     CloseAllWindows,
     RotateBelt,
     Logout,
@@ -1536,6 +1568,7 @@ public enum ServerTextKeys
     CongratulationsExtraDC,
     CongratulationsExtraMC,
     CongratulationsExtraSC,
+    RefineStatGained,
     ItemSmashedOnTest,
     YouNotMarried,
     ForcefullyDivorced,
@@ -1629,6 +1662,7 @@ public enum ServerTextKeys
     HeroReleasedFromService,
     YouCannotSummonMoreHeroes,
     HeroAddedToStorage,
+    HeroBelongsToAnother,
     PlayerHasDroppedItem,
     IAmStarving,
     FriendlyPickedUpItem,
@@ -1886,7 +1920,27 @@ public enum ServerTextKeys
     IntelligentCreaturesCannotBeSummonedOnMap,
     CannotSummonHeroOnMap,
     CannotFollowIntoMapWaitHere,
-    HasReturnedToYourSide
+    HasReturnedToYourSide,
+
+    //天赋系统 - 服务端文案
+    TalentsLoaded,               //天赋表加载完成提示
+    TalentsReloaded,             //@ReloadTalents 完成
+    TalentDuplicateId,           //天赋表Id重复
+    TalentBadLine,               //天赋表行格式错误
+    TalentMissingPre,            //天赋前置引用了不存在的Id
+    TalentBadStat,               //天赋属性串解析失败
+    TalentNotOpenYet,            //召唤类天赋暂未开放
+    TalentSystemLocked,          //等级未到解锁等级
+    TalentWrongClass,            //职业不符
+    TalentLowLevel,              //等级不足
+    TalentMaxLevel,              //已满级
+    TalentLowPoints,             //点数不足
+    TalentPreNotMet,             //前置未满足
+    TalentNotFound,              //找不到该天赋
+    TalentLearned,               //学习成功提示
+    TalentPointsGained,          //获得天赋点提示
+    TalentResetOk,               //洗点成功
+    TalentResetLowGold           //洗点金币不足
 }
 
 public class TextMap
@@ -2057,6 +2111,24 @@ public static class GameLanguage
             { nameof(ServerTextKeys.PetHasBeenRecalled), "Pet {0} x{1} has been recalled." },
             { nameof(ServerTextKeys.DropsReloaded), "Drops Reloaded." },
             { nameof(ServerTextKeys.NpcScriptsReloaded), "NPC Scripts Reloaded." },
+            { nameof(ServerTextKeys.TalentsLoaded), "Talents loaded: {0}" },
+            { nameof(ServerTextKeys.TalentsReloaded), "Talents Reloaded: {0}" },
+            { nameof(ServerTextKeys.TalentDuplicateId), "Talents.txt: duplicate talent Id {0}, line skipped." },
+            { nameof(ServerTextKeys.TalentBadLine), "Talents.txt: bad format on line {0} (found {1} columns), line skipped." },
+            { nameof(ServerTextKeys.TalentMissingPre), "Talents.txt: talent {0} requires missing talent Id {1}, talent skipped." },
+            { nameof(ServerTextKeys.TalentBadStat), "Talents.txt: failed to parse stat '{1}' on talent {0}, stat ignored." },
+            { nameof(ServerTextKeys.TalentNotOpenYet), "This talent is not available yet." },
+            { nameof(ServerTextKeys.TalentSystemLocked), "The talent system unlocks at level {0}." },
+            { nameof(ServerTextKeys.TalentWrongClass), "Your class cannot learn this talent." },
+            { nameof(ServerTextKeys.TalentLowLevel), "You must be level {0} to learn this talent." },
+            { nameof(ServerTextKeys.TalentMaxLevel), "This talent is already at max level." },
+            { nameof(ServerTextKeys.TalentLowPoints), "Not enough talent points." },
+            { nameof(ServerTextKeys.TalentPreNotMet), "You have not met the requirements of: {0}." },
+            { nameof(ServerTextKeys.TalentNotFound), "Talent not found." },
+            { nameof(ServerTextKeys.TalentLearned), "{0} learned. (Level {1}/{2})" },
+            { nameof(ServerTextKeys.TalentPointsGained), "You have gained {0} talent points." },
+            { nameof(ServerTextKeys.TalentResetOk), "Talents reset. {0} points returned." },
+            { nameof(ServerTextKeys.TalentResetLowGold), "Not enough gold. Talent reset costs {0}." },
             { nameof(ServerTextKeys.PlayerGivenGoldByGM), "Player {0} has been given {1} gold by GM: {2}" },
             { nameof(ServerTextKeys.PlayerGivenPearlByGM), "Player {0} has been given {1} pearl by GM: {2}" },
             { nameof(ServerTextKeys.PlayerGivenCreditByGM), "Player {0} has been given {1} credit by GM: {2}" },
@@ -2319,6 +2391,7 @@ public static class GameLanguage
             { nameof(ServerTextKeys.CongratulationsExtraDC), "Congratulations, your {0} now has +{1} extra DC." },
             { nameof(ServerTextKeys.CongratulationsExtraMC), "Congratulations, your {0} now has +{1} extra MC." },
             { nameof(ServerTextKeys.CongratulationsExtraSC), "Congratulations, your {0} now has +{1} extra SC." },
+            { nameof(ServerTextKeys.RefineStatGained), "Congratulations! {0} gained {1} +{2}." },
             { nameof(ServerTextKeys.ItemSmashedOnTest), "Your {0} smashed into a thousand pieces upon testing." },
             { nameof(ServerTextKeys.YouNotMarried), "You're not married." },
             { nameof(ServerTextKeys.ForcefullyDivorced), "You've just been forcefully divorced" },
@@ -2412,6 +2485,7 @@ public static class GameLanguage
             { nameof(ServerTextKeys.HeroReleasedFromService), "Hero has been released from service" },
             { nameof(ServerTextKeys.YouCannotSummonMoreHeroes), "You can not summon any more heroes." },
             { nameof(ServerTextKeys.HeroAddedToStorage), "Hero has been added to your hero storage." },
+            { nameof(ServerTextKeys.HeroBelongsToAnother), "This hero already belongs to another player." },
             { nameof(ServerTextKeys.PlayerHasDroppedItem), "{0} has dropped {1}." },
             { nameof(ServerTextKeys.IAmStarving), "I'm starving!!." },
             { nameof(ServerTextKeys.FriendlyPickedUpItem), "{0} Picked up: {{{1}}}" },
@@ -3506,6 +3580,86 @@ public static class GameLanguage
                 "Reincarnation\n\nInstant Casting\nMana Cost {2}\n\nRequired Items: Amulet\n\nRevives a dead players\n\nCurrent Skill Level {0}\nNext Level {1}"
             },
             {
+                nameof(ClientTextKeys.ImmortalSkinRareSkillDescription),
+                "[被动技能]\n\n前置技能：金刚不坏\n在金刚不坏状态中可使用，\n提升受到首领怪物的伤害减少率。\n可在眩晕、结冰、石化中使用。\n金刚不坏结束时恢复一定量体力，\n伤害减少率受幸运影响。\n\n当前技能等级 {0}\n下一级等级 {1}"
+            },
+            {
+                nameof(ClientTextKeys.EntrapmentRareSkillDescription),
+                "[主动技能]\n\n前置技能：捕绳剑\n8格内将除BOSS外所有对象以100%概率\n石化并拖到面前。\n可拖动等级不高于自身等级+8的怪物。\n\n当前技能等级 {0}\n下一级等级 {1}\n法力消耗 {2}"
+            },
+            {
+                nameof(ClientTextKeys.LionRoarRareSkillDescription),
+                "[奥义]物理攻击武功\n狮子吼的上升武功，有再次使用的等待时间，\n对周围5×5范围敌人造成伤害，\n压制角色1秒/普通怪物10秒。\n伤害受破坏、武功等级影响，\n压制概率受等级差与抗中毒影响。\n最多可修炼5级。\n\n当前技能等级 {0}"
+            },
+            {
+                nameof(ClientTextKeys.DimensionalSwordRareSkillDescription),
+                "[奥义]物理攻击武功\n极时空神剑的上升武功，\n以极致的境界割破时空，洞穿前方3格敌人，\n造成范围伤害。\n对怪物追加100%伤害。\n伤害受破坏、武功等级影响。\n最多可修炼5级。\n\n当前技能等级 {0}"
+            },
+            {
+                nameof(ClientTextKeys.HealingRareSkillDescription),
+                "[被动技能]\n\n治愈术添加生命之光BUFF\n为友方目标恢复血量，同时增加目标\n最大体力。命中时追加获得净化术效果。\n\n当前技能等级 {0}\n法力消耗 {2}"
+            },
+            {
+                nameof(ClientTextKeys.PetEnhancerRareSkillDescription),
+                "[奥义]武功\n血龙水的上升武功，\n一次性召唤所有召唤兽，\n召唤兽受到的怪物伤害减少25%，\n随道术和武功提高而变强。\n最多可修炼5级。\n\n当前技能等级 {0}"
+            },
+            {
+                nameof(ClientTextKeys.GreatFireBallRareSkillDescription),
+                "[主动技能]\n\n大火球的施展时间和冷却时间、\n魔力消耗量与伤害量大幅增加，\n有几率造成持续火焰伤害。\n\n当前技能等级 {0}\n下一级等级 {1}\n法力消耗 {2}"
+            },
+            {
+                nameof(ClientTextKeys.ThunderBoltRareSkillDescription),
+                "强击秘籍(雷电术上升武功)\n以更高的伤害雷击目标，\n随等级提升获得连锁跳转(最多2次)、\n扩大攻击范围(最多7格)，\n对不死系敌人伤害×1.5。\n\n当前技能等级 {0}\n下一级等级 {1}\n法力消耗 {2}"
+            },
+            {
+                nameof(ClientTextKeys.StormEscapeRareSkillDescription),
+                "魔法攻击武功\n可在眩晕、冰冻、石化时使用。\n使用后20秒内武功不消耗魔力，\n伤害型武功造成强力追加伤害。\n追加伤害受幸运影响。\n\n当前技能等级 {0}"
+            },
+            {
+                nameof(ClientTextKeys.FlashDashRareSkillDescription),
+                "[主动技能]\n\n最多突进2格，对第一个碰撞目标\n造成伤害并以概率麻痹，\n对首领怪物麻痹时间减半，\n使用后有等待时间。\n伤害、麻痹概率与持续时间随修炼提升。\n\n当前技能等级 {0}\n下一级等级 {1}\n法力消耗 {2}"
+            },
+            {
+                nameof(ClientTextKeys.MoonMistRareSkillDescription),
+                "月影雾可在眩晕、冰冻、石化时使用。\n使用后第一次普通攻击使敌人沉默\n一段时间并造成追加伤害。\n沉默时间随等级提升，\n额外伤害受破坏和幸运影响。\n\n当前技能等级 {0}"
+            },
+            {
+                nameof(ClientTextKeys.CrescentSlashRareSkillDescription),
+                "[奥义]物理攻击武功\n月华乱舞的上升武功，\n剑气更宽，释放后收回，共2次伤害，\n造成眩光状态(1秒内减少5准确)。\n伤害受破坏、武功等级影响。\n最多可修炼5级。\n\n当前技能等级 {0}"
+            },
+            {
+                nameof(ClientTextKeys.ShadowComboRareSkillDescription),
+                "[奥义]物理攻击武功\n闪影连击的上升武功，\n将肉身化为阴影，短暂免受伤害，\n连续攻击敌人10次。\n伤害受破坏、武功等级影响。\n最多可修炼5级。\n\n当前技能等级 {0}"
+            },
+            {
+                nameof(ClientTextKeys.DelayedExplosionRareSkillDescription),
+                "需要装备弓 气功石\n\n扩大爆闪的伤害范围，\n并对范围内随机目标施放爆闪。\n\n当前技能等级 {0}\n下一级等级 {1}\n法力消耗 {2}"
+            },
+            {
+                nameof(ClientTextKeys.ConcentrationRareSkillDescription),
+                "[奥义]武功\n气流术的上升武功，\n移动时也能获得气。\n最多可修炼5级。\n\n当前技能等级 {0}"
+            },
+            {
+                nameof(ClientTextKeys.ThunderStrikeRareSkillDescription),
+                "[奥义]魔法攻击武功\n落雷击的上升武功，\n在指定位置连续引起雷击。\n使用后10秒内可对单体敌人\n施放更强的追加雷击。\n伤害受破坏、魔力、武功等级影响。\n最多可修炼5级。\n\n当前技能等级 {0}"
+            },
+            {
+                nameof(ClientTextKeys.WanXiaoFuRareSkillDescription),
+                "[奥义]武功\n万效符的上升武功，\n赋予自己和友方魔法盾、神圣战甲、\n先天气功、无极真气效果并施放净化术，\n自身受到伤害减少20%。\n增强灵魂火符并向范围内敌人\n投掷4个护身符。\n最多可修炼5级。\n\n当前技能等级 {0}"
+            },
+            {
+                nameof(ClientTextKeys.SoulflameSiphonRareSkillDescription),
+                "[奥义]武功\n吸魔炎风的上升武功，\n以旋风形态展现更大、更强力的\n火魔和闪电的气息，\n在6秒内持续伤害并吸引普通怪兽，\n同时吸取魔力回复自身。\n伤害量受魔力、武功等级影响。\n最多可修炼5级。\n\n当前技能等级 {0}\n下一级等级 {1}\n法力消耗 {2}"
+            },
+            {
+                nameof(ClientTextKeys.HeavenlySecretsSkillDescription),
+                "[奥义]魔法攻击武功\n天上秘术，\n聚合天地魔力强化自身，\n持续期间提升最大魔法力\n17点+每级3点，\n持续30秒+每级10秒。\n魔力越强法术威力越高。\n最多可修炼3级。\n\n当前技能等级 {0}"
+            },
+            {
+                nameof(ClientTextKeys.CatTongueSkillDescription),
+                "[刺客]攻击武功\n猫舌兰，\n掷出灼热猫舌攻击远处敌人，\n命中后有一定概率\n使目标冰冻、麻痹或减速，\n各持续3秒×技能等级。\n伤害受破坏力影响，\n距离越远命中越慢。\n最多可修炼3级。\n\n当前技能等级 {0}"
+            },
+            {
                 nameof(ClientTextKeys.PoisonCloudSkillDescription),
                 "Poison Cloud\n\nInstant Casting\nMana Cost {2}\n\nRequired Items: GreenPoison\n\nThrow the amulet and a very strong\npoison cloud will appear in the area.\n\nCurrent Skill Level {0}\nNext Level {1}"
             },
@@ -4055,6 +4209,15 @@ public static class GameLanguage
             { nameof(ClientTextKeys.RankingOpenClose), "Ranking Open/Close" },
             { nameof(ClientTextKeys.HelpOpenClose), "Help Open/Close" },
             { nameof(ClientTextKeys.KeybindsOpenClose), "Keybinds Open/Close" },
+            { nameof(ClientTextKeys.TalentOpenClose), "Talent Open/Close" },
+            { nameof(ClientTextKeys.TalentEntry), "Talent" },
+            { nameof(ClientTextKeys.TalentTitle), "Talents" },
+            { nameof(ClientTextKeys.TalentPoints), "Points: {0}" },
+            { nameof(ClientTextKeys.TalentResetButton), "Reset" },
+            { nameof(ClientTextKeys.TalentResetConfirm), "Reset all talents? This costs gold and returns all spent points." },
+            { nameof(ClientTextKeys.TalentNotOpen), "Not available yet" },
+            { nameof(ClientTextKeys.TalentRequiredLevel), "Required Level: {0}" },
+            { nameof(ClientTextKeys.TalentPreLine), "{0} Requires: {1} {2}/{3}" },
             { nameof(ClientTextKeys.CloseAllWindows), "Close All Windows" },
             { nameof(ClientTextKeys.RotateBelt), "Rotate Belt" },
             { nameof(ClientTextKeys.Logout), "Logout" },

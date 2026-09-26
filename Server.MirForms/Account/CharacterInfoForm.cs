@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -30,7 +30,7 @@ namespace Server.Account
         #region Load Characters
         private void LoadCharacters()
         {
-            CharacterCountLabel.Text = string.Format("Characters count: {0}", SMain.Envir.CharacterList.Count);
+            CharacterCountLabel.Text = string.Format("角色数量: {0}", SMain.Envir.CharacterList.Count);
 
             CharactersList.Items.Clear();
 
@@ -38,7 +38,7 @@ namespace Server.Account
 
             if (characterList == null)
             {
-                MessageBox.Show("Character list is not available.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("角色列表不可用。", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
@@ -74,7 +74,7 @@ namespace Server.Account
             }
 
             // Update Character count label
-            CharacterCountLabel.Text = string.Format("Characters count: {0}", SMain.Envir.CharacterList.Count);
+            CharacterCountLabel.Text = string.Format("角色数量: {0}", SMain.Envir.CharacterList.Count);
 
             // Get filtered characters based on filter text and checkbox state
             List<CharacterInfo> filteredCharacters = SMain.Envir.CharacterList;

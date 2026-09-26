@@ -20,6 +20,8 @@ namespace Client.MirScenes
 
         private MirMessageBox _connectBox;
 
+        private InputKeyDialog _ViewKey;
+
         public MirImageControl TestLabel, ViolenceLabel, MinorLabel, YouthLabel; 
 
         public LoginScene()
@@ -42,6 +44,7 @@ namespace Client.MirScenes
             _login.AccountButton.Click += (o, e) =>
                 {
                     _login.Hide();
+                    if(_ViewKey != null && !_ViewKey.IsDisposed) _ViewKey.Dispose();
                     _account = new NewAccountDialog { Parent = _background };
                     _account.Disposing += (o1, e1) => _login.Show();
                 };
@@ -50,6 +53,13 @@ namespace Client.MirScenes
                 {
                     OpenPasswordChangeDialog(string.Empty, string.Empty);                    
                 };
+
+            _login.ViewKeyButton.Click += (o, e) =>     //ADD
+            {
+                if (_ViewKey != null && !_ViewKey.IsDisposed) return;
+
+                _ViewKey = new InputKeyDialog(_login) { Parent = _background };
+            };
 
             Version = new MirLabel
             {
@@ -114,6 +124,9 @@ namespace Client.MirScenes
                 case (short)ServerPacketIds.LoginSuccess:
                     Login((S.LoginSuccess) p);
                     break;
+                case (short)ServerPacketIds.ClassAvailability:
+                    SelectScene.AllowedClasses = ((S.ClassAvailability) p).AllowedClasses;
+                    break;
                 default:
                     base.ProcessPacket(p);
                     break;
@@ -159,6 +172,7 @@ namespace Client.MirScenes
         private void OpenPasswordChangeDialog(string autoFillID, string autoFillPassword)
         {
             _login.Hide();
+            if (_ViewKey != null && !_ViewKey.IsDisposed) _ViewKey.Dispose();
             _password = new ChangePasswordDialog { Parent = _background };
             _password.AccountIDTextBox.Text = autoFillID;
             _password.CurrentPasswordTextBox.Text = autoFillPassword;
@@ -298,6 +312,7 @@ namespace Client.MirScenes
         {
             Enabled = false;
             _login.Dispose();
+            if(_ViewKey != null && !_ViewKey.IsDisposed) _ViewKey.Dispose();
 
             SoundManager.PlaySound(SoundList.LoginEffect);
             _background.Animated = true;
@@ -311,7 +326,7 @@ namespace Client.MirScenes
         public sealed class LoginDialog : MirImageControl
         {
             public MirImageControl TitleLabel, AccountIDLabel, PassLabel;
-            public MirButton AccountButton, CloseButton, OKButton, PassButton;
+            public MirButton AccountButton, CloseButton, OKButton, PassButton, ViewKeyButton;
             public MirTextBox AccountIDTextBox, PasswordTextBox;
             private bool _accountIDValid, _passwordValid;
 
@@ -379,6 +394,16 @@ namespace Client.MirScenes
                         Parent = this,
                         PressedIndex = 328,
                     };
+
+                ViewKeyButton = new MirButton
+                {
+                    HoverIndex = 333,
+                    Index = 332,
+                    Library = Libraries.Title,
+                    Location = new Point(60, 189),
+                    Parent = this,
+                    PressedIndex = 334,
+                };
 
                 CloseButton = new MirButton
                     {
@@ -517,6 +542,7 @@ namespace Client.MirScenes
                     CloseButton = null;
                     OKButton = null;
                     PassButton = null;
+                    ViewKeyButton = null;
                     AccountIDTextBox = null;
                     PasswordTextBox = null;
 
@@ -1129,6 +1155,199 @@ namespace Client.MirScenes
                 Visible = true;
                 AccountIDTextBox.SetFocus();
             }
+        }
+
+        public sealed class InputKeyDialog : MirImageControl
+        {
+            public readonly MirButton KeyEscButton, KeyDelButton, KeyRandButton, KeyEnterButton;
+
+            private LoginDialog _loginDialog;
+
+            private List<MirButton> _buttons = new List<MirButton>();
+
+            private char[] _letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".ToCharArray();
+            private char[] _numbers = "0123456789".ToCharArray();
+
+            public InputKeyDialog(LoginDialog loginDialog)
+            {
+                _loginDialog = loginDialog;
+
+                Index = 1080;
+                Library = Libraries.Prguse;
+                Location = new Point((Client.Settings.ScreenWidth - Size.Width) / 2 + 285, (Client.Settings.ScreenHeight - Size.Height) / 2 + 150);
+                Visible = true;
+
+                KeyEscButton = new MirButton
+                {
+                    Text = GameLanguage.ClientTextMap.GetLocalization(ClientTextKeys.BtnEsc),
+                    HoverIndex = 301,
+                    Index = 300,
+                    Library = Libraries.Title,
+                    Location = new Point(12, 12),
+                    Parent = this,
+                    PressedIndex = 302,
+                    CenterText = true
+                };
+                KeyEscButton.Click += (o, e) => Dispose();
+
+                KeyDelButton = new MirButton
+                {
+                    Text = GameLanguage.ClientTextMap.GetLocalization(ClientTextKeys.BtnDelete),
+                    HoverIndex = 304,
+                    Index = 303,
+                    Library = Libraries.Title,
+                    Location = new Point(140, 76),
+                    Parent = this,
+                    PressedIndex = 305,
+                    CenterText = true
+                };
+                KeyDelButton.Click += (o, e) => SecureKeyDelete();
+
+                KeyEnterButton = new MirButton
+                {
+                    Text = GameLanguage.ClientTextMap.GetLocalization(ClientTextKeys.BtnEnter),
+                    HoverIndex = 307,
+                    Index = 306,
+                    Library = Libraries.Title,
+                    Location = new Point(140, 236),
+                    Parent = this,
+                    PressedIndex = 308,
+                    CenterText = true
+
+                };
+                KeyEnterButton.Click += (o, e) =>
+                {
+                    KeyPressEventArgs arg = new KeyPressEventArgs((char)Keys.Enter);
+
+                    _loginDialog.TextBox_KeyPress(o, arg);
+                };
+
+                KeyRandButton = new MirButton
+                {
+                    Text = GameLanguage.ClientTextMap.GetLocalization(ClientTextKeys.BtnRandom),
+                    HoverIndex = 310,
+                    Index = 309,
+                    Library = Libraries.Title,
+                    Location = new Point(76, 236),
+                    Parent = this,
+                    PressedIndex = 311,
+                    CenterText = true
+                };
+                KeyRandButton.Click += (o, e) =>
+                {
+                    _letters = new string(_letters.OrderBy(s => Guid.NewGuid()).ToArray()).ToCharArray();
+                    _numbers = new string(_numbers.OrderBy(s => Guid.NewGuid()).ToArray()).ToCharArray();
+
+                    UpdateKeys();
+                };
+
+                UpdateKeys();
+            }
+
+            private void DisposeKeys()
+            {
+                foreach(MirButton button in _buttons)
+                {
+                    if (button != null && !button.IsDisposed) button.Dispose();
+                }
+            }
+
+            private void UpdateKeys()
+            {
+                DisposeKeys();
+
+                for (int i = 0; i < _numbers.Length; i++)
+                {
+                    char key = _numbers[i];
+
+                    MirButton numButton = new MirButton
+                    {
+                        HoverIndex = 1082,
+                        Index = 1081,
+                        Size = new Size(32, 30),
+                        Library = Libraries.Prguse,
+                        Location = new Point(12 + (i % 6 * 32), 44 + (i / 6 * 32)),
+                        Parent = this,
+                        PressedIndex = 1083,
+                        Text = _numbers[i].ToString(),
+                        CenterText = true
+                    };
+                    numButton.Click += (o, e) => SecureKeyPress(key);
+
+                    _buttons.Add(numButton);
+                }
+
+                for (int i = 0; i < _letters.Length; i++)
+                {
+                    char key = _letters[i];
+
+                    MirButton alphButton = new MirButton
+                    {
+                        HoverIndex = 1082,
+                        Index = 1081,
+                        Size = new Size(32, 30),
+                        Library = Libraries.Prguse,
+                        Location = new Point(12 + (i % 6 * 32), 108 + (i / 6 * 32)),
+                        Parent = this,
+                        PressedIndex = 1083,
+                        Text = _letters[i].ToString(),
+                        CenterText = true
+                    };
+
+                    alphButton.Click += (o, e) => SecureKeyPress(key);
+
+                    _buttons.Add(alphButton);
+                }
+            }
+
+            private void SecureKeyPress(char chr)
+            {
+                MirTextBox currentTextBox = GetFocussedTextBox();
+
+                string keyToAdd = chr.ToString();
+
+                if (CMain.IsKeyLocked(Keys.CapsLock)) 
+                    keyToAdd = keyToAdd.ToUpper(); 
+                else 
+                    keyToAdd = keyToAdd.ToLower();
+
+                currentTextBox.Text += keyToAdd;
+                currentTextBox.TextBox.SelectionLength = 0;
+                currentTextBox.TextBox.SelectionStart = currentTextBox.Text.Length;
+            }
+
+            private void SecureKeyDelete()
+            {
+                MirTextBox currentTextBox = GetFocussedTextBox();
+
+                if (currentTextBox.TextBox.SelectionLength > 0)
+                {
+                    currentTextBox.Text = currentTextBox.Text.Remove(currentTextBox.TextBox.SelectionStart, currentTextBox.TextBox.SelectionLength);
+                }
+                else if (currentTextBox.Text.Length > 0)
+                {
+                    currentTextBox.Text = currentTextBox.Text.Remove(currentTextBox.Text.Length - 1);
+                }
+
+                currentTextBox.TextBox.SelectionStart = currentTextBox.Text.Length;
+            }
+
+            private MirTextBox GetFocussedTextBox()
+            {
+                if (_loginDialog.AccountIDTextBox.TextBox.Focused)
+                    return _loginDialog.AccountIDTextBox;
+                else
+                    return _loginDialog.PasswordTextBox;
+            }
+
+            #region Disposable
+            protected override void Dispose(bool disposing)
+            {
+                base.Dispose(disposing);
+
+                DisposeKeys();
+            }
+            #endregion
         }
 
         #region Disposable

@@ -1,4 +1,4 @@
-﻿using Server.MirEnvir;
+using Server.MirEnvir;
 using Server.MirObjects;
 
 namespace Server.MirDatabase
@@ -37,6 +37,10 @@ namespace Server.MirDatabase
                 new BuffInfo { Type = BuffType.MentalState, Properties = BuffProperty.None, StackType = BuffStackType.Infinite },
                 new BuffInfo { Type = BuffType.EnergyShield, Properties = BuffProperty.None, StackType = BuffStackType.ResetDuration, Visible = true },
                 new BuffInfo { Type = BuffType.MagicBooster, Properties = BuffProperty.None, StackType = BuffStackType.ResetDuration, Visible = true },
+                new BuffInfo { Type = BuffType.HeavenlySecrets, Properties = BuffProperty.None, StackType = BuffStackType.ResetDuration, Visible = true },
+
+                // [登仙后期系统] 羽化登仙阶段Buff: 永久(duration=0惯例)+可见; 属性来自CustomBuffList.txt
+                new BuffInfo { Type = BuffType.Ascension, Properties = BuffProperty.None, StackType = BuffStackType.Infinite, Visible = true },
                 new BuffInfo { Type = BuffType.PetEnhancer, Properties = BuffProperty.None, StackType = BuffStackType.ResetDuration, Visible = true },
                 new BuffInfo { Type = BuffType.ImmortalSkin, Properties = BuffProperty.None, StackType = BuffStackType.ResetDuration, Visible = true },
                 new BuffInfo { Type = BuffType.MagicShield, Properties = BuffProperty.None, StackType = BuffStackType.ResetDuration },
@@ -80,7 +84,15 @@ namespace Server.MirDatabase
                 new BuffInfo { Type = BuffType.Defence, Properties = BuffProperty.None, StackType = BuffStackType.StackDuration },
                 new BuffInfo { Type = BuffType.MagicDefence, Properties = BuffProperty.None, StackType = BuffStackType.StackDuration },
                 new BuffInfo { Type = BuffType.WonderDrug, Properties = BuffProperty.None, StackType = BuffStackType.StackDuration },
-                new BuffInfo { Type = BuffType.Knapsack, Properties = BuffProperty.None, StackType = BuffStackType.StackDuration }
+                new BuffInfo { Type = BuffType.Knapsack, Properties = BuffProperty.None, StackType = BuffStackType.StackDuration },
+                new BuffInfo { Type = BuffType.CreatureBuff, Properties = BuffProperty.RemoveOnExit, StackType = BuffStackType.Infinite, Visible = true },
+                new BuffInfo { Type = BuffType.SnackTier1, Properties = BuffProperty.None, StackType = BuffStackType.ResetStatAndDuration, Visible = true },
+                new BuffInfo { Type = BuffType.SnackTier2, Properties = BuffProperty.None, StackType = BuffStackType.ResetStatAndDuration, Visible = true },
+                new BuffInfo { Type = BuffType.SnackTier3, Properties = BuffProperty.None, StackType = BuffStackType.ResetStatAndDuration, Visible = true },
+                new BuffInfo { Type = BuffType.SnackTier4, Properties = BuffProperty.None, StackType = BuffStackType.ResetStatAndDuration, Visible = true },
+                new BuffInfo { Type = BuffType.LuckAid, Properties = BuffProperty.None, StackType = BuffStackType.StackDuration },
+                new BuffInfo { Type = BuffType.AccuracyAid, Properties = BuffProperty.None, StackType = BuffStackType.StackDuration },
+                new BuffInfo { Type = BuffType.AgilityAid, Properties = BuffProperty.None, StackType = BuffStackType.StackDuration }
             };
 
             return info;

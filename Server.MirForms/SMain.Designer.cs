@@ -80,6 +80,7 @@ namespace Server
             nPCsToolStripMenuItem = new ToolStripMenuItem();
             dropsToolStripMenuItem = new ToolStripMenuItem();
             lineMessageToolStripMenuItem = new ToolStripMenuItem();
+            reloadCenterToolStripMenuItem = new ToolStripMenuItem();
             accountToolStripMenuItem = new ToolStripMenuItem();
             accountsToolStripMenuItem1 = new ToolStripMenuItem();
             marketToolStripMenuItem = new ToolStripMenuItem();
@@ -88,6 +89,7 @@ namespace Server
             mapInfoToolStripMenuItem = new ToolStripMenuItem();
             itemInfoToolStripMenuItem = new ToolStripMenuItem();
             monsterInfoToolStripMenuItem = new ToolStripMenuItem();
+            itemMgrToolStripMenuItem = new ToolStripMenuItem();
             itemNEWToolStripMenuItem = new ToolStripMenuItem();
             monsterExperimentalToolStripMenuItem = new ToolStripMenuItem();
             nPCInfoToolStripMenuItem = new ToolStripMenuItem();
@@ -96,14 +98,20 @@ namespace Server
             gameshopToolStripMenuItem = new ToolStripMenuItem();
             recipeToolStripMenuItem = new ToolStripMenuItem();
             configToolStripMenuItem1 = new ToolStripMenuItem();
+            advancedConfigToolStripMenuItem = new ToolStripMenuItem();
+            talentCenterToolStripMenuItem = new ToolStripMenuItem();
+            battleFieldToolStripMenuItem = new ToolStripMenuItem();
+            diagnosticsToolStripMenuItem = new ToolStripMenuItem();
             serverToolStripMenuItem = new ToolStripMenuItem();
             balanceToolStripMenuItem = new ToolStripMenuItem();
             systemToolStripMenuItem = new ToolStripMenuItem();
             dragonSystemToolStripMenuItem = new ToolStripMenuItem();
+            fieldBossSystemToolStripMenuItem = new ToolStripMenuItem();
             miningToolStripMenuItem = new ToolStripMenuItem();
             guildsToolStripMenuItem = new ToolStripMenuItem();
             fishingToolStripMenuItem = new ToolStripMenuItem();
             mailToolStripMenuItem = new ToolStripMenuItem();
+            gmMailRewardToolStripMenuItem = new ToolStripMenuItem();
             goodsToolStripMenuItem = new ToolStripMenuItem();
             refiningToolStripMenuItem = new ToolStripMenuItem();
             relationshipToolStripMenuItem = new ToolStripMenuItem();
@@ -118,6 +126,24 @@ namespace Server
             UpTimeLabel = new ToolStripTextBox();
             InterfaceTimer = new Timer(components);
             mapHeader = new ColumnHeader();
+            tabPage6 = new TabPage();
+            ScheduledTopPanel = new Panel();
+            AnnMsgLabel = new Label();
+            AnnTimeLabel = new Label();
+            AnnRepeatLabel = new Label();
+            AnnIntervalLabel = new Label();
+            ScheduledMessageTextBox = new TextBox();
+            ScheduledTimePicker = new DateTimePicker();
+            RepeatComboBox = new ComboBox();
+            IntervalNumeric = new NumericUpDown();
+            AddScheduledButton = new Button();
+            RemoveScheduledButton = new Button();
+            SendNowScheduledButton = new Button();
+            ScheduledListView = new CustomFormControl.ListViewNF();
+            schedMsgHeader = new ColumnHeader();
+            schedTimeHeader = new ColumnHeader();
+            schedRepeatHeader = new ColumnHeader();
+            schedIntervalHeader = new ColumnHeader();
             MainTabs.SuspendLayout();
             tabPage1.SuspendLayout();
             tabPage2.SuspendLayout();
@@ -125,6 +151,9 @@ namespace Server
             groupBox1.SuspendLayout();
             tabPage4.SuspendLayout();
             tabPage5.SuspendLayout();
+            tabPage6.SuspendLayout();
+            ScheduledTopPanel.SuspendLayout();
+            ((ISupportInitialize)IntervalNumeric).BeginInit();
             StatusBar.SuspendLayout();
             MainMenu.SuspendLayout();
             SuspendLayout();
@@ -136,6 +165,7 @@ namespace Server
             MainTabs.Controls.Add(tabPage3);
             MainTabs.Controls.Add(tabPage4);
             MainTabs.Controls.Add(tabPage5);
+            MainTabs.Controls.Add(tabPage6);
             MainTabs.Dock = DockStyle.Fill;
             MainTabs.Location = new Point(0, 24);
             MainTabs.Margin = new Padding(4, 3, 4, 3);
@@ -365,6 +395,186 @@ namespace Server
             columnHeader7.Text = "领地租金";
             columnHeader7.Width = 120;
             // 
+            // tabPage6
+            // 
+            tabPage6.Controls.Add(ScheduledListView);
+            tabPage6.Controls.Add(ScheduledTopPanel);
+            tabPage6.Location = new Point(4, 24);
+            tabPage6.Margin = new Padding(4, 3, 4, 3);
+            tabPage6.Name = "tabPage6";
+            tabPage6.Padding = new Padding(4, 3, 4, 3);
+            tabPage6.Size = new Size(558, 379);
+            tabPage6.TabIndex = 5;
+            tabPage6.Text = "定时公告";
+            tabPage6.UseVisualStyleBackColor = true;
+            // 
+            // ScheduledListView
+            // 
+            ScheduledListView.Columns.AddRange(new ColumnHeader[] { schedMsgHeader, schedTimeHeader, schedRepeatHeader, schedIntervalHeader });
+            ScheduledListView.Dock = DockStyle.Fill;
+            ScheduledListView.FullRowSelect = true;
+            ScheduledListView.GridLines = true;
+            ScheduledListView.Location = new Point(4, 161);
+            ScheduledListView.Margin = new Padding(4, 3, 4, 3);
+            ScheduledListView.Name = "ScheduledListView";
+            ScheduledListView.Size = new Size(550, 215);
+            ScheduledListView.TabIndex = 1;
+            ScheduledListView.UseCompatibleStateImageBehavior = false;
+            ScheduledListView.View = View.Details;
+            // 
+            // schedMsgHeader
+            // 
+            schedMsgHeader.Text = "公告内容";
+            schedMsgHeader.Width = 255;
+            // 
+            // schedTimeHeader
+            // 
+            schedTimeHeader.Text = "下次发送时间";
+            schedTimeHeader.Width = 150;
+            // 
+            // schedRepeatHeader
+            // 
+            schedRepeatHeader.Text = "重复方式";
+            schedRepeatHeader.Width = 85;
+            // 
+            // schedIntervalHeader
+            // 
+            schedIntervalHeader.Text = "间隔(分)";
+            schedIntervalHeader.Width = 60;
+            // 
+            // ScheduledTopPanel
+            // 
+            ScheduledTopPanel.Controls.Add(AnnMsgLabel);
+            ScheduledTopPanel.Controls.Add(ScheduledMessageTextBox);
+            ScheduledTopPanel.Controls.Add(AnnTimeLabel);
+            ScheduledTopPanel.Controls.Add(ScheduledTimePicker);
+            ScheduledTopPanel.Controls.Add(AnnRepeatLabel);
+            ScheduledTopPanel.Controls.Add(RepeatComboBox);
+            ScheduledTopPanel.Controls.Add(AnnIntervalLabel);
+            ScheduledTopPanel.Controls.Add(IntervalNumeric);
+            ScheduledTopPanel.Controls.Add(AddScheduledButton);
+            ScheduledTopPanel.Controls.Add(RemoveScheduledButton);
+            ScheduledTopPanel.Controls.Add(SendNowScheduledButton);
+            ScheduledTopPanel.Dock = DockStyle.Top;
+            ScheduledTopPanel.Location = new Point(4, 3);
+            ScheduledTopPanel.Margin = new Padding(4, 3, 4, 3);
+            ScheduledTopPanel.Name = "ScheduledTopPanel";
+            ScheduledTopPanel.Size = new Size(550, 158);
+            ScheduledTopPanel.TabIndex = 0;
+            // 
+            // AnnMsgLabel
+            // 
+            AnnMsgLabel.AutoSize = true;
+            AnnMsgLabel.Location = new Point(7, 10);
+            AnnMsgLabel.Name = "AnnMsgLabel";
+            AnnMsgLabel.Size = new Size(67, 15);
+            AnnMsgLabel.TabIndex = 0;
+            AnnMsgLabel.Text = "公告内容:";
+            // 
+            // ScheduledMessageTextBox
+            // 
+            ScheduledMessageTextBox.Location = new Point(7, 30);
+            ScheduledMessageTextBox.Margin = new Padding(4, 3, 4, 3);
+            ScheduledMessageTextBox.Multiline = true;
+            ScheduledMessageTextBox.Name = "ScheduledMessageTextBox";
+            ScheduledMessageTextBox.ScrollBars = ScrollBars.Vertical;
+            ScheduledMessageTextBox.Size = new Size(534, 50);
+            ScheduledMessageTextBox.TabIndex = 1;
+            // 
+            // AnnTimeLabel
+            // 
+            AnnTimeLabel.AutoSize = true;
+            AnnTimeLabel.Location = new Point(7, 95);
+            AnnTimeLabel.Name = "AnnTimeLabel";
+            AnnTimeLabel.Size = new Size(67, 15);
+            AnnTimeLabel.TabIndex = 2;
+            AnnTimeLabel.Text = "发送时间:";
+            // 
+            // ScheduledTimePicker
+            // 
+            ScheduledTimePicker.CustomFormat = "yyyy-MM-dd HH:mm:ss";
+            ScheduledTimePicker.Format = DateTimePickerFormat.Custom;
+            ScheduledTimePicker.Location = new Point(78, 91);
+            ScheduledTimePicker.Margin = new Padding(4, 3, 4, 3);
+            ScheduledTimePicker.Name = "ScheduledTimePicker";
+            ScheduledTimePicker.ShowUpDown = true;
+            ScheduledTimePicker.Size = new Size(155, 23);
+            ScheduledTimePicker.TabIndex = 3;
+            // 
+            // AnnRepeatLabel
+            // 
+            AnnRepeatLabel.AutoSize = true;
+            AnnRepeatLabel.Location = new Point(245, 95);
+            AnnRepeatLabel.Name = "AnnRepeatLabel";
+            AnnRepeatLabel.Size = new Size(52, 15);
+            AnnRepeatLabel.TabIndex = 4;
+            AnnRepeatLabel.Text = "重复:";
+            // 
+            // RepeatComboBox
+            // 
+            RepeatComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+            RepeatComboBox.FormattingEnabled = true;
+            RepeatComboBox.Items.AddRange(new object[] { "单次", "每天", "循环间隔" });
+            RepeatComboBox.Location = new Point(288, 91);
+            RepeatComboBox.Margin = new Padding(4, 3, 4, 3);
+            RepeatComboBox.Name = "RepeatComboBox";
+            RepeatComboBox.Size = new Size(88, 23);
+            RepeatComboBox.TabIndex = 5;
+            RepeatComboBox.SelectedIndexChanged += RepeatComboBox_SelectedIndexChanged;
+            // 
+            // AnnIntervalLabel
+            // 
+            AnnIntervalLabel.AutoSize = true;
+            AnnIntervalLabel.Location = new Point(385, 95);
+            AnnIntervalLabel.Name = "AnnIntervalLabel";
+            AnnIntervalLabel.Size = new Size(67, 15);
+            AnnIntervalLabel.TabIndex = 6;
+            AnnIntervalLabel.Text = "间隔(分):";
+            // 
+            // IntervalNumeric
+            // 
+            IntervalNumeric.Location = new Point(455, 91);
+            IntervalNumeric.Margin = new Padding(4, 3, 4, 3);
+            IntervalNumeric.Maximum = new decimal(new int[] { 10080, 0, 0, 0 });
+            IntervalNumeric.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
+            IntervalNumeric.Name = "IntervalNumeric";
+            IntervalNumeric.Size = new Size(58, 23);
+            IntervalNumeric.TabIndex = 7;
+            IntervalNumeric.Value = new decimal(new int[] { 10, 0, 0, 0 });
+            // 
+            // AddScheduledButton
+            // 
+            AddScheduledButton.Location = new Point(7, 122);
+            AddScheduledButton.Margin = new Padding(4, 3, 4, 3);
+            AddScheduledButton.Name = "AddScheduledButton";
+            AddScheduledButton.Size = new Size(90, 28);
+            AddScheduledButton.TabIndex = 8;
+            AddScheduledButton.Text = "加入队列";
+            AddScheduledButton.UseVisualStyleBackColor = true;
+            AddScheduledButton.Click += AddScheduledButton_Click;
+            // 
+            // RemoveScheduledButton
+            // 
+            RemoveScheduledButton.Location = new Point(105, 122);
+            RemoveScheduledButton.Margin = new Padding(4, 3, 4, 3);
+            RemoveScheduledButton.Name = "RemoveScheduledButton";
+            RemoveScheduledButton.Size = new Size(90, 28);
+            RemoveScheduledButton.TabIndex = 9;
+            RemoveScheduledButton.Text = "删除所选";
+            RemoveScheduledButton.UseVisualStyleBackColor = true;
+            RemoveScheduledButton.Click += RemoveScheduledButton_Click;
+            // 
+            // SendNowScheduledButton
+            // 
+            SendNowScheduledButton.Location = new Point(203, 122);
+            SendNowScheduledButton.Margin = new Padding(4, 3, 4, 3);
+            SendNowScheduledButton.Name = "SendNowScheduledButton";
+            SendNowScheduledButton.Size = new Size(90, 28);
+            SendNowScheduledButton.TabIndex = 10;
+            SendNowScheduledButton.Text = "立即发送";
+            SendNowScheduledButton.UseVisualStyleBackColor = true;
+            SendNowScheduledButton.Click += SendNowScheduledButton_Click;
+            // 
             // StatusBar
             // 
             StatusBar.Items.AddRange(new ToolStripItem[] { PlayersLabel, MonsterLabel, ConnectionsLabel, BlockedIPsLabel, CycleDelayLabel });
@@ -476,7 +686,7 @@ namespace Server
             // 
             // reloadToolStripMenuItem
             // 
-            reloadToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { nPCsToolStripMenuItem, dropsToolStripMenuItem, lineMessageToolStripMenuItem });
+            reloadToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { nPCsToolStripMenuItem, dropsToolStripMenuItem, lineMessageToolStripMenuItem, reloadCenterToolStripMenuItem });
             reloadToolStripMenuItem.Name = "reloadToolStripMenuItem";
             reloadToolStripMenuItem.Size = new Size(164, 22);
             reloadToolStripMenuItem.Text = "重载";
@@ -501,6 +711,13 @@ namespace Server
             lineMessageToolStripMenuItem.Size = new Size(145, 22);
             lineMessageToolStripMenuItem.Text = "滚动公告";
             lineMessageToolStripMenuItem.Click += lineMessageToolStripMenuItem_Click;
+            //
+            // reloadCenterToolStripMenuItem
+            //
+            reloadCenterToolStripMenuItem.Name = "reloadCenterToolStripMenuItem";
+            reloadCenterToolStripMenuItem.Size = new Size(145, 22);
+            reloadCenterToolStripMenuItem.Text = "重载中心...";
+            reloadCenterToolStripMenuItem.Click += reloadCenterToolStripMenuItem_Click;
             // 
             // accountToolStripMenuItem
             // 
@@ -532,7 +749,7 @@ namespace Server
             // 
             // databaseFormsToolStripMenuItem
             // 
-            databaseFormsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { mapInfoToolStripMenuItem, itemInfoToolStripMenuItem, monsterInfoToolStripMenuItem, itemNEWToolStripMenuItem, monsterExperimentalToolStripMenuItem, nPCInfoToolStripMenuItem, questInfoToolStripMenuItem, magicInfoToolStripMenuItem, gameshopToolStripMenuItem, recipeToolStripMenuItem });
+            databaseFormsToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { mapInfoToolStripMenuItem, itemInfoToolStripMenuItem, monsterInfoToolStripMenuItem, itemMgrToolStripMenuItem, itemNEWToolStripMenuItem, monsterExperimentalToolStripMenuItem, nPCInfoToolStripMenuItem, questInfoToolStripMenuItem, magicInfoToolStripMenuItem, gameshopToolStripMenuItem, recipeToolStripMenuItem });
             databaseFormsToolStripMenuItem.Name = "databaseFormsToolStripMenuItem";
             databaseFormsToolStripMenuItem.Size = new Size(67, 20);
             databaseFormsToolStripMenuItem.Text = "数据库";
@@ -561,11 +778,18 @@ namespace Server
             monsterInfoToolStripMenuItem.Visible = false;
             monsterInfoToolStripMenuItem.Click += monsterInfoToolStripMenuItem_Click;
             // 
+            // itemMgrToolStripMenuItem
+            // 
+            itemMgrToolStripMenuItem.Name = "itemMgrToolStripMenuItem";
+            itemMgrToolStripMenuItem.Size = new Size(203, 22);
+            itemMgrToolStripMenuItem.Text = "物品";
+            itemMgrToolStripMenuItem.Click += itemMgrToolStripMenuItem_Click;
+            // 
             // itemNEWToolStripMenuItem
             // 
             itemNEWToolStripMenuItem.Name = "itemNEWToolStripMenuItem";
             itemNEWToolStripMenuItem.Size = new Size(203, 22);
-            itemNEWToolStripMenuItem.Text = "物品";
+            itemNEWToolStripMenuItem.Text = "物品(表格版)";
             itemNEWToolStripMenuItem.Click += itemNEWToolStripMenuItem_Click;
             // 
             // monsterExperimentalToolStripMenuItem
@@ -612,10 +836,38 @@ namespace Server
             // 
             // configToolStripMenuItem1
             // 
-            configToolStripMenuItem1.DropDownItems.AddRange(new ToolStripItem[] { serverToolStripMenuItem, balanceToolStripMenuItem, systemToolStripMenuItem, monsterTunerToolStripMenuItem, dropBuilderToolStripMenuItem });
+            configToolStripMenuItem1.DropDownItems.AddRange(new ToolStripItem[] { serverToolStripMenuItem, balanceToolStripMenuItem, systemToolStripMenuItem, monsterTunerToolStripMenuItem, dropBuilderToolStripMenuItem, advancedConfigToolStripMenuItem, talentCenterToolStripMenuItem, battleFieldToolStripMenuItem, diagnosticsToolStripMenuItem });
             configToolStripMenuItem1.Name = "configToolStripMenuItem1";
             configToolStripMenuItem1.Size = new Size(55, 20);
             configToolStripMenuItem1.Text = "配置";
+            //
+            // advancedConfigToolStripMenuItem
+            //
+            advancedConfigToolStripMenuItem.Name = "advancedConfigToolStripMenuItem";
+            advancedConfigToolStripMenuItem.Size = new Size(180, 22);
+            advancedConfigToolStripMenuItem.Text = "高级设置(Setup.ini)...";
+            advancedConfigToolStripMenuItem.Click += advancedConfigToolStripMenuItem_Click;
+            //
+            // talentCenterToolStripMenuItem
+            //
+            talentCenterToolStripMenuItem.Name = "talentCenterToolStripMenuItem";
+            talentCenterToolStripMenuItem.Size = new Size(180, 22);
+            talentCenterToolStripMenuItem.Text = "天赋中心...";
+            talentCenterToolStripMenuItem.Click += talentCenterToolStripMenuItem_Click;
+            //
+            // battleFieldToolStripMenuItem
+            //
+            battleFieldToolStripMenuItem.Name = "battleFieldToolStripMenuItem";
+            battleFieldToolStripMenuItem.Size = new Size(180, 22);
+            battleFieldToolStripMenuItem.Text = "战场控制...";
+            battleFieldToolStripMenuItem.Click += battleFieldToolStripMenuItem_Click;
+            //
+            // diagnosticsToolStripMenuItem
+            //
+            diagnosticsToolStripMenuItem.Name = "diagnosticsToolStripMenuItem";
+            diagnosticsToolStripMenuItem.Size = new Size(180, 22);
+            diagnosticsToolStripMenuItem.Text = "诊断中心(Bug检测)...";
+            diagnosticsToolStripMenuItem.Click += diagnosticsToolStripMenuItem_Click;
             // 
             // serverToolStripMenuItem
             // 
@@ -633,7 +885,7 @@ namespace Server
             // 
             // systemToolStripMenuItem
             // 
-            systemToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { dragonSystemToolStripMenuItem, miningToolStripMenuItem, guildsToolStripMenuItem, fishingToolStripMenuItem, mailToolStripMenuItem, goodsToolStripMenuItem, refiningToolStripMenuItem, relationshipToolStripMenuItem, mentorToolStripMenuItem, gemToolStripMenuItem, conquestToolStripMenuItem, respawnsToolStripMenuItem, heroesToolStripMenuItem });
+            systemToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { dragonSystemToolStripMenuItem, fieldBossSystemToolStripMenuItem, miningToolStripMenuItem, guildsToolStripMenuItem, fishingToolStripMenuItem, mailToolStripMenuItem, gmMailRewardToolStripMenuItem, goodsToolStripMenuItem, refiningToolStripMenuItem, relationshipToolStripMenuItem, mentorToolStripMenuItem, gemToolStripMenuItem, conquestToolStripMenuItem, respawnsToolStripMenuItem, heroesToolStripMenuItem });
             systemToolStripMenuItem.Name = "systemToolStripMenuItem";
             systemToolStripMenuItem.Size = new Size(152, 22);
             systemToolStripMenuItem.Text = "系统设置";
@@ -644,6 +896,13 @@ namespace Server
             dragonSystemToolStripMenuItem.Size = new Size(139, 22);
             dragonSystemToolStripMenuItem.Text = "龙系统";
             dragonSystemToolStripMenuItem.Click += dragonSystemToolStripMenuItem_Click;
+            // 
+            // fieldBossSystemToolStripMenuItem
+            // 
+            fieldBossSystemToolStripMenuItem.Name = "fieldBossSystemToolStripMenuItem";
+            fieldBossSystemToolStripMenuItem.Size = new Size(139, 22);
+            fieldBossSystemToolStripMenuItem.Text = "野外Boss";
+            fieldBossSystemToolStripMenuItem.Click += fieldBossSystemToolStripMenuItem_Click;
             // 
             // miningToolStripMenuItem
             // 
@@ -672,6 +931,13 @@ namespace Server
             mailToolStripMenuItem.Size = new Size(139, 22);
             mailToolStripMenuItem.Text = "邮件";
             mailToolStripMenuItem.Click += mailToolStripMenuItem_Click;
+            // 
+            // gmMailRewardToolStripMenuItem
+            // 
+            gmMailRewardToolStripMenuItem.Name = "gmMailRewardToolStripMenuItem";
+            gmMailRewardToolStripMenuItem.Size = new Size(139, 22);
+            gmMailRewardToolStripMenuItem.Text = "GM奖励邮件";
+            gmMailRewardToolStripMenuItem.Click += gmMailRewardToolStripMenuItem_Click;
             // 
             // goodsToolStripMenuItem
             // 
@@ -796,6 +1062,10 @@ namespace Server
             groupBox1.PerformLayout();
             tabPage4.ResumeLayout(false);
             tabPage5.ResumeLayout(false);
+            tabPage6.ResumeLayout(false);
+            ScheduledTopPanel.ResumeLayout(false);
+            ScheduledTopPanel.PerformLayout();
+            ((ISupportInitialize)IntervalNumeric).EndInit();
             StatusBar.ResumeLayout(false);
             StatusBar.PerformLayout();
             MainMenu.ResumeLayout(false);
@@ -831,10 +1101,15 @@ namespace Server
         private ToolStripMenuItem nPCInfoToolStripMenuItem;
         private ToolStripMenuItem questInfoToolStripMenuItem;
         private ToolStripMenuItem configToolStripMenuItem1;
+        private ToolStripMenuItem advancedConfigToolStripMenuItem;
+        private ToolStripMenuItem talentCenterToolStripMenuItem;
+        private ToolStripMenuItem battleFieldToolStripMenuItem;
+        private ToolStripMenuItem diagnosticsToolStripMenuItem;
         private ToolStripMenuItem serverToolStripMenuItem;
         private ToolStripMenuItem balanceToolStripMenuItem;
         private ToolStripMenuItem systemToolStripMenuItem;
         private ToolStripMenuItem dragonSystemToolStripMenuItem;
+        private ToolStripMenuItem fieldBossSystemToolStripMenuItem;
         private ToolStripMenuItem guildsToolStripMenuItem;
         private ToolStripMenuItem miningToolStripMenuItem;
         private ToolStripMenuItem fishingToolStripMenuItem;
@@ -849,6 +1124,7 @@ namespace Server
         private ColumnHeader genderHeader;
         private ColumnHeader indexHeader;
         private ToolStripMenuItem mailToolStripMenuItem;
+        private ToolStripMenuItem gmMailRewardToolStripMenuItem;
         private ToolStripMenuItem goodsToolStripMenuItem;
         private ToolStripStatusLabel CycleDelayLabel;
         private ToolStripMenuItem magicInfoToolStripMenuItem;
@@ -862,6 +1138,7 @@ namespace Server
         private ToolStripMenuItem respawnsToolStripMenuItem;
         private ToolStripMenuItem monsterTunerToolStripMenuItem;
         private ToolStripSeparator toolStripSeparator1;
+        private ToolStripMenuItem itemMgrToolStripMenuItem;
         private ToolStripMenuItem itemNEWToolStripMenuItem;
         private ToolStripMenuItem monsterExperimentalToolStripMenuItem;
         private ToolStripMenuItem dropBuilderToolStripMenuItem;
@@ -871,6 +1148,7 @@ namespace Server
         private ToolStripMenuItem nPCsToolStripMenuItem;
         private ToolStripMenuItem dropsToolStripMenuItem;
         private ToolStripMenuItem lineMessageToolStripMenuItem;
+        private ToolStripMenuItem reloadCenterToolStripMenuItem;
         private TabPage tabPage5;
         private CustomFormControl.ListViewNF GuildListView;
         private ColumnHeader columnHeader1;
@@ -889,6 +1167,24 @@ namespace Server
         internal TextBox ChatLogTextBox;
         private ColumnHeader columnHeader7;
         private ColumnHeader mapHeader;
+        private TabPage tabPage6;
+        private Panel ScheduledTopPanel;
+        private Label AnnMsgLabel;
+        private Label AnnTimeLabel;
+        private Label AnnRepeatLabel;
+        private Label AnnIntervalLabel;
+        private TextBox ScheduledMessageTextBox;
+        private DateTimePicker ScheduledTimePicker;
+        private ComboBox RepeatComboBox;
+        private NumericUpDown IntervalNumeric;
+        private Button AddScheduledButton;
+        private Button RemoveScheduledButton;
+        private Button SendNowScheduledButton;
+        private CustomFormControl.ListViewNF ScheduledListView;
+        private ColumnHeader schedMsgHeader;
+        private ColumnHeader schedTimeHeader;
+        private ColumnHeader schedRepeatHeader;
+        private ColumnHeader schedIntervalHeader;
     }
 }
 

@@ -97,6 +97,8 @@ namespace Client.MirObjects
         public bool RidingMount, Sprint, FastRun, Fishing, FoundFish;
         public long StanceTime, MountTime, FishingTime;
         public long BlizzardStopTime, ReincarnationStopTime, SlashingBurstTime;
+        public long GreatFireBallRareStopTime; // [AI-Claude] 大火球秘籍4秒引导锁定
+        public long DimensionalSwordTime; // 技能书补全: 时空剑后摇锁定
 
         public short MountType = -1, TransformType = -1;
 
@@ -271,7 +273,8 @@ namespace Client.MirObjects
             bool showMount = true;
             bool showFishing = true;
 
-            if (TransformType > -1)
+            //显示时装(辅助面板基本页): 关闭时忽略变身/时装外形, 按本体装备绘制
+            if (TransformType > -1 && AssistSettings.ShowTransform)
             {
                 #region Transform
                 
@@ -1019,7 +1022,7 @@ namespace Client.MirObjects
             {
                 CurrentAction = MirAction.Standing;
 
-                CurrentAction = CMain.Time > BlizzardStopTime ? CurrentAction : MirAction.Stance2;
+                CurrentAction = CMain.Time > BlizzardStopTime && CMain.Time > GreatFireBallRareStopTime ? CurrentAction : MirAction.Stance2;
 
                 if (RidingMount)
                 {
@@ -1186,10 +1189,17 @@ namespace Client.MirObjects
                         break;
                     case MirAction.Attack4:
                         Spell = (Spell)action.Params[0];
-                        Frames.TryGetValue(Spell == Spell.TwinDrakeBlade || Spell == Spell.FlamingSword ? MirAction.Attack1 : CurrentAction, out Frame);
+                        Frames.TryGetValue(Spell == Spell.TwinDrakeBlade || Spell == Spell.FlamingSword || Spell == Spell.BloodDragon ? MirAction.Attack1 : CurrentAction, out Frame);
                         break;
                     case MirAction.Spell:
                         Spell = (Spell)action.Params[0];
+                        //自定义技能施法特效(通用施法动作模板)
+                        if (CustomSkillSettings.IsCustom(Spell))
+                        {
+                            var castCfg = CustomSkillSettings.Get(Spell);
+                            if (castCfg != null && castCfg.CastAction == 0)
+                                CustomSkillSettings.SpawnEffect(this, Spell);
+                        }
                         switch (Spell)
                         {
                             case Spell.ShoulderDash:
@@ -1264,8 +1274,21 @@ namespace Client.MirObjects
                                     GameScene.SpellTime = CMain.Time + 1200; //Spell Delay
                                 }
                                 break;
+                            case Spell.DimensionalSword: //时空剑: 参考源码同款(原地Attack1+特效挂人物身上, 瞬移观感由服务端UserAttackMove瞬闪+特效跟随完成)
+                            case Spell.DimensionalSwordRare:
+                                Frames.TryGetValue(MirAction.Attack1, out Frame);
+                                if (this == User)
+                                {
+                                    MapControl.NextAction = CMain.Time + 2000;
+                                    GameScene.SpellTime = CMain.Time + 1500;
+                                }
+                                break;
                             case Spell.CrescentSlash:
+                            case Spell.CrescentSlashRare: //技能书补全: 月华乱舞秘籍
+                            case Spell.ShadowCombo:       //技能书补全: 闪影连击
+                            case Spell.ShadowComboRare:
                                 Frames.TryGetValue(MirAction.Attack3, out Frame);
+                                FrameInterval = (int)(FrameInterval * 1.3f); //慢放30%: 连击特写
                                 if (this == User)
                                 {
                                     MapControl.NextAction = CMain.Time + 2500;
@@ -1273,10 +1296,13 @@ namespace Client.MirObjects
                                 }
                                 break;
                             case Spell.FlashDash:
+                            case Spell.FlashDashRare: //拔刀术/秘籍: 同一套渲染管线(滑行突进动画); 秘籍上限2格(官方规格)
                                 {
                                     int sLevel = (byte)action.Params[3];
+                                    bool rareDash = Spell == Spell.FlashDashRare;
+                                    if (rareDash) sLevel = Math.Min(sLevel, 2);
 
-                                    GetFlashDashDistance(sLevel);
+                                    GetFlashDashDistance(sLevel, rareDash ? 2 : 3);
 
                                     if (JumpDistance != 0)
                                     {
@@ -1329,6 +1355,9 @@ namespace Client.MirObjects
                                 }
                                 break;
                             case Spell.DelayedExplosion:
+                            case Spell.DelayedExplosionRare: //技能书补全: 爆闪秘籍
+                            case Spell.ThunderStrike:        //技能书补全: 落雷击
+                            case Spell.ThunderStrikeRare:
                                 Frames.TryGetValue(MirAction.AttackRange2, out Frame);
                                 CurrentAction = MirAction.AttackRange2;
                                 if (this == User)
@@ -1488,7 +1517,8 @@ namespace Client.MirObjects
                                 if (GameScene.User.Slaying && (TargetObject != null || GameScene.Observing))
                                     Spell = Spell.Slaying;
 
-                                if (GameScene.User.Thrusting && GameScene.Scene.MapControl.HasTarget(Functions.PointMove(CurrentLocation, Direction, 2)))
+                                //隔位刺杀(辅助面板职业页): 开启后无需打开刺杀开关, 攻击方向2格外有目标自动出剑气
+                                if ((GameScene.User.Thrusting || AssistSettings.SpaceThrusting) && GameScene.Scene.MapControl.HasTarget(Functions.PointMove(CurrentLocation, Direction, 2)))
                                     Spell = Spell.Thrusting;
 
                                 if (GameScene.User.HalfMoon)
@@ -1539,6 +1569,19 @@ namespace Client.MirObjects
                                     }
                                 }
 
+                                if (GameScene.User.BloodDragon)
+                                {
+                                    if (TargetObject != null)
+                                    {
+                                        magic = User.GetMagic(Spell.BloodDragon);
+                                        if (magic != null)
+                                        {
+                                            Spell = Spell.BloodDragon;
+                                            magic.CastTime = CMain.Time;
+                                        }
+                                    }
+                                }
+
                                 if (GameScene.User.LuoHanGunFa)
                                 {
                                     if (GameScene.Scene.MapControl.HasTargetDir(CurrentLocation, Direction, 3))
@@ -1558,6 +1601,20 @@ namespace Client.MirObjects
                                             Spell = Spell.DaMoGunFa;
                                     }
                                 }
+
+                                //自定义攻击强化技能(攻击强化模板): 蓄力就绪且蓝量足够时强化本次近战
+                                if (GameScene.User.CustomToggles.Count > 0 && TargetObject != null)
+                                {
+                                    foreach (var toggledSpell in GameScene.User.CustomToggles)
+                                    {
+                                        magic = User.GetMagic(toggledSpell);
+                                        if (magic == null || magic.BaseCost + magic.LevelCost * magic.Level > User.MP) continue;
+                                        var customCfg = CustomSkillSettings.Get(toggledSpell);
+                                        if (customCfg == null || customCfg.Template != 1) continue;
+                                        Spell = toggledSpell;
+                                        break;
+                                    }
+                                }
                             }
 
                             Network.Enqueue(new C.Attack { Direction = Direction, Spell = Spell });
@@ -1568,8 +1625,12 @@ namespace Client.MirObjects
                                 GameScene.User.TwinDrakeBlade = false;
                             if (Spell == Spell.FlamingSword)
                                 GameScene.User.FlamingSword = false;
+                            if (Spell == Spell.BloodDragon)
+                                GameScene.User.BloodDragon = false;
                             if (Spell == Spell.DaMoGunFa)
                                 GameScene.User.DaMoGunFa = false;
+                            if (CustomSkillSettings.IsCustom(Spell))
+                                GameScene.User.CustomToggles.Remove(Spell);
 
                             magic = User.GetMagic(Spell);
 
@@ -1608,7 +1669,7 @@ namespace Client.MirObjects
 
                                 Network.Enqueue(new C.Magic { ObjectID = GameScene.User.ObjectID, Spell = Spell, Direction = Direction, TargetID = targetID, Location = location });
 
-                                if (Spell == Spell.FlashDash)
+                                if (Spell == Spell.FlashDash || Spell == Spell.FlashDashRare) //拔刀术秘籍与基础版同节奏: 立即可动作(否则锁2.5秒=卡图)
                                 {
                                     GameScene.SpellTime = CMain.Time + 250;
                                     MapControl.NextAction = CMain.Time;
@@ -1717,7 +1778,13 @@ namespace Client.MirObjects
                                 break;
 
                             case Spell.FlamingSword:
-                                SoundManager.PlaySound(20000 + (ushort)Spell * 10 + 1);
+                                SoundManager.PlaySound(20000 + (ushort)Spell.FlamingSword * 10 + 1);
+                                break;
+
+                            case Spell.BloodDragon:
+                                SoundManager.PlaySound(20000 + (ushort)Spell.FlamingSword * 10 + 1);
+                                //独立特效: 14帧/2100ms(约150ms每帧), 自带节奏不受攻击动作帧率约束, 跟随角色
+                                Effects.Add(new DirectionalEffect(Libraries.MagicD, 1010, 14, 2100, this, (int)Direction, 20));
                                 break;
 
                             //Monk
@@ -1729,7 +1796,15 @@ namespace Client.MirObjects
                                 SoundManager.PlaySound(20000 + (ushort)Spell * 10);
                                 break;
 
-                            
+                            default:
+                                //自定义技能贴身特效(攻击强化模板 Attack1 动作)
+                                if (CustomSkillSettings.IsCustom(Spell))
+                                {
+                                    var meleeCfg = CustomSkillSettings.Get(Spell);
+                                    if (meleeCfg != null && meleeCfg.CastAction == 1)
+                                        CustomSkillSettings.SpawnEffect(this, Spell);
+                                }
+                                break;
                         }
                         break;
                     case MirAction.Attack4:
@@ -1747,6 +1822,7 @@ namespace Client.MirObjects
                                 EffectFrameInterval = EffectFrameInterval * 9 / 10;
                                 break;
                             case Spell.FlashDash:
+                            case Spell.FlashDashRare: //拔刀术/秘籍同款攻速帧率(对称合并)
                                 int attackDelay = (User.AttackSpeed - 120) <= 300 ? 300 : (User.AttackSpeed - 120);
 
                                 float attackRate = (float)(attackDelay / 300F * 10F);
@@ -1796,6 +1872,18 @@ namespace Client.MirObjects
                             SecondaryTargetIDs = (List<uint>)action.Params[5];
                         }
 
+                        //CustomMagic数据驱动: INI绑定技能特效优先于内置硬编码(描述/音效同源下发)
+                        if (CustomMagicSettings.Has(Spell))
+                        {
+                            //本地用户: 改用本次施法动作自带的目标参数(Params[1]/[2], 施法瞬间的新鲜值);
+                            //User.TargetID/TargetPoint字段要等服务器S.Magic回包才刷新, 用字段=永远慢一套("第二套特效在第一套位置"根因)
+                            uint fxTargetID = this == User && action.Params.Count > 2 ? (uint)action.Params[1] : TargetID;
+                            Point fxTargetPoint = this == User && action.Params.Count > 2 ? (Point)action.Params[2] : TargetPoint;
+                            CustomMagicSettings.SpawnCastEffects(this, Spell, fxTargetID, fxTargetPoint);
+                            UpdateWingEffect();
+                            break;
+                        }
+
                         switch (Spell)
                         {
                             #region FireBall
@@ -1810,6 +1898,7 @@ namespace Client.MirObjects
                             #region Healing
 
                             case Spell.Healing:
+                            case Spell.HealingRare: //技能书补全: 治愈术秘籍
                                 Effects.Add(new Effect(Libraries.Magic, 200, 10, Frame.Count * FrameInterval, this));
                                 SoundManager.PlaySound(20000 + (ushort)Spell * 10);
                                 break;
@@ -1863,8 +1952,25 @@ namespace Client.MirObjects
 
                             #region ThunderBolt
 
-                            case Spell.ThunderBolt:
+                            case Spell.ThunderBolt: // 枚举值 36，即"雷电术" —— 对齐原版: 起手300ms, 落雷特效/声音由命中段(500ms伤害到达)播放
                                 Effects.Add(new Effect(Libraries.Magic2, 20, 3, 300, this));
+                                break;
+
+                            case Spell.ThunderStrike: // 落雷击(地面落雷, 无起手雷电)
+                                MapObject tsTarget = MapControl.GetObject(TargetID);
+                                Point tsLoc = tsTarget != null ? tsTarget.CurrentLocation : CurrentLocation;
+                                MapControl.Effects.Add(new Effect(Libraries.Magic2, 20, 3, 900, tsLoc, CMain.Time + 400)); //地面落雷
+                                MapControl.Effects.Add(new Effect(Libraries.Magic2, 990, 6, 900, tsLoc, CMain.Time + 600)); //落雷冲击
+                                SoundManager.PlaySound(20000 + (ushort)Spell * 10);
+                                break;
+
+                            case Spell.ThunderStrikeRare: // 落雷击-秘籍(3x3范围落雷 + 减速)
+                                tsTarget = MapControl.GetObject(TargetID);
+                                tsLoc = tsTarget != null ? tsTarget.CurrentLocation : CurrentLocation;
+                                MapControl.Effects.Add(new Effect(Libraries.Magic2, 20, 3, 900, tsLoc, CMain.Time + 400)); //地面落雷
+                                MapControl.Effects.Add(new Effect(Libraries.Magic2, 990, 6, 900, tsLoc, CMain.Time + 600)); //落雷冲击
+                                MapControl.Effects.Add(new Effect(Libraries.Magic2, 10, 5, 600, tsLoc)); //范围减速区
+                                SoundManager.PlaySound(20000 + (ushort)Spell * 10);
                                 break;
 
                             #endregion
@@ -1940,6 +2046,7 @@ namespace Client.MirObjects
 
                             #region ImmortalSkin
                             case Spell.ImmortalSkin:
+                            case Spell.ImmortalSkinRare: //技能书补全: 金刚不坏秘籍
                                 Effects.Add(new Effect(Libraries.Magic3, 550, 17, Frame.Count * FrameInterval * 4, this));
                                 Effects.Add(new Effect(Libraries.Magic3, 570, 5, Frame.Count * FrameInterval, this));
                                 SoundManager.PlaySound(20000 + (ushort)Spell * 10);
@@ -1973,11 +2080,19 @@ namespace Client.MirObjects
 
                             #endregion
 
-                            #region MoonMist
+                            #region MoonMist    // 月影雾
 
-                            case Spell.MoonMist:
-                                MapControl.Effects.Add(new Effect(Libraries.Magic3, 680, 25, 1800, CurrentLocation));
-                                SoundManager.PlaySound(20000 + (ushort)Spell * 10);
+                            case Spell.MoonMist:           // 月影雾(106)
+                            case Spell.MoonMistRare: //技能书补全: 月影雾秘籍(109) —— 两技能共用同一段画面        
+                                //雾: Magic3图库 680帧起播24帧(680-703, 704是空白帧不播), 1800ms, 落在施法时的站位(固定点)
+                                MapControl.Effects.Add(new Effect(Libraries.Magic3, 680, 24, 1800, CurrentLocation));
+
+                                //爆炸: 705-713共9帧, 延迟1800ms(雾聚满之时)起爆, 与服务端1800ms伤害结算同落
+                                var mistBoom = new Effect(Libraries.Magic3, 705, 9, 800, CurrentLocation) { Blend = true };
+                                mistBoom.Start = CMain.Time + 1800;
+                                MapControl.Effects.Add(mistBoom);
+
+                                SoundManager.PlaySound(20000 + (ushort)Spell * 10);                 //  播音效（不是“输出”）
                                 break;
 
                             #endregion
@@ -2174,6 +2289,7 @@ namespace Client.MirObjects
                             #region PetEnhancer
 
                             case Spell.PetEnhancer:
+                            case Spell.PetEnhancerRare: //技能书补全: 血龙水秘籍
                                 Effects.Add(new Effect(Libraries.Magic3, 200, 8, 8 * FrameInterval, this));
                                 SoundManager.PlaySound(20000 + (ushort)Spell * 10);
                                 break;
@@ -2227,6 +2343,15 @@ namespace Client.MirObjects
 
                             #endregion
 
+                            #region LionRoarRare
+
+                            case Spell.LionRoarRare: //技能书补全: 狮子吼秘籍(独立特效)
+                                Effects.Add(new Effect(Libraries.Magic_32bit, 930, 21, 1800, this));
+                                SoundManager.PlaySound(20000 + (ushort)Spell * 10);
+                                break;
+
+                            #endregion
+
                             #region TwinDrakeBlade
 
                             case Spell.TwinDrakeBlade:
@@ -2241,6 +2366,15 @@ namespace Client.MirObjects
                             case Spell.Entrapment:
                                 Effects.Add(new Effect(Libraries.Magic2, 990, 10, Frame.Count * FrameInterval, this));
                                 SoundManager.PlaySound(20000 + (ushort)Spell * 10);
+                                break;
+
+                            #endregion
+
+                            #region EntrapmentRare
+
+                            case Spell.EntrapmentRare: //技能书补全: 捕绳剑秘籍(独立特效)
+                                Effects.Add(new Effect(Libraries.Magic3, 4370, 10, Frame.Count * FrameInterval * 2, this));
+                                SoundManager.PlaySound(20070);
                                 break;
 
                             #endregion
@@ -2280,7 +2414,49 @@ namespace Client.MirObjects
                                 Effects.Add(new Effect(Libraries.Magic2, 2620 + (int)Direction * 20, 20, 20 * FrameInterval, this));
                                 SoundManager.PlaySound(20000 + (ushort)Spell * 10 + (Gender == MirGender.Male ? 0 : 1));
 
-                               
+
+                                break;
+
+                            #endregion
+
+                            #region 技能书补全: 时空剑/秘籍连击系特效
+
+                            case Spell.DimensionalSword: //时空剑(极时空神剑)——对齐参考源码hanfu_chuanqi2:2319
+                                Effects.Add(new Effect(Libraries.Magic_32bit, 1160, 3, 300, this));
+                                Effects.Add(new Effect(Libraries.Magic_32bit, 1180 + (int)Direction * 10, 4, 4 * FrameInterval, this));
+                                SoundManager.PlaySound(20000 + (ushort)Spell * 10);
+
+                                MapObject dsTarget = MapControl.GetObject(TargetID);
+                                if (dsTarget == null) return;
+                                if (dsTarget.Race == ObjectType.Monster || dsTarget.Race == ObjectType.Player)
+                                {
+                                    Effects.Add(new Effect(Libraries.Magic_32bit, 990 + ((int)Direction * 20), 11, 1000, this));
+                                    Effects.Add(new Effect(Libraries.Magic_32bit, 970, 8, 500, this, CMain.Time + 500) { Blend = true });
+                                    DimensionalSwordTime = CMain.Time + 2000;
+                                }
+                                break;
+
+                            case Spell.DimensionalSwordRare: //时空剑-秘籍——对齐参考源码hanfu_chuanqi2:2340
+                                Effects.Add(new Effect(Libraries.Magic_32bit, 1160, 3, 300, this));
+                                Effects.Add(new Effect(Libraries.Magic_32bit, 1300 + (int)Direction * 10, 6, 6 * FrameInterval, this));
+                                SoundManager.PlaySound(20210);
+
+                                MapObject dsrTarget = MapControl.GetObject(TargetID);
+                                if (dsrTarget == null) return;
+                                if (dsrTarget.Race == ObjectType.Monster || dsrTarget.Race == ObjectType.Player)
+                                {
+                                    Effects.Add(new Effect(Libraries.Magic_32bit, 990 + ((int)Direction * 20), 11, 1000, this));
+                                    Effects.Add(new Effect(Libraries.Magic_32bit, 1270, 15, 500, this, CMain.Time + 500) { Blend = true });
+                                    SoundManager.PlaySound(20211);
+                                    DimensionalSwordTime = CMain.Time + 2000;
+                                }
+                                break;
+
+                            case Spell.CrescentSlashRare: //月华乱舞秘籍
+                            case Spell.ShadowCombo:       //闪影连击
+                            case Spell.ShadowComboRare:
+                                Effects.Add(new Effect(Libraries.Magic_32bit, 760 + (int)Direction * 20, 20, 40 * FrameInterval, this));
+                                SoundManager.PlaySound(20000 + (ushort)Spell * 10 + (Gender == MirGender.Male ? 0 : 1));
                                 break;
 
                             #endregion
@@ -2288,6 +2464,7 @@ namespace Client.MirObjects
                             #region FlashDash
 
                             case Spell.FlashDash:
+                            case Spell.FlashDashRare: //拔刀术/秘籍: 同款音效+攻速缩放(秘籍滑行动画节奏与基础版一致, 防镜头瞬移感)
                                 SoundManager.PlaySound(20000 + (ushort)Spell * 10 + (Gender == MirGender.Male ? 0 : 1));
                                 int attackDelay = (User.AttackSpeed - 120) <= 300 ? 300 : (User.AttackSpeed - 120);
 
@@ -2340,6 +2517,61 @@ namespace Client.MirObjects
                                 Effects.Add(new Effect(Libraries.Magic2, 1590, 10, Frame.Count * FrameInterval, this));
                                 SoundManager.PlaySound(20000 + (ushort)Spell * 10);
                                 BlizzardStopTime = CMain.Time + 3000;
+                                break;
+
+                            #endregion
+
+                            #region 法师奥义x6 起手(数值移植自angelk727)
+                            //音效: M文件按 20000+原技能号*10+n 映射(原水晶这套技能编号76-81)
+                            case Spell.HeavenlySecrets: //天上秘术
+                                Effects.Add(new Effect(Libraries.Magic3, 200, 8, Frame.Count * FrameInterval * 4, this));
+                                Effects.Add(new Effect(Libraries.Magic3, 210, 7, Frame.Count * FrameInterval, this));
+                                SoundManager.PlaySound(20000 + 76 * 10); //M76-0
+                                break;
+
+                            case Spell.GreatFireBallRare: //大火球秘籍: 4秒引导
+                                GreatFireBallRareStopTime = CMain.Time + 4000;
+                                Effects.Add(new Effect(Libraries.Magic3, 4420, 10, 1200, this));
+                                Effects.Add(new Effect(Libraries.Magic3, 4430, 6, Frame.Count * FrameInterval, this) { Start = CMain.Time + 1200, Repeat = true, RepeatUntil = GreatFireBallRareStopTime });
+                                SoundManager.PlaySound(20000 + 77 * 10); //M77-0
+                                break;
+
+                            case Spell.ThunderBoltRare: //强击秘籍(原版红色滤染 引擎无DrawColour已省)
+                                Effects.Add(new Effect(Libraries.Magic2, 20, 3, Frame.Count * FrameInterval, this));
+                                SoundManager.PlaySound(20000 + 79 * 10); //M79-0
+                                break;
+
+                            case Spell.StormEscapeRare: //雷仙风秘籍(音效沿用原版借用地狱火55)
+                                Effects.Add(new Effect(Libraries.Magic3, 590, 10, Frame.Count * FrameInterval, this));
+                                SoundManager.PlaySound(20000 + 55 * 10); //M55-0
+                                break;
+
+                            case Spell.SoulflameSiphon: //吸魔炎风
+                                Effects.Add(new Effect(Libraries.Magic_32bit, 1580, 4, Frame.Count * FrameInterval, this));
+                                SoundManager.PlaySound(20000 + 80 * 10); //M80-0
+                                break;
+
+                            case Spell.SoulflameSiphonRare: //吸魔炎风秘籍
+                                Effects.Add(new Effect(Libraries.Magic_32bit, 1630, 4, Frame.Count * FrameInterval, this));
+                                SoundManager.PlaySound(20000 + 81 * 10); //M81-0
+                                break;
+
+                            #endregion
+
+                            #region 道士宠物召唤
+                            case Spell.Yling: //召唤风灵: 615自身素材 730-744(15帧 350x450)
+                                Effects.Add(new Effect(Libraries.Monsters[615], 730, 15, 1500, this));
+                                SoundManager.PlaySound(20000 + 78 * 10); //M78-0(神兽段)
+                                break;
+
+                            case Spell.Hling: //召唤幻灵: 616自身素材 345-348(4帧)
+                                Effects.Add(new Effect(Libraries.Monsters[616], 345, 4, 400, this));
+                                SoundManager.PlaySound(20000 + 78 * 10);
+                                break;
+
+                            case Spell.AncientOracle: //召唤上古神谕: 415自身素材 233-235(3帧)
+                                Effects.Add(new Effect(Libraries.Monsters[415], 233, 3, 300, this));
+                                SoundManager.PlaySound(20000 + 78 * 10);
                                 break;
 
                             #endregion
@@ -2867,6 +3099,7 @@ namespace Client.MirObjects
                                     }
                                     break;
                                 case Spell.DelayedExplosion:
+                                case Spell.DelayedExplosionRare: //技能书补全: 爆闪秘籍(弹道同爆闪)
                                     switch (FrameIndex)
                                     {
                                         case 5:
@@ -3137,6 +3370,25 @@ namespace Client.MirObjects
                                             MapControl.Effects.Add(new Effect(Libraries.Magic2, 10, 5, 400, TargetPoint));
                                         else
                                             ob.Effects.Add(new Effect(Libraries.Magic2, 10, 5, 400, ob));
+                                        break;
+
+                                    #endregion
+
+                                    #region ThunderStrike
+
+                                    case Spell.ThunderStrike: // 落雷击: 地面落雷冲击
+                                        SoundManager.PlaySound(20000 + (ushort)Spell * 10);
+                                        MapControl.Effects.Add(new Effect(Libraries.Magic2, 990, 6, 900, TargetPoint));
+                                        break;
+
+                                    #endregion
+
+                                    #region ThunderStrikeRare
+
+                                    case Spell.ThunderStrikeRare: // 落雷击-秘籍: 地面落雷+3x3范围
+                                        SoundManager.PlaySound(20000 + (ushort)Spell * 10);
+                                        MapControl.Effects.Add(new Effect(Libraries.Magic2, 990, 6, 900, TargetPoint));
+                                        MapControl.Effects.Add(new Effect(Libraries.Magic2, 10, 5, 400, TargetPoint));
                                         break;
 
                                     #endregion
@@ -3436,6 +3688,72 @@ namespace Client.MirObjects
                                                 SoundManager.PlaySound(20000 + (ushort)Spell * 10);
                                             };
 
+                                        break;
+
+                                    #endregion
+
+                                    #region WanXiaoFu 万效符(87)/万效符秘笈(88)
+                                    //数值移植自angelk727: 护身符弹道1160 + 落地绽放 Magic_32bit 1700(19帧)/1730(26帧)
+                                    //音效=原水晶M130/M131段: 21305=M130-5(施法) 21306=M130-6(落地) 21310/21315=秘笈
+                                    case Spell.WanXiaoFu:
+                                    case Spell.WanXiaoFuRare:
+                                        SoundManager.PlaySound(Spell == Spell.WanXiaoFuRare ? 21310 : 21305);
+                                        missile = CreateProjectile(1160, Libraries.Magic, true, 3, 30, 7);
+                                        missile.Explode = true;
+
+                                        missile.Complete += (o, e) =>
+                                            {
+                                                bool rare = Spell == Spell.WanXiaoFuRare;
+                                                //Point特效必须加进MapControl.Effects(Owner=null时Remove从该列表移除, 加错列表会无限播帧)
+                                                //对齐原版INI: 绽放1700/20帧/2000ms 秘笈1730/27帧/2000ms(含1749-1755大竖帧收尾) + Magic2库1890/3帧/1000ms透明爆炸段(DrawMode=1)
+                                                MapControl.Effects.Add(new Effect(Libraries.Magic_32bit, rare ? 1730 : 1700, rare ? 27 : 20, 2000, TargetPoint));
+                                                MapControl.Effects.Add(new Effect(Libraries.Magic2, 1890, 3, 1000, TargetPoint) { Blend = true });
+                                                SoundManager.PlaySound(rare ? 21315 : 21306);
+                                            };
+
+                                        break;
+
+                                    #endregion
+
+                                    #region 法师奥义x6 落地/出手
+                                    case Spell.GreatFireBallRare: //大火球秘籍: 引导结束后弹道飞出 三段爆炸
+                                        SoundManager.PlaySound(20000 + 77 * 10 + 1); //M77-0复用(-1无文件)
+                                        missile = CreateProjectile(4430, Libraries.Magic3, true, 6, 30, 4, 0);
+                                        missile.SetStart(GreatFireBallRareStopTime);
+                                        if (missile.Target != null)
+                                        {
+                                            missile.Complete += (o, e) =>
+                                            {
+                                                if (missile.Target.CurrentAction == MirAction.Dead) return;
+                                                missile.Target.Effects.Add(new Effect(Libraries.Magic3, 4590, 15, 1000, missile.Target));
+                                                missile.Target.Effects.Add(new Effect(Libraries.Magic3, 4610, 8, 1000, missile.Target) { Start = CMain.Time + 1000, Repeat = true, RepeatUntil = CMain.Time + 2000 });
+                                                missile.Target.Effects.Add(new Effect(Libraries.Magic3, 4620, 5, 1000, missile.Target) { Start = CMain.Time + 2000 });
+                                                SoundManager.PlaySound(20000 + 77 * 10); //M77-0
+                                            };
+                                        }
+                                        break;
+
+                                    case Spell.ThunderBoltRare: //强击秘籍: 按等级落雷(≤1级720/2-3级730/4级+740)
+                                        {
+                                            SoundManager.PlaySound(20000 + 79 * 10 + 1); //M79-1
+                                            ClientMagic tbMagic = User.GetMagic(Spell.ThunderBoltRare);
+                                            int effectId;
+                                            if (tbMagic != null && tbMagic.Level >= 2) effectId = tbMagic.Level >= 4 ? 740 : 730;
+                                            else effectId = 720;
+
+                                            if (ob == null)
+                                                MapControl.Effects.Add(new Effect(Libraries.Magic_32bit, effectId, 5, 400, TargetPoint));
+                                            else
+                                                ob.Effects.Add(new Effect(Libraries.Magic_32bit, effectId, 5, 400, ob));
+                                        }
+                                        break;
+
+                                    case Spell.SoulflameSiphon: //吸魔炎风: 出手音效(法阵由服务端SpellObject广播)
+                                        SoundManager.PlaySound(20000 + 80 * 10); //M80-0复用
+                                        break;
+
+                                    case Spell.SoulflameSiphonRare:
+                                        SoundManager.PlaySound(20000 + 81 * 10 + 1); //M81-1
                                         break;
 
                                     #endregion
@@ -5262,7 +5580,7 @@ namespace Client.MirObjects
             if (MountType < 0 || !RidingMount) return;
 
             if (MountLibrary != null)
-                MountLibrary.Draw(DrawFrame - 416 + MountOffset, DrawLocation, DrawColour, true);
+                MountLibrary.Draw(MountLayouts.Translate(MountType, DrawFrame - 416 + MountOffset), DrawLocation, DrawColour, true);
         }
 
         private bool IsVitalEffect(Effect effect)
@@ -5305,14 +5623,14 @@ namespace Client.MirObjects
             JumpDistance = travel;
         }
 
-        public void GetFlashDashDistance(int magicLevel)
+        public void GetFlashDashDistance(int magicLevel, int maxDist = 3)
         {
             JumpDistance = 0;
             if (InTrapRock) return;
 
             int travel = 0;
             bool blocked = false;
-            int dist = (magicLevel <= 1) ? 0 : 1;
+            int dist = Math.Min(Math.Max(magicLevel, 1), maxDist);//按等级突进1-3格(与服务端公式一致)
             MirDirection jumpDir = Direction;
 
             Point location = CurrentLocation;
@@ -5432,7 +5750,8 @@ namespace Client.MirObjects
         {
             CreateLabel();
 
-            if (GuildLabel != null && !string.IsNullOrEmpty(GuildName))
+            //显示公会名(辅助面板基本页)
+            if (AssistSettings.ShowGuildName && GuildLabel != null && !string.IsNullOrEmpty(GuildName))
             {
                 GuildLabel.Text = GuildName;
                 GuildLabel.Location = new Point(DisplayRectangle.X + (50 - GuildLabel.Size.Width) / 2, DisplayRectangle.Y - (19 - GuildLabel.Size.Height / 2) + (Dead ? 35 : 8)); //was 48 -
@@ -5441,7 +5760,8 @@ namespace Client.MirObjects
 
             if (NameLabel != null)
             {
-                NameLabel.Text = Name;
+                //显示等级(辅助面板基本页): 名字后追加等级
+                NameLabel.Text = AssistSettings.ShowLevel && Level > 0 ? Name + " " + Level : Name;
                 NameLabel.Location = new Point(DisplayRectangle.X + (50 - NameLabel.Size.Width) / 2, DisplayRectangle.Y - (31 - NameLabel.Size.Height / 2) + (Dead ? 35 : 8)); //was 48 -
                 NameLabel.Draw();
             }

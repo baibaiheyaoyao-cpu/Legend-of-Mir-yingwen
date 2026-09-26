@@ -1,4 +1,4 @@
-﻿using Server.MirEnvir;
+using Server.MirEnvir;
 
 namespace Server.MirForms.DropBuilder
 {
@@ -16,6 +16,8 @@ namespace Server.MirForms.DropBuilder
     public partial class DropGenForm : Form
     {
         string Gold = "0", GoldOdds;
+        string _originalText;
+        bool _rebuildConfirmed;
 
         List<DropItem>
             Weapon = new List<DropItem>(),
@@ -54,7 +56,8 @@ namespace Server.MirForms.DropBuilder
             Quest = new List<DropItem>(),
             Awakening = new List<DropItem>(),
             Pets = new List<DropItem>(),
-            Transform = new List<DropItem>();
+            Transform = new List<DropItem>(),
+            All = new List<DropItem>();
 
         List<DropItem>[] ItemLists;
         ListBox[] ItemListBoxes;
@@ -64,7 +67,7 @@ namespace Server.MirForms.DropBuilder
             InitializeComponent();
 
             // Array of items
-            ItemLists = new List<DropItem>[37]
+            ItemLists = new List<DropItem>[38]
             {
                 Weapon,
                 Armour,
@@ -102,11 +105,12 @@ namespace Server.MirForms.DropBuilder
                 Quest,
                 Awakening,
                 Pets,
-                Transform
+                Transform,
+                All
             };
 
             // Array of item list boxes
-            ItemListBoxes = new ListBox[37]
+            ItemListBoxes = new ListBox[38]
             {
                 listBoxWeapon,
                 listBoxArmour,
@@ -144,7 +148,8 @@ namespace Server.MirForms.DropBuilder
                 listBoxQuest,
                 listBoxAwakening,
                 listBoxPets,
-                listBoxTransform
+                listBoxTransform,
+                listBoxAll
             };
 
             // Add monsters to list
@@ -155,7 +160,7 @@ namespace Server.MirForms.DropBuilder
 
             tabControlSeperateItems_SelectedIndexChanged(tabControlSeperateItems, null);
             listBoxMonsters.SelectedIndex = 0;
-            labelMonsterList.Text = $"Monster Count: {Envir.MonsterInfoList.Count}";
+            labelMonsterList.Text = $"怪物数量：{Envir.MonsterInfoList.Count}";
         }
 
         // Gets server data
@@ -164,6 +169,21 @@ namespace Server.MirForms.DropBuilder
         // Updates the drop file text
         private void UpdateDropFile()
         {
+            if (!_rebuildConfirmed && ContainsGroup(textBoxDropList.Text))
+            {
+                var choice = MessageBox.Show(
+                    "当前文本框内容包含 GROUP 掉落块, 面板列表重建会丢失组格式。\n" +
+                    "建议直接在文本框手动编辑, 改完点[编辑掉落文件]进入编辑再点[确认]。\n\n" +
+                    "仍要用面板内容重建文本框吗?",
+                    "GROUP 格式保护",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning);
+
+                if (choice == DialogResult.No) return;
+
+                _rebuildConfirmed = true;
+            }
+
             textBoxDropList.Clear();
 
             textBoxDropList.Text += $";Gold{Environment.NewLine}";
@@ -332,6 +352,10 @@ namespace Server.MirForms.DropBuilder
                 textBoxDropList.Text +=
                     $"{Transform[i].Odds} {Transform[i].Name} {Transform[i].Quest}{Environment.NewLine}";
 
+            textBoxDropList.Text += string.Format("{0};Others{0}", Environment.NewLine);
+            for (int i = 0; i < All.Count; i++)
+                textBoxDropList.Text += $"{All[i].Odds} {All[i].Name} {All[i].Quest}{Environment.NewLine}";
+
             SaveDropFile();
         }
 
@@ -339,6 +363,12 @@ namespace Server.MirForms.DropBuilder
         private void tabControlSeperateItems_SelectedIndexChanged(object sender, EventArgs e)
         {
             TabControl Tab = (TabControl)sender;
+
+            if (Tab.SelectedTab != null && Tab.SelectedTab.Tag.ToString() == "All")
+            {
+                PopulateAllListBox();
+                return;
+            }
 
             foreach (var list in ItemListBoxes)
                 list.Items.Clear();
@@ -358,7 +388,7 @@ namespace Server.MirForms.DropBuilder
                     }
                     catch (Exception)
                     {
-                        MessageBox.Show("Unreadable level filters.");
+                        MessageBox.Show("等级过滤条件无法读取。");
                         break;
                     }
                 }
@@ -484,6 +514,38 @@ namespace Server.MirForms.DropBuilder
         private void FilterValueChange(object sender, EventArgs e)
         {
             tabControlSeperateItems_SelectedIndexChanged(tabControlSeperateItems, null);
+        }
+
+        // Populate the all-items list from live Envir.ItemInfoList (any ItemType), with search + level filter
+        private void PopulateAllListBox()
+        {
+            listBoxAll.Items.Clear();
+
+            string search = textBoxAllSearch.Text.Trim();
+
+            bool filterLevel = textBoxMinLevel.Text != string.Empty && textBoxMaxLevel.Text != string.Empty;
+            int minLevel = 0, maxLevel = 0;
+            if (filterLevel &&
+                (!int.TryParse(textBoxMinLevel.Text, out minLevel) || !int.TryParse(textBoxMaxLevel.Text, out maxLevel)))
+                return;
+
+            foreach (var info in Envir.ItemInfoList)
+            {
+                if (search != string.Empty && info.Name.IndexOf(search, StringComparison.OrdinalIgnoreCase) < 0)
+                    continue;
+
+                if (filterLevel && (info.RequiredAmount < minLevel || info.RequiredAmount > maxLevel))
+                    continue;
+
+                listBoxAll.Items.Add(info.Name);
+            }
+
+            tabPageAll.Text = $"全部物品({listBoxAll.Items.Count})";
+        }
+
+        private void textBoxAllSearch_TextChanged(object sender, EventArgs e)
+        {
+            PopulateAllListBox();
         }
 
         // Add the item to the drop list
@@ -650,6 +712,10 @@ namespace Server.MirForms.DropBuilder
                         Transform.Add(new DropItem { Name = listBoxTransform.SelectedItem.ToString().Replace(" ", string.Empty), Odds =
                             $"1/{dropChance}", Quest = quest });
                         break;
+                    case "All":
+                        All.Add(new DropItem { Name = listBoxAll.SelectedItem.ToString().Replace(" ", string.Empty), Odds =
+                            $"1/{dropChance}", Quest = quest });
+                        break;
                 }
 
                 UpdateDropFile();
@@ -663,19 +729,41 @@ namespace Server.MirForms.DropBuilder
         // Choose another monster.
         private void listBoxMonsters_SelectedItemChanged(object sender, EventArgs e)
         {
+            if (listBoxMonsters.SelectedItem == null) return;
+
             // Empty List<DropItem>'s
             foreach (var item in ItemLists)
                 item.Clear();
 
-            LoadDropFile(false);
-            UpdateDropFile();
+            Gold = "0";
+            GoldOdds = null;
+            _rebuildConfirmed = false;
+
+            var path = GetPathOfSelectedItem();
+
+            if (path != null && File.Exists(path))
+            {
+                _originalText = File.ReadAllText(path);
+                LoadDropFile(false);
+            }
+            else
+            {
+                _originalText = null;
+            }
+
+            // 文本框直接载入原文件全文, 保存以文本框为准, 防止面板重建清空内容
+            textBoxDropList.Clear();
+            textBoxDropList.Text = _originalText ?? ";Gold" + Environment.NewLine + Environment.NewLine + ";Weapons" + Environment.NewLine;
+
+            textBoxGoldAmount.Text = Gold;
+            textBoxGoldOdds.Text = Gold != "0" ? GoldOdds : string.Empty;
 
             textBoxMinLevel.Text = string.Empty;
             textBoxMaxLevel.Text = string.Empty;
             checkBoxCap.Checked = false;
 
             labelMobLevel.Text =
-                $"Currently Editing: {((MonsterDropInfo)listBoxMonsters.SelectedItem).Name} - Level: {Envir.MonsterInfoList[listBoxMonsters.SelectedIndices[0]].Level}";
+                $"当前编辑：{((MonsterDropInfo)listBoxMonsters.SelectedItem).Name} - 等级：{Envir.MonsterInfoList[listBoxMonsters.SelectedIndices[0]].Level}";
         }
 
         public string GetPathOfSelectedItem()
@@ -723,7 +811,7 @@ namespace Server.MirForms.DropBuilder
                 }
             }
 
-            string[] Headers = new string[37]
+            string[] Headers = new string[38]
             {
             ";Weapons",
             ";Armours",
@@ -761,7 +849,8 @@ namespace Server.MirForms.DropBuilder
             ";Quest",
             ";Awakening",
             ";Pets",
-            ";Transform"
+            ";Transform",
+            ";Others"
             };
 
             for (int i = 0; i < Headers.Length; i++)
@@ -898,6 +987,9 @@ namespace Server.MirForms.DropBuilder
                                 case 36:
                                     Transform.Add(newDropItem);
                                     break;
+                                case 37:
+                                    All.Add(newDropItem);
+                                    break;
                                 default:
                                     break;
                             }
@@ -914,6 +1006,23 @@ namespace Server.MirForms.DropBuilder
 
             if (dropFile == null) return;
 
+            // 双保险: 原文件含GROUP而当前文本框已无GROUP时, 保存前警告
+            try
+            {
+                if (File.Exists(dropFile)
+                    && ContainsGroup(File.ReadAllText(dropFile))
+                    && !ContainsGroup(textBoxDropList.Text))
+                {
+                    if (MessageBox.Show(
+                            "原文件包含 GROUP 掉落块, 但当前文本框内容已丢失组格式。\n\n继续保存将覆盖文件(组块内容会丢失), 确定?",
+                            "GROUP 格式保护",
+                            MessageBoxButtons.YesNo,
+                            MessageBoxIcon.Warning) == DialogResult.No)
+                        return;
+                }
+            }
+            catch { }
+
             using (FileStream fs = new FileStream(dropFile, FileMode.Create))
             {
                 using (StreamWriter sw = new StreamWriter(fs))
@@ -922,6 +1031,24 @@ namespace Server.MirForms.DropBuilder
                         sw.Write(line + sw.NewLine);
                 }
             }
+        }
+
+        // 检测文本中是否含 GROUP/GROUP*/GROUP^ 掉落块(按引擎 DropInfo.FromLine 的行格式判断)
+        private static bool ContainsGroup(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return false;
+
+            foreach (var raw in text.Split('\n'))
+            {
+                var line = raw.Trim();
+                if (line.Length == 0 || line.StartsWith(";")) continue;
+
+                var parts = line.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length >= 2 && parts[0].Contains("/") && parts[1].ToUpper().StartsWith("GROUP"))
+                    return true;
+            }
+
+            return false;
         }
 
         //Edit gold amount/odds
@@ -936,17 +1063,18 @@ namespace Server.MirForms.DropBuilder
         //Switch to Edit mode
         private void buttonEdit_Click(object sender, EventArgs e)
         {
-            if (buttonEdit.Text == "Accept")
+            if (buttonEdit.Text == "确认")
             {
                 textBoxDropList.ReadOnly = true;
                 textBoxDropList.BackColor = System.Drawing.Color.Cornsilk;
-                buttonEdit.Text = "Edit Drop File";
+                buttonEdit.Text = "编辑掉落文件";
                 //buttonEdit.Image = Properties.Resources.edit;
 
                 // Empty List<DropItem>'s
                 foreach (var item in ItemLists)
                     item.Clear();
 
+                _rebuildConfirmed = false;
                 LoadDropFile(true);
                 UpdateDropFile();
 
@@ -960,7 +1088,7 @@ namespace Server.MirForms.DropBuilder
             {
                 textBoxDropList.ReadOnly = false;
                 textBoxDropList.BackColor = System.Drawing.Color.Honeydew;
-                buttonEdit.Text = "Accept";
+                buttonEdit.Text = "确认";
                 //buttonEdit.Image = Properties.Resources.accept;
 
                 buttonAdd.Enabled = false;

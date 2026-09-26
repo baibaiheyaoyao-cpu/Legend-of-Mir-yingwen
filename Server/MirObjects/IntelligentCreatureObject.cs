@@ -843,8 +843,12 @@ namespace Server.MirObjects
 
             if (Dead)
             {
-                CurrentMap.RemoveObject(this);
-                Despawn();
+                if (Node != null)
+                {
+                    if (CurrentMap != null)
+                        CurrentMap.RemoveObject(this);
+                    Despawn();
+                }
                 return;
             }
         }

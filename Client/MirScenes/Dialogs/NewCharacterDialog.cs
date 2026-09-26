@@ -265,7 +265,27 @@ namespace Client.MirScenes.Dialogs
             Gender = MirGender.Male;
             NameTextBox.Text = string.Empty;
 
+            UpdateClassButtons();
             UpdateInterface();
+        }
+
+        private static bool ClassAllowed(MirClass c)
+        {
+            return (SelectScene.AllowedClasses & (1 << (byte)c)) != 0;
+        }
+
+        private static void AllowClass(MirButton button, MirClass c)
+        {
+            bool allowed = ClassAllowed(c);
+            button.Enabled = allowed;
+            button.GrayScale = !allowed;
+        }
+
+        private void UpdateClassButtons()
+        {
+            AllowClass(AssassinButton, MirClass.Assassin);
+            AllowClass(ArcherButton, MirClass.Archer);
+            AllowClass(MonkButton, MirClass.Monk);
         }
 
         private void TextBox_KeyPress(object sender, KeyPressEventArgs e)

@@ -15,7 +15,7 @@ using Client.MirGraphics.Particles;
 
 namespace Client.MirScenes
 {
-    public sealed class GameScene : MirScene
+    public sealed class GameScene : MirScene      //MirScene：继承自 MirScene，因此 GameScene 获得 MirScene 中定义的行为、属性和方法，并在此基础上实现或扩展游戏特有的逻辑（例如 UI 对话框、地图控制、事件处理等）。 
     {
         public static GameScene Scene;
         public static bool Observing;
@@ -61,6 +61,7 @@ namespace Client.MirScenes
         public ChatControlBar ChatControl;
         public InventoryDialog InventoryDialog;
         public CharacterDialog CharacterDialog;
+        public TalentDialog TalentDialog;   //天赋系统 - 天赋窗口(数据由服务端下发)
         public CharacterDialog HeroDialog;
         public HeroInventoryDialog HeroInventoryDialog;
         public HeroManageDialog HeroManageDialog;
@@ -84,6 +85,9 @@ namespace Client.MirScenes
         public RefineDialog RefineDialog;
 
         public GroupDialog GroupDialog;
+        public GroupHealthDialog GroupHealthDialog;
+        public AssistDialog AssistDialog;   //辅助面板(自动喝药/自动技能/挂机)
+        public AssistHelper AssistHelper;   //辅助逻辑处理(每帧在Process中驱动)
         public GuildDialog GuildDialog;
         public GuildTerritoryDialog GuildTerritoryDialog;
         public NewCharacterDialog NewHeroDialog;
@@ -315,6 +319,9 @@ namespace Client.MirScenes
             FishingStatusDialog = new FishingStatusDialog { Parent = this, Visible = false };
 
             GroupDialog = new GroupDialog { Parent = this, Visible = false };
+            GroupHealthDialog = new GroupHealthDialog { Parent = this, Visible = false };
+            AssistDialog = new AssistDialog { Parent = this, Visible = false };    //辅助面板
+            AssistHelper = new AssistHelper();                                     //辅助逻辑
             GuildDialog = new GuildDialog { Parent = this, Visible = false };
             GuildTerritoryDialog = new GuildTerritoryDialog { Parent = this, Visible = false };
             NewHeroDialog = new NewCharacterDialog { Parent = this, Visible = false };
@@ -684,6 +691,7 @@ namespace Client.MirScenes
                         MentorDialog.Hide();
                         GameShopDialog.Hide();
                         GroupDialog.Hide();
+                        GroupHealthDialog.Hide();
                         GuildDialog.Hide();
                         InspectDialog.Hide();
                         StorageDialog.Hide();
@@ -717,6 +725,15 @@ namespace Client.MirScenes
                     case KeybindOptions.Group:
                         if (!GroupDialog.Visible) GroupDialog.Show();
                         else GroupDialog.Hide();
+                        break;
+                    case KeybindOptions.GroupHealthPanel:
+                        if (GroupDialog.GroupList.Count == 0) break;
+                        if (!GroupHealthDialog.Visible) GroupHealthDialog.Show();
+                        else GroupHealthDialog.Hide();
+                        break;
+                    case KeybindOptions.AssistPanel:    //辅助面板(自动喝药/自动技能/挂机)
+                        if (!AssistDialog.Visible) AssistDialog.Show();
+                        else AssistDialog.Hide();
                         break;
                     case KeybindOptions.Belt:
                         if (!BeltDialog.Visible) BeltDialog.Show();
@@ -836,6 +853,12 @@ namespace Client.MirScenes
                     case KeybindOptions.Help:
                         if (!HelpDialog.Visible) HelpDialog.Show();
                         else HelpDialog.Hide();
+                        break;
+                    case KeybindOptions.Talent:
+                        //天赋系统 - 开关天赋窗口(默认Ctrl+T, 可在按键设置里改)
+                        if (TalentDialog == null) break;
+                        if (!TalentDialog.Visible) TalentDialog.Show();
+                        else TalentDialog.Hide();
                         break;
                     case KeybindOptions.Keybind:
                         if (!KeyboardLayoutDialog.Visible) KeyboardLayoutDialog.Show();
@@ -1105,6 +1128,18 @@ namespace Client.MirScenes
                     }
                     SendSpellToggle(actor, magic.Spell, true);
                     break;
+                case Spell.BloodDragon:
+                    if (CMain.Time < ToggleTime) return;
+                    ToggleTime = CMain.Time + 500;
+
+                    cost = magic.Level * magic.LevelCost + magic.BaseCost;
+                    if (cost > actor.MP)
+                    {
+                        Scene.OutputMessage(GameLanguage.ClientTextMap.GetLocalization(ClientTextKeys.LowMana));
+                        return;
+                    }
+                    SendSpellToggle(actor, magic.Spell, true);
+                    break;
                 //Monk
                 case Spell.DaMoGunFa:
                     if (CMain.Time < ToggleTime) return;
@@ -1227,7 +1262,8 @@ namespace Client.MirScenes
 
             if (CMain.Time >= CMain.NextPing)
             {
-                CMain.NextPing = CMain.Time + 60000;
+                //显示Ping开启时提高测频(5秒一次), 否则维持60秒心跳
+                CMain.NextPing = CMain.Time + (AssistSettings.ShowPing ? 5000 : 60000);
                 Network.Enqueue(new C.KeepAlive() { Time = CMain.Time });
             }
 
@@ -1318,6 +1354,8 @@ namespace Client.MirScenes
 
             BuffsDialog.Process();
             HeroBuffsDialog?.Process();
+
+            AssistHelper?.Process();    //辅助系统(自动喝药/自动技能/挂机)
 
             MapControl.Process();
             MainDialog.Process();
@@ -1668,6 +1706,12 @@ namespace Client.MirScenes
                 case (short)ServerPacketIds.ItemSealChanged:
                     ItemSealChanged((S.ItemSealChanged)p);
                     break;
+                case (short)ServerPacketIds.CustomSkillConfigs:
+                    CustomSkillSettings.Set(((S.CustomSkillConfigs)p).Skills);
+                    break;
+                case (short)ServerPacketIds.CustomMagicConfigs:
+                    CustomMagicSettings.Set(((S.CustomMagicConfigs)p).Configs);
+                    break;
                 case (short)ServerPacketIds.NewMagic:
                     NewMagic((S.NewMagic)p);
                     break;
@@ -1727,6 +1771,9 @@ namespace Client.MirScenes
                     break;
                 case (short)ServerPacketIds.SendMemberLocation:
                     SendMemberLocation((S.SendMemberLocation)p);
+                    break;
+                case (short)ServerPacketIds.GroupMemberHealth:
+                    GroupMemberHealth((S.GroupMemberHealth)p);
                     break;
                 case (short)ServerPacketIds.Revived:
                     Revived();
@@ -2147,6 +2194,22 @@ namespace Client.MirScenes
                 case (short)ServerPacketIds.NewNPCInfo:
                     NewNPCInfo((S.NewNPCInfo)p);
                     break;
+                case (short)ServerPacketIds.TalentInfo:
+                    //天赋系统 - 服务端下发全天赋表(重建窗口网格)
+                    TalentDialog?.ReceiveTalentInfo((S.TalentInfo)p);
+                    break;
+                case (short)ServerPacketIds.PlayerTalentInfo:
+                    //天赋系统 - 玩家天赋状态(剩余点数+已学列表)
+                    TalentDialog?.ReceivePlayerTalentInfo((S.PlayerTalentInfo)p);
+                    break;
+                case (short)ServerPacketIds.TalentChange:
+                    //天赋系统 - 学习成功后单个天赋等级变化
+                    TalentDialog?.ReceiveTalentChange((S.TalentChange)p);
+                    break;
+                case (short)ServerPacketIds.TalentReset:
+                    //天赋系统 - 洗点结果
+                    TalentDialog?.ReceiveTalentReset((S.TalentReset)p);
+                    break;
                 default:
                     base.ProcessPacket(p);
                     break;
@@ -2259,7 +2322,15 @@ namespace Client.MirScenes
             Gold = p.Gold;
             Credit = p.Credit;
 
+            //辅助系统 - 载入该角色的辅助配置与物品过滤表
+            AssistSettings.Load(User.Name);
+            AssistHelper.Init();
+
             CharacterDialog = new CharacterDialog(MirGridType.Equipment, User) { Parent = this, Visible = false };
+
+            //天赋系统 - 创建天赋窗口并向服务端请求天赋数据(全表+自身状态)
+            TalentDialog = new TalentDialog { Parent = this, Visible = false };
+            Network.Enqueue(new C.ClientTalent());
             InventoryDialog.RefreshInventory();
             foreach (SkillBarDialog Bar in SkillBarDialogs)
                 Bar.Update();
@@ -2967,6 +3038,7 @@ namespace Client.MirScenes
             cell.Locked = false;
 
             if (!p.Success) return;
+            if (cell.Item.Info.Type == ItemType.Scroll && (cell.Item.Info.Index == 1982 || cell.Item.Info.Index == 1983)) return; //永久卷轴不消耗
             if (cell.Item.Count > 1) cell.Item.Count--;
             else cell.Item = null;
             if (hero)
@@ -3540,7 +3612,8 @@ namespace Client.MirScenes
 
         private void DamageIndicator(S.DamageIndicator p)
         {
-            if (Settings.DisplayDamage)
+            //显示伤害(辅助面板基本页): 与启动器DisplayDamage同时生效(两者都开才显示)
+            if (Settings.DisplayDamage && AssistSettings.ShowDamage)
             {
                 if (MapControl.Objects.TryGetValue(p.ObjectID, out var obj))
                 {
@@ -3597,6 +3670,26 @@ namespace Client.MirScenes
                     }
                 }
 
+            if (item == null && Hero != null)
+            {
+                for (int i = 0; i < Hero.Inventory.Length; i++)
+                    if (Hero.Inventory[i] != null && Hero.Inventory[i].UniqueID == p.UniqueID)
+                    {
+                        item = Hero.Inventory[i];
+                        break;
+                    }
+            }
+
+            if (item == null && Hero != null)
+                for (int i = 0; i < Hero.Equipment.Length; i++)
+                {
+                    if (Hero.Equipment[i] != null && Hero.Equipment[i].UniqueID == p.UniqueID)
+                    {
+                        item = Hero.Equipment[i];
+                        break;
+                    }
+                }
+
             if (item == null) return;
 
             item.CurrentDura = p.CurrentDura;
@@ -3626,6 +3719,10 @@ namespace Client.MirScenes
         }
         private void HealthChanged(S.HealthChanged p)
         {
+            //显示恢复(辅助面板基本页): HP上升时飘绿色恢复数字
+            if (AssistSettings.ShowHeal && p.HP > User.HP && User.Damages.Count < 10)
+                User.Damages.Add(new Damage("+" + (p.HP - User.HP).ToString("#,##0"), 1000, Color.Green, 50));
+
             User.HP = p.HP;
             User.MP = p.MP;
 
@@ -3633,6 +3730,12 @@ namespace Client.MirScenes
         }
         private void HeroHealthChanged(S.HeroHealthChanged p)
         {
+            if (Hero == null) return;
+
+            //显示恢复(辅助面板基本页): 英雄HP上升时飘绿色恢复数字
+            if (AssistSettings.ShowHeal && p.HP > Hero.HP && Hero.Damages.Count < 10)
+                Hero.Damages.Add(new Damage("+" + (p.HP - Hero.HP).ToString("#,##0"), 1000, Color.Green, 50));
+
             Hero.HP = p.HP;
             Hero.MP = p.MP;
 
@@ -3751,7 +3854,7 @@ namespace Client.MirScenes
                     if (item == null || item.UniqueID != p.UniqueID) continue;
 
                     if (item.Count == p.Count)
-                        User.Inventory[i] = null;
+                        Hero.Inventory[i] = null;
                     else
                         item.Count -= p.Count;
                     actor = Hero;
@@ -3784,7 +3887,7 @@ namespace Client.MirScenes
                         if (item == null || item.UniqueID != p.UniqueID) continue;
 
                         if (item.Count == p.Count)
-                            User.Equipment[i] = null;
+                            Hero.Equipment[i] = null;
                         else
                             item.Count -= p.Count;
                         actor = Hero;
@@ -3870,6 +3973,9 @@ namespace Client.MirScenes
         private void GainHeroExperience(S.GainHeroExperience p)
         {
             OutputMessage(GameLanguage.ClientTextMap.GetLocalization((ClientTextKeys.HeroExperienceGained), p.Amount));
+
+            if (MapObject.Hero == null) return;
+
             MapObject.Hero.Experience += p.Amount;
         }
         private void LevelChanged(S.LevelChanged p)
@@ -3885,6 +3991,8 @@ namespace Client.MirScenes
         }
         private void HeroLevelChanged(S.HeroLevelChanged p)
         {
+            if (Hero == null) return;
+
             Hero.Level = p.Level;
             Hero.Experience = p.Experience;
             Hero.MaxExperience = p.MaxExperience;
@@ -5017,7 +5125,10 @@ namespace Client.MirScenes
         {
             GroupDialog.GroupList.Clear();
             GroupDialog.GroupMembersMap.Clear();
+            GroupDialog.GroupHealth.Clear();
             BigMapViewPort.PlayerLocations.Clear();
+            //组队血条面板 - 解散后自动隐藏
+            GroupHealthDialog.Hide();
             ChatDialog.ReceiveChat(GameLanguage.ClientTextMap.GetLocalization(ClientTextKeys.YouHaveLeftGroup), ChatType.Group);
         }
 
@@ -5025,7 +5136,11 @@ namespace Client.MirScenes
         {
             GroupDialog.GroupList.Remove(p.Name);
             GroupDialog.GroupMembersMap.Remove(p.Name);
+            GroupDialog.GroupHealth.Remove(p.Name);
             BigMapViewPort.PlayerLocations.Remove(p.Name);
+            //组队血条面板 - 队伍清空后自动隐藏
+            if (GroupDialog.GroupList.Count == 0)
+                GroupHealthDialog.Hide();
             ChatDialog.ReceiveChat(GameLanguage.ClientTextMap.GetLocalization((ClientTextKeys.PlayerHasLeftGroup), p.Name), ChatType.Group);
         }
 
@@ -5044,6 +5159,9 @@ namespace Client.MirScenes
         private void AddMember(S.AddMember p)
         {
             GroupDialog.GroupList.Add(p.Name);
+            //组队血条面板 - 有成员加入时自动显示
+            if (!GroupHealthDialog.Visible && GroupDialog.GroupList.Count > 0)
+                GroupHealthDialog.Show();
             ChatDialog.ReceiveChat(GameLanguage.ClientTextMap.GetLocalization((ClientTextKeys.PlayerHasJoinedGroup), p.Name), ChatType.Group);
         }
         private void GroupMembersMap(S.GroupMembersMap p)
@@ -5055,6 +5173,13 @@ namespace Client.MirScenes
                 GroupDialog.GroupMembersMap.Remove(p.PlayerName);
                 GroupDialog.GroupMembersMap.Add(p.PlayerName, p.PlayerMap);
             }
+        }
+        private void GroupMemberHealth(S.GroupMemberHealth p)
+        {
+            if (!GroupDialog.GroupHealth.ContainsKey(p.MemberName))
+                GroupDialog.GroupHealth.Add(p.MemberName, p.PercentHealth);
+            else
+                GroupDialog.GroupHealth[p.MemberName] = p.PercentHealth;
         }
         private void SendMemberLocation(S.SendMemberLocation p)
         {
@@ -5135,6 +5260,13 @@ namespace Client.MirScenes
                     else
                         ChatDialog.ReceiveChat(prefix + GameLanguage.ClientTextMap.GetLocalization(ClientTextKeys.SpiritsFireDisappeared), ChatType.System);
                     break;
+                case Spell.BloodDragon:
+                    actor.BloodDragon = p.CanUse;
+                    if (actor.BloodDragon)
+                        ChatDialog.ReceiveChat(prefix + "血龙之力已注入武器。", ChatType.Hint);
+                    else
+                        ChatDialog.ReceiveChat(prefix + "血龙之力消散了。", ChatType.System);
+                    break;
                 //Monk
                 case Spell.LuoHanGunFa:
                     actor.LuoHanGunFa = p.CanUse;
@@ -5149,6 +5281,18 @@ namespace Client.MirScenes
                     else
                         ChatDialog.ReceiveChat(prefix + "Do not use DaMoGunFa.", ChatType.System);
                     break;
+                default:
+                    //自定义技能蓄力开关(攻击强化模板)
+                    if (CustomSkillSettings.IsCustom(p.Spell))
+                    {
+                        if (p.CanUse) actor.CustomToggles.Add(p.Spell);
+                        else actor.CustomToggles.Remove(p.Spell);
+
+                        ClientMagic customMagic = actor.GetMagic(p.Spell);
+                        string customName = customMagic != null ? customMagic.Name : p.Spell.ToString();
+                        ChatDialog.ReceiveChat(prefix + (p.CanUse ? customName + " 已就绪。" : customName + " 效果消散。"), p.CanUse ? ChatType.Hint : ChatType.System);
+                    }
+                    break;
             }
         }
 
@@ -5161,6 +5305,10 @@ namespace Client.MirScenes
             {
                 ob.PercentHealth = p.Percent;
                 ob.HealthTime = CMain.Time + p.Expire * 1000;
+
+                //组队面板血条 - 同屏队友走此通道实时刷新(异屏走GroupMemberHealth包)
+                if (ob.Race == ObjectType.Player && GroupDialog.GroupList.Contains(ob.Name))
+                    GroupDialog.GroupHealth[ob.Name] = p.Percent;
             }
         }
 
@@ -5826,8 +5974,9 @@ namespace Client.MirScenes
             MirInputBox inputBox = new MirInputBox(GameLanguage.ClientTextMap.GetLocalization(ClientTextKeys.EnterGuildNameLengthLimit));
             inputBox.InputTextBox.TextBox.KeyPress += (o, e) =>
             {
-                string Allowed = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-                if (!Allowed.Contains(e.KeyChar) && e.KeyChar != (char)Keys.Back)
+                if (e.KeyChar == '\\')
+                    e.Handled = true;
+                else if (char.IsControl(e.KeyChar) && e.KeyChar != (char)Keys.Back)
                     e.Handled = true;
             };
             inputBox.OKButton.Click += (o, e) =>
@@ -6584,6 +6733,15 @@ namespace Client.MirScenes
 
         private void ResizeInventory(S.ResizeInventory p)
         {
+            if (p.Grid == MirGridType.HeroInventory)
+            {
+                if (Hero == null) return;
+
+                Array.Resize(ref Hero.Inventory, p.Size);
+                HeroInventoryDialog.RefreshInterface();
+                return;
+            }
+
             Array.Resize(ref User.Inventory, p.Size);
             InventoryDialog.RefreshInventory2();
         }
@@ -6731,8 +6889,18 @@ namespace Client.MirScenes
         private void GameShopUpdate(S.GameShopInfo p)
         {
             p.Item.Stock = p.StockLevel;
+            //热重载: 按GIndex去重替换, 避免服务端整表重推时重复/残留旧条目
+            for (int i = 0; i < GameShopInfoList.Count; i++)
+            {
+                if (GameShopInfoList[i].GIndex == p.Item.GIndex)
+                {
+                    GameShopInfoList.RemoveAt(i);
+                    break;
+                }
+            }
             GameShopInfoList.Add(p.Item);
             if (p.Item.Date > CMain.Now.AddDays(-7)) GameShopDialog.New.Visible = true;
+            if (GameShopDialog.Visible) GameShopDialog.UpdateShop();
         }
 
         private void GameShopStock(S.GameShopStock p)
@@ -6960,7 +7128,7 @@ namespace Client.MirScenes
                     case ItemType.SealedHero:
                         break;
                     case ItemType.Pets:
-                        if ((HoverItem.Info.Shape == 26 || HoverItem.Info.Shape == 28) && HoverItem.CurrentDura > 0)//WonderDrug, Knapsack
+                        if ((HoverItem.Info.Shape == 26 || HoverItem.Info.Shape == 28 || HoverItem.Info.Shape == 126 || HoverItem.Info.Shape == 128) && HoverItem.CurrentDura > 0)//WonderDrug, Knapsack
                         {
                             string strTime = Functions.PrintTimeSpanFromSeconds((HoverItem.CurrentDura * 3600), false);
                             text = GameLanguage.ClientTextMap.GetLocalization(ClientTextKeys.DurationValue, strTime);
@@ -7338,7 +7506,7 @@ namespace Client.MirScenes
             {
                 count++;
 
-                if (realItem.Type == ItemType.Pets && realItem.Shape == 28)
+                if (realItem.Type == ItemType.Pets && (realItem.Shape == 28 || realItem.Shape == 128))
                 {
                     text = GameLanguage.ClientTextMap.GetLocalization(ClientTextKeys.BagWeightPercent, minValue + addValue);
                 }
@@ -10256,6 +10424,15 @@ namespace Client.MirScenes
         {
             if (disposing)
             {
+                //辅助系统 - 保存该角色的辅助配置与物品过滤表
+                if (AssistHelper != null)
+                {
+                    AssistHelper.Save();
+                    AssistHelper = null;
+                }
+                AssistSettings.Save();
+                AssistDialog = null;
+
                 Scene = null;
                 User = null;
 
@@ -10382,6 +10559,28 @@ namespace Client.MirScenes
         public static Point ToMouseLocation(Point p)
         {
             return new Point((p.X - MapObject.User.Movement.X + OffSetX) * CellWidth, (p.Y - MapObject.User.Movement.Y + OffSetY) * CellHeight).Add(MapObject.User.OffSetMove);
+        }
+
+        //复活术辅助: 鼠标地图格±2(5×5)内找死亡玩家——命中测试默认滤掉尸体(TargetDead关), 仅复活术取目标时调用
+        public MapObject FindDeadPlayerNearMouse()
+        {
+            Point ml = MapLocation;
+            for (int y = ml.Y + 2; y >= ml.Y - 2; y--)
+            {
+                if (y < 0 || y >= Height) continue;
+                for (int x = ml.X + 2; x >= ml.X - 2; x--)
+                {
+                    if (x < 0 || x >= Width) continue;
+                    CellInfo cell = M2CellInfo[x, y];
+                    if (cell == null || cell.CellObjects == null) continue;
+                    for (int i = cell.CellObjects.Count - 1; i >= 0; i--)
+                    {
+                        MapObject ob = cell.CellObjects[i];
+                        if (ob != null && ob.Dead && ob.Race == ObjectType.Player) return ob;
+                    }
+                }
+            }
+            return null;
         }
 
         public static MouseButtons MapButtons;
@@ -10663,11 +10862,12 @@ namespace Client.MirScenes
 
             int offSet = 0;
 
-            if (Settings.DisplayBodyName)
+            if (Settings.DisplayBodyName || AssistSettings.ShowMonsterName)
             {
                 foreach (var ob in Objects.Values.OfType<MonsterObject>())
                 {
-                    if (ob.MouseOver(MouseLocation))
+                    //怪物显名(辅助面板基本页): 开启时全部常显, 否则仅悬停显示
+                    if (AssistSettings.ShowMonsterName || ob.MouseOver(MouseLocation))
                         ob.DrawName();
                 }
             }
@@ -11522,11 +11722,11 @@ namespace Client.MirScenes
                 return;
             }
 
-            if (CMain.Time < User.BlizzardStopTime || CMain.Time < User.ReincarnationStopTime) return;
+            if (CMain.Time < User.BlizzardStopTime || CMain.Time < User.ReincarnationStopTime || CMain.Time < User.GreatFireBallRareStopTime) return;
 
             if (MapObject.TargetObject != null && !MapObject.TargetObject.Dead)
             {
-                if (((MapObject.TargetObject.Name.EndsWith(")") || MapObject.TargetObject is PlayerObject) && CMain.Shift) ||
+                if (((MapObject.TargetObject.Name.EndsWith(")") || MapObject.TargetObject is PlayerObject) && (CMain.Shift || AssistSettings.FreeShift)) ||
                     (!MapObject.TargetObject.Name.EndsWith(")") && MapObject.TargetObject is MonsterObject))
                 {
                     GameScene.LogTime = CMain.Time + Globals.LogDelay;
@@ -11556,6 +11756,19 @@ namespace Client.MirScenes
                     }
 
                     else if (Functions.InRange(MapObject.TargetObject.CurrentLocation, User.CurrentLocation, 1))
+                    {
+                        if (CMain.Time > GameScene.AttackTime && CanRideAttack() && !User.Poison.HasFlag(PoisonType.Dazed))
+                        {
+                            User.QueuedAction = new QueuedAction { Action = MirAction.Attack1, Direction = Functions.DirectionFromPoint(User.CurrentLocation, MapObject.TargetObject.CurrentLocation), Location = User.CurrentLocation };
+                            return;
+                        }
+                    }
+                    //隔位刺杀(辅助面板职业页): 目标在2格且方向线上可刺时, 允许发起攻击(攻击动作里自动带刺杀剑气)
+                    else if (AssistSettings.SpaceThrusting
+                        && User.Class == MirClass.Warrior
+                        && User.GetMagic(Spell.Thrusting) != null
+                        && Functions.InRange(MapObject.TargetObject.CurrentLocation, User.CurrentLocation, 2)
+                        && GameScene.Scene.MapControl.HasTarget(Functions.PointMove(User.CurrentLocation, Functions.DirectionFromPoint(User.CurrentLocation, MapObject.TargetObject.CurrentLocation), 2)))
                     {
                         if (CMain.Time > GameScene.AttackTime && CanRideAttack() && !User.Poison.HasFlag(PoisonType.Dazed))
                         {
@@ -11818,7 +12031,7 @@ namespace Client.MirScenes
             }
 
             if (MapObject.TargetObject == null || MapObject.TargetObject.Dead) return;
-            if (((!MapObject.TargetObject.Name.EndsWith(")") && !(MapObject.TargetObject is PlayerObject)) || !CMain.Shift) &&
+            if (((!MapObject.TargetObject.Name.EndsWith(")") && !(MapObject.TargetObject is PlayerObject)) || (!CMain.Shift && !AssistSettings.FreeShift)) &&
                 (MapObject.TargetObject.Name.EndsWith(")") || !(MapObject.TargetObject is MonsterObject))) return;
             if (Functions.InRange(MapObject.TargetObject.CurrentLocation, User.CurrentLocation, 1)) return;
             if (User.Class == MirClass.Archer && User.HasClassWeapon && (MapObject.TargetObject is MonsterObject || MapObject.TargetObject is PlayerObject)) return; //ArcherTest - stop walking
@@ -11899,6 +12112,12 @@ namespace Client.MirScenes
                 case Spell.DarkBody:
                 case Spell.FireBounce:
                 case Spell.MeteorShower:
+                case Spell.GreatFireBallRare: // [AI-Claude] 大火球秘籍              // ai 写的代码
+                case Spell.ThunderBoltRare:   // [AI-Claude] 强击秘籍
+                case Spell.EntrapmentRare:    // 技能书补全: 捕绳剑秘籍(目标技)          
+                case Spell.DimensionalSword:  // 技能书补全: 时空剑
+                case Spell.DimensionalSwordRare:
+                    // 拔刀术秘籍(FlashDashRare)已改为方向突进技, 与基础拔刀术同构, 不再需要目标
                     if (actor.NextMagicObject != null)
                     {
                         if (!actor.NextMagicObject.Dead && actor.NextMagicObject.Race != ObjectType.Item && actor.NextMagicObject.Race != ObjectType.Merchant)
@@ -11908,6 +12127,14 @@ namespace Client.MirScenes
                     if (target == null) target = MapObject.MagicObject;
 
                     if (target != null && target.Race == ObjectType.Monster) MapObject.MagicObjectID = target.ObjectID;
+                    break;
+                case Spell.SoulflameSiphon: // [AI-Claude] 吸魔炎风: 仅取鼠标指向目标, 无则用落点
+                case Spell.SoulflameSiphonRare:
+                    if (actor.NextMagicObject != null)
+                    {
+                        if (!actor.NextMagicObject.Dead && actor.NextMagicObject.Race != ObjectType.Item && actor.NextMagicObject.Race != ObjectType.Merchant)
+                            target = actor.NextMagicObject;
+                    }
                     break;
                 case Spell.StraightShot:
                 case Spell.DoubleShot:
@@ -11921,6 +12148,9 @@ namespace Client.MirScenes
                 case Spell.SummonVampire:
                 case Spell.SummonToad:
                 case Spell.SummonSnakes:
+                case Spell.DelayedExplosionRare: // 技能书补全: 爆闪秘籍
+                case Spell.ThunderStrike:        // 技能书补全: 落雷击
+                case Spell.ThunderStrikeRare:
                     if (!actor.HasClassWeapon)
                     {
                         GameScene.Scene.OutputMessage(GameLanguage.ClientTextMap.GetLocalization(ClientTextKeys.MustWearBowForSkill));
@@ -11950,7 +12180,7 @@ namespace Client.MirScenes
                             target = User.NextMagicObject;
                     }
 
-                    //if(magic.Spell == Spell.ElementalShot)
+                    //if(magic.Spell == Spell.ElementalShot)      注释掉:如果法术是元素箭,是否目标法术看有没有元素
                     //{
                     //    isTargetSpell = User.HasElements;
                     //}
@@ -11967,6 +12197,8 @@ namespace Client.MirScenes
                     break;
                 case Spell.Purification:
                 case Spell.Healing:
+                case Spell.HealingRare:      // 技能书补全: 治愈术秘籍(目标或自身)
+                case Spell.PetEnhancerRare: // 技能书补全: 血龙水秘籍
                 case Spell.UltimateEnhancer:
                 case Spell.EnergyShield:
                 case Spell.PetEnhancer:
@@ -12008,6 +12240,9 @@ namespace Client.MirScenes
                 case Spell.Reincarnation:
                     if (actor == Hero && actor.NextMagicObject == null)
                         actor.NextMagicObject = User;
+                    //复活术免TargetDead开关: 命中测试(10746)默认滤尸体→NextMagicObject为空, 补扫鼠标点5×5找死亡玩家
+                    if (actor.NextMagicObject == null)
+                        actor.NextMagicObject = GameScene.Scene.MapControl.FindDeadPlayerNearMouse();
                     if (actor.NextMagicObject != null)
                     {
                         if (actor.NextMagicObject.Dead && actor.NextMagicObject.Race == ObjectType.Player)
@@ -12022,12 +12257,9 @@ namespace Client.MirScenes
                     }
                     break;
                 case Spell.FlashDash:
-                    if (actor.GetMagic(Spell.FlashDash).Level <= 1 && actor.IsDashAttack() == false)
-                    {
-                        actor.ClearMagic();
-                        return;
-                    }
-                    //isTargetSpell = false;
+                case Spell.FlashDashRare:
+                    //低等级(0-1级)不再拦截: 突进1格照常施放(基础拔刀术功能补全); 两技能均为方向技, 不锁定目标
+                    target = null;
                     break;
                 default:
                     //isTargetSpell = false;
@@ -12040,7 +12272,7 @@ namespace Client.MirScenes
 
             uint targetID = target != null ? target.ObjectID : 0;
 
-            if (magic.Spell == Spell.FlashDash)
+            if (magic.Spell == Spell.FlashDash || magic.Spell == Spell.FlashDashRare)
                 dir = actor.Direction;
 
             if ((magic.Range != 0) && (!Functions.InRange(actor.CurrentLocation, location, magic.Range)))
@@ -12053,6 +12285,11 @@ namespace Client.MirScenes
                 actor.ClearMagic();
                 return;
             }
+
+            //辅助系统 - 自动毒符: 必须放在所有检查通过之后(与武僧版位置一致),
+            //放在函数入口会在 NextMagic 重试期间每帧换符 → EquipItem/Magic 包风暴被服务器踢线
+            if (actor == GameScene.User && GameScene.Scene != null && GameScene.Scene.AssistHelper != null)
+                GameScene.Scene.AssistHelper.PrevSendUseMagic(magic);
 
             GameScene.LogTime = CMain.Time + Globals.LogDelay;
 

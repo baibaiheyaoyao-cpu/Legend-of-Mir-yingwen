@@ -2,7 +2,7 @@ using Client.MirSounds;
 
 namespace Client
 {
-    class Settings
+    class Settings         
     {
         public const long CleanDelay = 600000;
 
@@ -83,7 +83,7 @@ namespace Client
         public static int Resolution = 1024;
         public static bool DebugMode = false;
 
-        //Network
+        //Network         网络 
         public static bool UseConfig = false;
         public static string IPAddress = "127.0.0.1";
         public static int Port = 7000;
@@ -163,11 +163,11 @@ namespace Client
             DisplayBodyName = false,
             NewMove = false;
 
-        public static string Language = "English";
+        public static string Language = "Chinese";       // 默认中文 
 
         public static int[,] SkillbarLocation = new int[2, 2] { { 0, 0 }, { 216, 0 } };
 
-        //Quests
+        //Quests         
         public static int[] TrackedQuests = new int[5];
 
         //Chat
@@ -192,9 +192,9 @@ namespace Client
             FilterGuildChat = false;
 
 
-        //AutoPatcher
+        //AutoPatcher        自动补丁程序  
         public static bool P_Patcher = true;
-        public static string P_Host = @"http://mirfiles.com/mir2/cmir/patch/";
+        public static string P_Host = @"http://mirfiles.com/mir2/cmir/patch/";           // 补丁服务器地址 
         public static string P_PatchFileName = @"PList.gz";
         public static bool P_NeedLogin = false;
         public static string P_Login = string.Empty;

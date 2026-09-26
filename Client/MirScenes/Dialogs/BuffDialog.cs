@@ -1,4 +1,4 @@
-﻿using Client.MirControls;
+using Client.MirControls;
 using Client.MirGraphics;
 using Client.MirSounds;
 
@@ -82,16 +82,22 @@ namespace Client.MirScenes.Dialogs
 
             var buffLibrary = Libraries.BuffIcon;
 
+            if (buffImage >= 30000)
+            {
+                buffImage -= 30000;
+                buffLibrary = Libraries.MagIcon;
+            }
+
             if (buffImage >= 20000)
             {
                 buffImage -= 20000;
-                buffLibrary = Libraries.MagIcon;
+                buffLibrary = Libraries.Prguse2;
             }
 
             if (buffImage >= 10000)
             {
                 buffImage -= 10000;
-                buffLibrary = Libraries.Prguse2;
+                buffLibrary = Libraries.Prguse;
             }
 
             var image = new MirImageControl
@@ -133,16 +139,22 @@ namespace Client.MirScenes.Dialogs
                 var buffLibrary = Libraries.BuffIcon;
 
                 //ArcherSpells - VampireShot,PoisonShot
+                if (buffImage >= 30000)
+                {
+                    buffImage -= 30000;
+                    buffLibrary = Libraries.MagIcon;
+                }
+
                 if (buffImage >= 20000)
                 {
                     buffImage -= 20000;
-                    buffLibrary = Libraries.MagIcon;
+                    buffLibrary = Libraries.Prguse2;
                 }
 
                 if (buffImage >= 10000)
                 {
                     buffImage -= 10000;
-                    buffLibrary = Libraries.Prguse2;
+                    buffLibrary = Libraries.Prguse;
                 }
 
                 var location = new Point(Size.Width - 10 - 23 - (i * 23) + ((10 * 23) * (i / 10)), 6 + ((i / 10) * 24));
@@ -417,114 +429,129 @@ namespace Client.MirScenes.Dialogs
         {
             switch (type)
             {
-                //Skills
-                case BuffType.Fury:
-                    return 76;
-                case BuffType.Rage:
-                    return 49;
-                case BuffType.ImmortalSkin:
-                    return 80;
-                case BuffType.CounterAttack:
-                    return 7;
-
-                case BuffType.MagicBooster:
-                    return 73;
-                case BuffType.MagicShield:
-                    return 30;
-
+                //Skills (30000 = MagIcon, 20000 = Prguse2, 10000 = Prguse, else BuffIcon)
+                case BuffType.TemporalFlux:
+                    return 75;
                 case BuffType.Hiding:
-                case BuffType.ClearRing:
-                    return 17;
+                    return 30034;
                 case BuffType.Haste:
-                    return 60;
-                case BuffType.SoulShield:
-                    return 13;
-                case BuffType.BlessedArmour:
-                    return 14;
-                case BuffType.ProtectionField:
-                    return 50;
-                case BuffType.UltimateEnhancer:
-                    return 35;
-                case BuffType.Curse:
-                    return 45;
-                case BuffType.EnergyShield:
-                    return 57;
-
+                    return 30120;
                 case BuffType.SwiftFeet:
-                    return 67;
+                    return 30134;
+                case BuffType.Fury:
+                    return 30152;
+                case BuffType.SoulShield:
+                    return 30026;
+                case BuffType.BlessedArmour:
+                    return 30028;
                 case BuffType.LightBody:
-                    return 68;
+                    return 30136;
+                case BuffType.UltimateEnhancer:
+                    return 30070;
+                case BuffType.ProtectionField:
+                    return 30100;
+                case BuffType.Rage:
+                    return 30098;
+                case BuffType.Curse:
+                    return 30090;
                 case BuffType.MoonLight:
-                    return 65;
+                    return 30130;
                 case BuffType.DarkBody:
-                    return 70;
-
+                    return 30140;
                 case BuffType.Concentration:
-                    return 96;
+                    return 30192;
                 case BuffType.VampireShot:
-                    return 100;
+                    return 30200;
                 case BuffType.PoisonShot:
-                    return 102;
+                    return 30204;
+                case BuffType.CounterAttack:
+                    return 30144;
                 case BuffType.MentalState:
-                    return 199;
+                    return 59;
+                case BuffType.EnergyShield:
+                    return 30114;
+                case BuffType.MagicBooster:
+                    return 30146;
+                case BuffType.HeavenlySecrets: //天上秘术专属图标(MagIcon[148], 与深延术146区分; 不满意可换)
+                    return 30148;
+                case BuffType.ImmortalSkin:
+                    return 30160;
+                case BuffType.MagicShield:
+                    return 30060;
 
                 //Monster
                 case BuffType.RhinoPriestDebuff:
-                    return 217;
+                    return 115;
                 case BuffType.Blindness:
-                    return 226;
+                    return 88;
 
                 //Special
                 case BuffType.GameMaster:
-                    return 173;
+                    return 20121;
                 case BuffType.General:
-                    return 182;
+                    return 20122;
                 case BuffType.Exp:
-                    return 260;
+                    return 334;
                 case BuffType.Drop:
-                    return 162;
-                case BuffType.Gold:
-                    return 168;
-                case BuffType.Knapsack:
+                    return 336;
                 case BuffType.BagWeight:
-                    return 235;
+                    return 12;
+                case BuffType.Gold:
+                    return 316;
                 case BuffType.Transform:
-                    return 241;
-                case BuffType.Mentor:
-                case BuffType.Mentee:
-                    return 248;
+                    return 10890;
                 case BuffType.Lover:
-                    return 201;
+                    return 179;
+                case BuffType.Mentee:
+                case BuffType.Mentor:
+                    return 80;
                 case BuffType.Guild:
-                    return 203;
+                    return 63;
+                case BuffType.Prison:
+                    return 70;
                 case BuffType.Rested:
-                    return 240;
-                case BuffType.TemporalFlux:
-                    return 261;
+                    return 508;
                 case BuffType.Skill:
-                    return 200;
+                    return 60;
+                case BuffType.ClearRing:
+                    return 24;
                 case BuffType.Newbie:
-                    return 182;
+                    return 10903;
 
                 //Stats
                 case BuffType.Impact:
-                    return 249;
+                    return 307;
                 case BuffType.Magic:
-                    return 165;
+                    return 308;
                 case BuffType.Taoist:
-                    return 250;
+                    return 309;
                 case BuffType.Storm:
-                    return 170;
+                    return 306;
                 case BuffType.HealthAid:
-                    return 161;
+                    return 310;
                 case BuffType.ManaAid:
-                    return 169;
+                    return 311;
                 case BuffType.Defence:
-                    return 166;
+                    return 300;
                 case BuffType.MagicDefence:
-                    return 158;
+                    return 313;
                 case BuffType.WonderDrug:
-                    return 252;
+                    return 317;
+                case BuffType.LuckAid:
+                    return 319;
+                case BuffType.AccuracyAid:
+                    return 320;
+                case BuffType.AgilityAid:
+                    return 10893;
+                case BuffType.Knapsack:
+                    return 10872;
+                case BuffType.CreatureBuff:
+                    return 510;
+                case BuffType.SnackTier1:
+                case BuffType.SnackTier2:
+                case BuffType.SnackTier3:
+                case BuffType.SnackTier4:
+                    return 510;
                 default:
                     return 0;
             }

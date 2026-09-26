@@ -1047,6 +1047,13 @@ namespace Server
         private void ItemInfoForm_FormClosed(object sender, FormClosedEventArgs e)
         {
             Envir.SaveDB();
+
+            //保存后立即热同步到运行实例, 防止周期存盘用旧数据覆盖编辑结果
+            if (SMain.Envir.Running)
+            {
+                SMain.Envir.QueueItemSync(new List<int>());
+                SMain.Enqueue("物品编辑器: 已保存并热同步到运行中的服务器。");
+            }
         }
 
         private void PasteButton_Click(object sender, EventArgs e)
@@ -1893,6 +1900,14 @@ namespace Server
             for (int i = 0; i < _selectedItemInfos.Count; i++)
                 Envir.AddToGameShop(_selectedItemInfos[i]);
             Envir.SaveDB();
+
+            //保存后立即热同步到运行实例(上架的物品需刷新商城表), 防止周期存盘覆盖
+            if (SMain.Envir.Running)
+            {
+                SMain.Envir.QueueItemSync(new List<int>());
+                SMain.Envir.ReloadGameShop();
+                SMain.Enqueue("物品编辑器: 已上架并热同步(物品+商城)到运行中的服务器。");
+            }
         }
 
         private void NoWeddingRingcheckbox_CheckedChanged(object sender, EventArgs e)

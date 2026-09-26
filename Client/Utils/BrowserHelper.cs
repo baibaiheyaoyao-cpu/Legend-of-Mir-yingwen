@@ -3,7 +3,7 @@ using System.Diagnostics;
 
 namespace Client.Utils
 {
-    public class BrowserHelper
+    public class BrowserHelper       // 浏览器 
     {
         private static void OpenChrometBrowser(string url)
         {
@@ -12,7 +12,7 @@ namespace Client.Utils
                 var openKey = @"SOFTWARE\Wow6432Node\Google\Chrome";
                 if (IntPtr.Size == 4)
                 {
-                    openKey = @"SOFTWARE\Google\Chrome";
+                    openKey = @"SOFTWARE\Google\Chrome";    
                 }
                 RegistryKey appPath = Registry.LocalMachine.OpenSubKey(openKey);
 
@@ -75,7 +75,7 @@ namespace Client.Utils
                         {
                             if (MessageBox.Show("Internet Explorer is not installed in the system. Do you want to download and install it?", null, MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question) == DialogResult.Yes)
                             {
-                                OpenDefaultBrowser("http://windows.microsoft.com/zh-cn/internet-explorer/download-ie");
+                                OpenDefaultBrowser("http://windows.microsoft.com/zh-cn/internet-explorer/download-ie");         // 打开默认浏览器下载IE        实测.没有就崩  依赖微软的IE浏览器.  
                             }
                         }
                     }

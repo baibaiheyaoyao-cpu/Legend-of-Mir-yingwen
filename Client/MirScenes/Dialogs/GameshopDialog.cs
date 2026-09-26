@@ -1,4 +1,4 @@
-﻿using Client.MirControls;
+using Client.MirControls;
 using Client.MirGraphics;
 using Client.MirSounds;
 
@@ -191,6 +191,7 @@ namespace Client.MirScenes.Dialogs
                 Index = 2086,
                 UnTickedIndex = 2086,
                 TickedIndex = 2087,
+                BoxIndex = 2086,
                 Library = Libraries.Prguse,
                 Checked = true
             };
@@ -205,6 +206,7 @@ namespace Client.MirScenes.Dialogs
                 Index = 2086,
                 UnTickedIndex = 2086,
                 TickedIndex = 2087,
+                BoxIndex = 2086,
                 Library = Libraries.Prguse
             };
             PaymentTypeCredit.Click += PType_Clicked;
@@ -505,7 +507,7 @@ namespace Client.MirScenes.Dialogs
         {
             if (Visible) return;
             Visible = true;
-            ClassFilter = GameScene.User.Class.ToString();
+            ClassFilter = "Show All";   // 修复：打开商城默认显示全部商品（原按当前职业预过滤，无本职业商品时商城空白）
             SectionFilter = "Show All";
             ResetTabs();
             ResetClass();

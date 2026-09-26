@@ -153,6 +153,28 @@ public enum RefinedValue : byte
     DC = 1,
     MC = 2,
     SC = 3,
+
+    //全属性精炼扩展(追加在末尾, 旧档按byte读取兼容)
+    AC = 4,
+    MAC = 5,
+    Accuracy = 6,
+    Agility = 7,
+    AttackSpeed = 8,
+    Luck = 9,
+    Strong = 10,
+    Holy = 11,
+    Freezing = 12,
+    PoisonAttack = 13,
+    Reflect = 14,
+    MagicResist = 15,
+    PoisonResist = 16,
+    HealthRecovery = 17,
+    SpellRecovery = 18,
+    PoisonRecovery = 19,
+    CriticalRate = 20,
+    CriticalDamage = 21,
+    HP = 22,
+    MP = 23,
 }
 
 public enum QuestType : byte
@@ -221,6 +243,17 @@ public enum IntelligentCreatureType : byte
     AngryBird = 12,
     Foxey = 13,
     MedicalRat = 14,
+    BabyTiger = 15,
+    JarDragon = 16,
+    DancingSnake = 17,
+    Nezha = 18,
+    FrostGiant = 21,
+    RedDragon = 22,
+    GoldDragon = 23,
+    GreenDragon = 24,
+    WhiteTiger = 25,
+    VermilionBird = 26,
+    BlackTortoise = 27,
 }
 
 //2 blank mob files
@@ -745,6 +778,17 @@ public enum Monster : ushort
     AngryBird = 10012,
     Foxey = 10013,
     MedicalRat = 10014,
+    BabyTiger = 10015,
+    JarDragon = 10016,
+    DancingSnake = 10017,
+    Nezha = 10018,
+    FrostGiant = 10021,
+    RedDragon = 10022,
+    GoldDragon = 10023,
+    GreenDragon = 10024,
+    WhiteTiger = 10025,
+    VermilionBird = 10026,
+    BlackTortoisePet = 10027,
 }
 
 public enum MirAction : byte
@@ -1166,7 +1210,14 @@ public enum Spell : byte
     Fury = 16,
     ImmortalSkin = 17,
 
-    //Wizard
+    //战士秘籍系(编号对齐技能书: 19金刚不坏秘籍/20捕绳剑秘籍/21狮子吼秘籍/22-23时空剑)
+    ImmortalSkinRare = 19,
+    EntrapmentRare = 20,
+    LionRoarRare = 21,
+    DimensionalSword = 22,
+    DimensionalSwordRare = 23,
+
+    //Wizard 法师
     FireBall = 31,
     Repulsion = 32,
     ElectricShock = 33,
@@ -1193,32 +1244,51 @@ public enum Spell : byte
     FastMove = 54,
     StormEscape = 55,
 
-    //Taoist
-    Healing = 61,
-    SpiritSword = 62,
-    Poisoning = 63,
-    SoulFireBall = 64,
-    SummonSkeleton = 65,
-    Hiding = 67,
-    MassHiding = 68,
-    SoulShield = 69,
-    Revelation = 70,
-    BlessedArmour = 71,
-    EnergyRepulsor = 72,
-    TrapHexagon = 73,
-    Purification = 74,
-    MassHealing = 75,
-    Hallucination = 76,
-    UltimateEnhancer = 77,
-    SummonShinsu = 78,
-    Reincarnation = 79,
-    SummonHolyDeva = 80,
-    Curse = 81,
-    Plague = 82,
-    PoisonCloud = 83,
-    EnergyShield = 84,
-    PetEnhancer = 85,
-    HealingCircle = 86,
+    //---- 法师奥义(56-60+89, 参考2原编号76-81与道士61-86撞号已改) ----
+    HeavenlySecrets = 56,      //天上秘术    魔力强化同构
+    GreatFireBallRare = 57,   //大火球秘籍   5秒延迟爆炸+非不死×3
+    ThunderBoltRare = 58,     //强击秘籍    连锁25%+不死×1.5
+    StormEscapeRare = 59,     //雷仙风秘籍   原地雷暴麻痹→传送+Buff
+    SoulflameSiphon = 60,     //吸魔炎风    3x3持续伤害+牵引
+    SoulflameSiphonRare = 142, //自89挪来(书系89=治愈术秘笈, 见下); 无书引用零影响
+
+    //Taoist  道士
+    Healing = 61,           //治愈术
+    SpiritSword = 62,       //精神力战法(被动)
+    Poisoning = 63,         //施毒术
+    SoulFireBall = 64,      //灵魂火符
+    SummonSkeleton = 65,    //召唤骷髅
+                            //66 历史空号
+    Hiding = 67,            //隐身术
+    MassHiding = 68,        //集体隐身术
+    SoulShield = 69,        //幽灵盾
+    Revelation = 70,        //心灵启示
+    BlessedArmour = 71,     //神圣战甲术
+    EnergyRepulsor = 72,    //气功波
+    TrapHexagon = 73,       //困魔咒
+    Purification = 74,      //净化术
+    MassHealing = 75,       //群体治疗术
+    Hallucination = 76,     //迷魂术
+    UltimateEnhancer = 77,  //无极真气
+    SummonShinsu = 78,      //召唤神兽
+    Reincarnation = 79,     //复活术(苏生术)
+    SummonHolyDeva = 80,    //召唤月灵(精魂召唤术)
+    Curse = 81,             //诅咒术
+    Plague = 82,            //瘟疫
+    PoisonCloud = 83,       //毒云
+    EnergyShield = 84,      //阴阳盾(先天气功)
+    PetEnhancer = 85,       //血龙水(宠物强化)
+    HealingCircle = 86,     //治愈阵(阴阳五行阵)
+    WanXiaoFu = 87,         //万效符(护符投掷 7x7友方4Buff)
+    WanXiaoFuRare = 88,     //万效符秘笈(强化版+净化)
+    HealingRare = 89,       //治愈术-秘籍(书#2154, 编号对齐技能书体系)
+    PetEnhancerRare = 90,   //血龙水-秘籍(书#3713)
+
+    Yling = 146,             //风灵  召唤风灵  615 模型   5x5攻击范围 (自108挪来, 108让给拔刀术秘籍)
+
+    Hling = 147,             //幻灵   召唤幻灵   调用 kehux\Data\Monster 下的 616模型    7x7攻击范围 (自109挪来)
+
+    AncientOracle = 145,    //上古神谕 召唤上古神谕 415模型 远程弹道5x5(特殊召唤物互斥) (自110挪来, 110让给月华乱舞秘籍)
 
     //Assassin
     FatalSword = 91,
@@ -1238,6 +1308,13 @@ public enum Spell : byte
     CrescentSlash = 105,
     MoonMist = 106,
     CatTongue = 107,
+
+    //刺客秘籍系(编号对齐技能书: 108拔刀术/109月影雾/110月华乱舞/111-112闪影连击)
+    FlashDashRare = 108,
+    MoonMistRare = 109,
+    CrescentSlashRare = 110,
+    ShadowCombo = 111,
+    ShadowComboRare = 112,
 
     //Archer
     Focus = 121,
@@ -1262,6 +1339,12 @@ public enum Spell : byte
     BindingShot = 140,
     MentalState = 141,
 
+    //弓手秘籍系(编号对齐技能书: 143爆闪/144气流术/148-149落雷击)
+    DelayedExplosionRare = 143,
+    ConcentrationRare = 144,
+    ThunderStrike = 148,
+    ThunderStrikeRare = 149,
+
     //Monk
     JiBenGunFa = 161,          //基本棍法
     LuoHanGunFa = 162,         //罗汉棍法
@@ -1273,12 +1356,31 @@ public enum Spell : byte
     ShiBuYiSha = 168,          //十步一杀
     LuoHanZhen = 169,          //罗汉阵
 
-    //Custom
-    Blink = 151,
-    Portal = 152,
-    BattleCry = 153,
-    FireBounce = 154,
-    MeteorShower = 155,
+        //Custom
+        Blink = 151,
+        Portal = 152,
+        BattleCry = 153,
+        FireBounce = 154,
+        MeteorShower = 155,
+
+        //印技能(镶嵌【XX印】激活; 219-238被历史遗留MagicInfo占用, 239-240缓冲, 印技能用241-250)
+        BloodDragon = 241,         //血龙震【血龙印】烈火剑法同构, 特效=MagicD双龙帧
+
+        //自定义技能槽(服务端"自定义技能"面板配置, 模板: 1=攻击强化 2=自身爆发 3=目标轰炸)
+        Custom1 = 242,
+        Custom2 = 243,
+        Custom3 = 244,
+        Custom4 = 245,
+        Custom5 = 246,
+        Custom6 = 247,
+        Custom7 = 248,
+        Custom8 = 249,
+        Custom9 = 250,
+        Custom10 = 251,
+        Custom11 = 252,
+        Custom12 = 253,
+        Custom13 = 254,
+        Custom14 = 255,
 
     //Map Events
     DigOutZombie = 200,
@@ -1416,6 +1518,20 @@ public enum BuffType : byte
     MagicDefence,
     WonderDrug,
     Knapsack,
+    CreatureBuff,
+    SnackTier1,
+    SnackTier2,
+    SnackTier3,
+    SnackTier4,
+    LuckAid,
+    AccuracyAid,
+    AgilityAid,
+    HeavenlySecrets, //天上秘术专属buff(与深延术MagicBooster分离: 独立图标/时长/互不覆盖; 参考源码BuffType=76同构)
+
+    // [登仙后期系统 2026-09-25] 羽化登仙阶段Buff: 属性随阶段成长(战/法/道/刺/弓/僧各30阶),
+    // 数据源 Custom\CustomBuffList.txt(作者原版格式), 挂在JS模块(年轻破关虎/月灵)使用;
+    // Buff.Values[0] 存 CustomBuffList 行Id 作为阶段身份(HASBUFF/REMOVEBUFF按名匹配用)
+    Ascension,
 }
 
 [Flags]
@@ -1732,6 +1848,22 @@ public enum ServerPacketIds : short
     GuildTerritoryPage,
     StorageUnlockResult,
     StoragePasswordResult,
+
+    //天赋系统 - 服务端下发包(数据库版本119新增, 追加在枚举末尾, 不影响现有包ID)
+    TalentInfo,          //全天赋表(服务端单方面下发, 客户端不存天赋数据)
+    PlayerTalentInfo,    //玩家天赋状态(剩余点数 + 已学列表)
+    TalentChange,        //学习成功后单个天赋的等级变化
+    TalentReset,         //洗点结果
+
+    //选人界面 - 登录成功后下发可创建职业开关(旧客户端收到未知包ID会忽略, 不影响现有包ID)
+    ClassAvailability,   //可创建职业位标志: 按MirClass枚举值置位 bit3=刺客 bit4=弓手 bit5=武僧
+
+    //组队面板血条 - 异屏队友HP百分比同步(追加在枚举末尾, 不影响现有包ID)
+    GroupMemberHealth,   //按名字键下发队友HP百分比, 用于组队面板显示血条
+
+    //自定义技能系统 - 服务端下发技能配置表(登录+面板保存时广播; 旧客户端收到未知包ID会忽略)
+    CustomSkillConfigs,  //全部已启用自定义技能定义(Spell 242-255), 客户端按表渲染特效/音效/动作
+    CustomMagicConfigs,  //CustomMagic数据驱动技能配置表(原版CustomMagic INI兼容), 客户端按段渲染特效/描述/音效
 }
 
 public enum ClientPacketIds : short
@@ -1896,6 +2028,11 @@ public enum ClientPacketIds : short
     UnlockStorage,
     SetStoragePassword,
     RemoveStoragePassword,
+
+    //天赋系统 - 客户端上行包(追加在枚举末尾, 不影响现有包ID)
+    ClientTalent,        //请求天赋数据(登录后发一次)
+    LearnTalent,         //学习/升级一个天赋
+    ResetTalentPoints,   //申请洗点
 }
 
 public enum ConquestType : byte

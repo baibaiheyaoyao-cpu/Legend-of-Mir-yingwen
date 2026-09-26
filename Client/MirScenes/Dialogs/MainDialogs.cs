@@ -1,4 +1,4 @@
-﻿using System.Text.RegularExpressions;
+using System.Text.RegularExpressions;
 using Client.MirControls;
 using Client.MirGraphics;
 using Client.MirNetwork;
@@ -21,7 +21,7 @@ namespace Client.MirScenes.Dialogs
         public MirImageControl ExperienceBar, WeightBar, LeftCap, RightCap;
         public MirButton GameShopButton, MenuButton, InventoryButton, CharacterButton, SkillButton, QuestButton, OptionButton;
         public MirControl HealthOrb;
-        public MirLabel HealthLabel, ManaLabel, TopLabel, BottomLabel, LevelLabel, CharacterName, ExperienceLabel, GoldLabel, WeightLabel, SpaceLabel, AModeLabel, PModeLabel, SModeLabel;
+        public MirLabel HealthLabel, ManaLabel, TopLabel, BottomLabel, LevelLabel, CharacterName, ExperienceLabel, GoldLabel, WeightLabel, SpaceLabel, AModeLabel, PModeLabel, SModeLabel, PingLabel;
         public HeroInfoPanel HeroInfoPanel;
         public HeroBehaviourPanel HeroBehaviourPanel;
 
@@ -43,7 +43,7 @@ namespace Client.MirScenes.Dialogs
             {
                 Index = 12,
                 Library = Libraries.Prguse,
-                Location = new Point(-67, this.Size.Height - 96),
+                Location = new Point(-67, 62),
                 Parent = this,
                 Visible = false
             };
@@ -51,7 +51,7 @@ namespace Client.MirScenes.Dialogs
             {
                 Index = 13,
                 Library = Libraries.Prguse,
-                Location = new Point(1024, this.Size.Height - 104),
+                Location = new Point(1024, 54),
                 Parent = this,
                 Visible = false
             };
@@ -67,9 +67,10 @@ namespace Client.MirScenes.Dialogs
                 HoverIndex = 1904,
                 Index = 1903,
                 Library = Libraries.Prguse,
-                Location = new Point(this.Size.Width - 96, 82),
+                Location = new Point(this.Size.Width - 96, 76),
                 Parent = this,
                 PressedIndex = 1905,
+                UseOffSet = true,
                 Sound = SoundList.ButtonA,
                 Hint = GameLanguage.ClientTextMap.GetLocalization((ClientTextKeys.InventoryKey), CMain.InputKeys.GetKey(KeybindOptions.Inventory))
             };
@@ -86,9 +87,10 @@ namespace Client.MirScenes.Dialogs
                 HoverIndex = 1901,
                 Index = 1900,
                 Library = Libraries.Prguse,
-                Location = new Point(this.Size.Width - 119, 82),
+                Location = new Point(this.Size.Width - 119, 76),
                 Parent = this,
                 PressedIndex = 1902,
+                UseOffSet = true,
                 Sound = SoundList.ButtonA,
                 Hint = GameLanguage.ClientTextMap.GetLocalization((ClientTextKeys.CharacterKey), CMain.InputKeys.GetKey(KeybindOptions.Equipment))
             };
@@ -108,9 +110,10 @@ namespace Client.MirScenes.Dialogs
                 HoverIndex = 1907,
                 Index = 1906,
                 Library = Libraries.Prguse,
-                Location = new Point(this.Size.Width - 73,82),
+                Location = new Point(this.Size.Width - 73,76),
                 Parent = this,
                 PressedIndex = 1908,
+                UseOffSet = true,
                 Sound = SoundList.ButtonA,
                 Hint = GameLanguage.ClientTextMap.GetLocalization((ClientTextKeys.SkillsKey), CMain.InputKeys.GetKey(KeybindOptions.Skills))
             };
@@ -130,9 +133,10 @@ namespace Client.MirScenes.Dialogs
                 HoverIndex = 1910,
                 Index = 1909,
                 Library = Libraries.Prguse,
-                Location = new Point(this.Size.Width - 50, 82),
+                Location = new Point(this.Size.Width - 50, 76),
                 Parent = this,
                 PressedIndex = 1911,
+                UseOffSet = true,
                 Sound = SoundList.ButtonA,
                 Hint = GameLanguage.ClientTextMap.GetLocalization((ClientTextKeys.QuestsKey), CMain.InputKeys.GetKey(KeybindOptions.Quests))
             };
@@ -148,9 +152,10 @@ namespace Client.MirScenes.Dialogs
                 HoverIndex = 1913,
                 Index = 1912,
                 Library = Libraries.Prguse,
-                Location = new Point(this.Size.Width - 27, 82),
+                Location = new Point(this.Size.Width - 27, 76),
                 Parent = this,
                 PressedIndex = 1914,
+                UseOffSet = true,
                 Sound = SoundList.ButtonA,
                 Hint = GameLanguage.ClientTextMap.GetLocalization((ClientTextKeys.OptionsKey), CMain.InputKeys.GetKey(KeybindOptions.Options))
             };
@@ -169,6 +174,7 @@ namespace Client.MirScenes.Dialogs
                 Location = new Point(this.Size.Width - 55, 35),
                 Parent = this,
                 PressedIndex = 1962,
+                UseOffSet = true,
                 Sound = SoundList.ButtonC,
                 Hint = GameLanguage.ClientTextMap.GetLocalization(ClientTextKeys.Menu)
             };
@@ -186,6 +192,7 @@ namespace Client.MirScenes.Dialogs
                 Location = new Point(this.Size.Width - 105, 35),
                 Parent = this,
                 PressedIndex = 828,
+                UseOffSet = true,
                 Sound = SoundList.ButtonC,
                 Hint = GameLanguage.ClientTextMap.GetLocalization((ClientTextKeys.GameShopKey), CMain.InputKeys.GetKey(KeybindOptions.GameShop))
             };
@@ -198,7 +205,7 @@ namespace Client.MirScenes.Dialogs
             HealthOrb = new MirControl
             {
                 Parent = this,
-                Location = new Point(0, 30),
+                Location = new Point(0, 38),
                 NotControl = true,
             };
 
@@ -240,14 +247,24 @@ namespace Client.MirScenes.Dialogs
             {
                 AutoSize = true,
                 Parent = this,
-                Location = new Point(5, 108)
+                Location = new Point(5, 116)
+            };
+
+            //显示Ping(辅助面板基本页): 主界面左上角延迟标签
+            PingLabel = new MirLabel
+            {
+                AutoSize = true,
+                Parent = this,
+                Location = new Point(6, 2),
+                ForeColour = Color.FromArgb(255, 140, 220, 140),
+                Visible = false,
             };
 
             CharacterName = new MirLabel
             {
                 DrawFormat = TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter,
                 Parent = this,
-                Location = new Point(6, 120),
+                Location = new Point(6, 128),
                 Size = new Size(90, 16)
             };
 
@@ -256,10 +273,11 @@ namespace Client.MirScenes.Dialogs
             {
                 Index = Settings.Resolution != 800 ? 8 : 7,
                 Library = Libraries.Prguse,
-                Location = new Point(9, 144),
+                Location = new Point(9, 143),
                 Parent = this,
                 DrawImage = false,
                 NotControl = true,
+                UseOffSet = true,
             };
             ExperienceBar.BeforeDraw += ExperienceBar_BeforeDraw;
 
@@ -274,7 +292,7 @@ namespace Client.MirScenes.Dialogs
             {
                 DrawFormat = TextFormatFlags.VerticalCenter,
                 Font = new Font(Settings.FontName, 8F),
-                Location = new Point(this.Size.Width - 105, 119),
+                Location = new Point(this.Size.Width - 105, 127),
                 Parent = this,
                 Size = new Size(99, 13),
                 Sound = SoundList.Gold,
@@ -293,20 +311,21 @@ namespace Client.MirScenes.Dialogs
                 Parent = this,
                 DrawImage = false,
                 NotControl = true,
+                UseOffSet = true,
             };
             WeightBar.BeforeDraw += WeightBar_BeforeDraw;
 
             WeightLabel = new MirLabel
             {
                 Parent = this,
-                Location = new Point(this.Size.Width - 105, 101),
+                Location = new Point(this.Size.Width - 105, 109),
                 Size = new Size(40, 14),
             };
 
             SpaceLabel = new MirLabel
             {
                 Parent = this,
-                Location = new Point(this.Size.Width - 30, 101),
+                Location = new Point(this.Size.Width - 30, 109),
                 Size = new Size(26, 14),
             };
 
@@ -320,6 +339,7 @@ namespace Client.MirScenes.Dialogs
                 Location = new Point(Size.Width - 160, 65),
                 Size = new Size(20, 20),
                 Sound = SoundList.ButtonA,
+                UseOffSet = true,
                 Visible = false
             };
             HeroMenuButton.Click += (o, e) =>
@@ -337,6 +357,7 @@ namespace Client.MirScenes.Dialogs
                 Location = new Point(this.Size.Width - 160, 90),
                 Size = new Size(20, 20),
                 Sound = SoundList.ButtonA,
+                UseOffSet = true,
                 Visible = false
             };
             HeroSummonButton.Click += (o, e) =>
@@ -349,15 +370,27 @@ namespace Client.MirScenes.Dialogs
 
             HeroInfoPanel = new HeroInfoPanel { Parent = this, Visible = false };
 
+
+
+            // --------------------------------------------------
+            // 1. 攻击模式标签 (AModeLabel)
+            // --------------------------------------------------
+
             AModeLabel = new MirLabel
             {
                 AutoSize = true,
                 ForeColour = Color.Yellow,
                 OutLineColour = Color.Black,
                 Parent = this,
-                Location = new Point(Settings.Resolution != 800 ? 899 : 675, Settings.Resolution != 800 ? -448 : -280),
+                Location = new Point(Settings.Resolution != 800 ? 899 : 675, -400),
                 Visible = Settings.ModeView
             };
+
+
+
+            // --------------------------------------------------
+            // 2. 模式标签/组队模式标签 (PModeLabel)
+            // --------------------------------------------------
 
             PModeLabel = new MirLabel
             {
@@ -365,9 +398,14 @@ namespace Client.MirScenes.Dialogs
                 ForeColour = Color.Orange,
                 OutLineColour = Color.Black,
                 Parent = this,
-                Location = new Point(230, 125),
+                Location = new Point(Settings.Resolution != 800 ? 899 : 675, -420),
                 Visible = Settings.ModeView
             };
+
+
+            // --------------------------------------------------
+            // 3. 技能模式标签 (SModeLabel)
+            // --------------------------------------------------
 
             SModeLabel = new MirLabel
             {
@@ -375,7 +413,7 @@ namespace Client.MirScenes.Dialogs
                 ForeColour = Color.LimeGreen,
                 OutLineColour = Color.Black,
                 Parent = this,
-                Location = new Point(Settings.Resolution != 800 ? 899 : 675, Settings.Resolution != 800 ? -463 : -295),
+                Location = new Point(Settings.Resolution != 800 ? 899 : 675, -440),
                 Visible = Settings.ModeView
             };
         }
@@ -457,8 +495,14 @@ namespace Client.MirScenes.Dialogs
             }
 
             LevelLabel.Text = User.Level.ToString();
+
+            //显示Ping(辅助面板基本页)
+            PingLabel.Visible = AssistSettings.ShowPing;
+            if (AssistSettings.ShowPing)
+                PingLabel.Text = "Ping: " + CMain.PingTime;
+
             ExperienceLabel.Text = string.Format("{0:#0.##%}", User.Experience / (double)User.MaxExperience);
-            ExperienceLabel.Location = new Point((ExperienceBar.Size.Width / 2) - 20, -10);
+            ExperienceLabel.Location = new Point((ExperienceBar.Size.Width / 2) - 20, -17);
             GoldLabel.Text = GameScene.Gold.ToString("###,###,##0");
             CharacterName.Text = User.Name;
             SpaceLabel.Text = User.Inventory.Count(t => t == null).ToString();
@@ -781,6 +825,9 @@ namespace Client.MirScenes.Dialogs
         public void ReceiveChat(string text, ChatType type)
         {
             Color foreColour, backColour;
+
+            //隐藏掉落通知(辅助面板基本页): 直接丢弃System2消息
+            if (AssistSettings.HideSystem2 && type == ChatType.System2) return;
 
             switch (type)
             {
@@ -2079,13 +2126,6 @@ namespace Client.MirScenes.Dialogs
             MapNameLabel.Text = map.Title;
             LocationLabel.Text = Functions.PointToString(MapObject.User.CurrentLocation);
 
-            GameScene.Scene.MainDialog.SModeLabel.Location = new Point((GameScene.Scene.MiniMapDialog.Location.X - 3) - GameScene.Scene.MainDialog.Location.X,
-            (GameScene.Scene.MiniMapDialog.Size.Height + 150) - Settings.ScreenHeight);
-            GameScene.Scene.MainDialog.AModeLabel.Location = new Point((GameScene.Scene.MiniMapDialog.Location.X - 3) - GameScene.Scene.MainDialog.Location.X,
-            (GameScene.Scene.MiniMapDialog.Size.Height + 165) - Settings.ScreenHeight);
-            GameScene.Scene.MainDialog.PModeLabel.Location = new Point((GameScene.Scene.MiniMapDialog.Location.X - 3) - GameScene.Scene.MainDialog.Location.X,
-            (GameScene.Scene.MiniMapDialog.Size.Height + 180) - Settings.ScreenHeight);
-
             if (GameScene.Scene.NewMail)
             {
                 double time = (CMain.Time) / 100D;
@@ -3019,7 +3059,8 @@ namespace Client.MirScenes.Dialogs
                          MentorButton,
                          RelationshipButton,
                          GroupButton,
-                         GuildButton;
+                         GuildButton,
+                         TalentButton;   //天赋系统 - 左侧菜单入口(行会正下方)
 
         public MenuDialog()
         {
@@ -3263,6 +3304,25 @@ namespace Client.MirScenes.Dialogs
                 else GameScene.Scene.GuildDialog.Show();
             };
 
+            //天赋系统 - 左侧菜单最下方入口, 与行会按钮同列并列(图标1997-1999是该系列预留的下一组三态图)
+            TalentButton = new MirButton
+            {
+                Index = 1997,
+                HoverIndex = 1998,
+                PressedIndex = 1999,
+                Parent = this,
+                Library = Libraries.Prguse,
+                Location = new Point(3, 278),   //行会(259)正下方, 同列间隔19px对齐
+                Hint = GameLanguage.ClientTextMap.GetLocalization((ClientTextKeys.TalentOpenClose), CMain.InputKeys.GetKey(KeybindOptions.Talent))
+            };
+            TalentButton.Click += (o, e) =>
+            {
+                if (GameScene.Scene.TalentDialog == null) return;
+                if (GameScene.Scene.TalentDialog.Visible)
+                    GameScene.Scene.TalentDialog.Hide();
+                else GameScene.Scene.TalentDialog.Show();
+            };
+
         }
 
 
@@ -3424,6 +3484,7 @@ namespace Client.MirScenes.Dialogs
                 Magic.Key > 8 ? Environment.NewLine : string.Empty,
                 (Magic.Key - 1) % 8 + 1);
 
+            SkillButton.Hint = string.Empty; //防残留: 未覆盖技能显示空白, 而非复用槽位上一位技能的文案
             switch (magic.Spell)
             {  //Warrior
                 case Spell.Fencing:
@@ -3744,11 +3805,81 @@ namespace Client.MirScenes.Dialogs
                     SkillButton.Hint = GameLanguage.ClientTextMap.GetLocalization((ClientTextKeys.OneWithNatureSkillDescription), Magic.Level, Magic.Level == 0 ? Magic.Level1 : Magic.Level == 1 ? Magic.Level2 : Magic.Level == 2 ? Magic.Level3 : 0, Magic.BaseCost);
                     break;
 
+                //秘籍技能说明(修复: 原缺失导致悬停空白/残留他人文案)
+                case Spell.ImmortalSkinRare:
+                    SkillButton.Hint = GameLanguage.ClientTextMap.GetLocalization((ClientTextKeys.ImmortalSkinRareSkillDescription), Magic.Level, Magic.Level == 0 ? Magic.Level1 : Magic.Level == 1 ? Magic.Level2 : Magic.Level == 2 ? Magic.Level3 : 0, Magic.BaseCost);
+                    break;
+                case Spell.EntrapmentRare:
+                    SkillButton.Hint = GameLanguage.ClientTextMap.GetLocalization((ClientTextKeys.EntrapmentRareSkillDescription), Magic.Level, Magic.Level == 0 ? Magic.Level1 : Magic.Level == 1 ? Magic.Level2 : Magic.Level == 2 ? Magic.Level3 : 0, Magic.BaseCost);
+                    break;
+                case Spell.LionRoarRare:
+                    SkillButton.Hint = GameLanguage.ClientTextMap.GetLocalization((ClientTextKeys.LionRoarRareSkillDescription), Magic.Level, Magic.Level == 0 ? Magic.Level1 : Magic.Level == 1 ? Magic.Level2 : Magic.Level == 2 ? Magic.Level3 : 0, Magic.BaseCost);
+                    break;
+                case Spell.DimensionalSwordRare:
+                    SkillButton.Hint = GameLanguage.ClientTextMap.GetLocalization((ClientTextKeys.DimensionalSwordRareSkillDescription), Magic.Level, Magic.Level == 0 ? Magic.Level1 : Magic.Level == 1 ? Magic.Level2 : Magic.Level == 2 ? Magic.Level3 : 0, Magic.BaseCost);
+                    break;
+                case Spell.HealingRare:
+                    SkillButton.Hint = GameLanguage.ClientTextMap.GetLocalization((ClientTextKeys.HealingRareSkillDescription), Magic.Level, Magic.Level == 0 ? Magic.Level1 : Magic.Level == 1 ? Magic.Level2 : Magic.Level == 2 ? Magic.Level3 : 0, Magic.BaseCost);
+                    break;
+                case Spell.PetEnhancerRare:
+                    SkillButton.Hint = GameLanguage.ClientTextMap.GetLocalization((ClientTextKeys.PetEnhancerRareSkillDescription), Magic.Level, Magic.Level == 0 ? Magic.Level1 : Magic.Level == 1 ? Magic.Level2 : Magic.Level == 2 ? Magic.Level3 : 0, Magic.BaseCost);
+                    break;
+                case Spell.GreatFireBallRare:
+                    SkillButton.Hint = GameLanguage.ClientTextMap.GetLocalization((ClientTextKeys.GreatFireBallRareSkillDescription), Magic.Level, Magic.Level == 0 ? Magic.Level1 : Magic.Level == 1 ? Magic.Level2 : Magic.Level == 2 ? Magic.Level3 : 0, Magic.BaseCost);
+                    break;
+                case Spell.ThunderBoltRare:
+                    SkillButton.Hint = GameLanguage.ClientTextMap.GetLocalization((ClientTextKeys.ThunderBoltRareSkillDescription), Magic.Level, Magic.Level == 0 ? Magic.Level1 : Magic.Level == 1 ? Magic.Level2 : Magic.Level == 2 ? Magic.Level3 : 0, Magic.BaseCost);
+                    break;
+                case Spell.StormEscapeRare:
+                    SkillButton.Hint = GameLanguage.ClientTextMap.GetLocalization((ClientTextKeys.StormEscapeRareSkillDescription), Magic.Level, Magic.Level == 0 ? Magic.Level1 : Magic.Level == 1 ? Magic.Level2 : Magic.Level == 2 ? Magic.Level3 : 0, Magic.BaseCost);
+                    break;
+                case Spell.FlashDashRare:
+                    SkillButton.Hint = GameLanguage.ClientTextMap.GetLocalization((ClientTextKeys.FlashDashRareSkillDescription), Magic.Level, Magic.Level == 0 ? Magic.Level1 : Magic.Level == 1 ? Magic.Level2 : Magic.Level == 2 ? Magic.Level3 : 0, Magic.BaseCost);
+                    break;
+                case Spell.MoonMistRare:
+                    SkillButton.Hint = GameLanguage.ClientTextMap.GetLocalization((ClientTextKeys.MoonMistRareSkillDescription), Magic.Level, Magic.Level == 0 ? Magic.Level1 : Magic.Level == 1 ? Magic.Level2 : Magic.Level == 2 ? Magic.Level3 : 0, Magic.BaseCost);
+                    break;
+                case Spell.CrescentSlashRare:
+                    SkillButton.Hint = GameLanguage.ClientTextMap.GetLocalization((ClientTextKeys.CrescentSlashRareSkillDescription), Magic.Level, Magic.Level == 0 ? Magic.Level1 : Magic.Level == 1 ? Magic.Level2 : Magic.Level == 2 ? Magic.Level3 : 0, Magic.BaseCost);
+                    break;
+                case Spell.ShadowComboRare:
+                    SkillButton.Hint = GameLanguage.ClientTextMap.GetLocalization((ClientTextKeys.ShadowComboRareSkillDescription), Magic.Level, Magic.Level == 0 ? Magic.Level1 : Magic.Level == 1 ? Magic.Level2 : Magic.Level == 2 ? Magic.Level3 : 0, Magic.BaseCost);
+                    break;
+                case Spell.DelayedExplosionRare:
+                    SkillButton.Hint = GameLanguage.ClientTextMap.GetLocalization((ClientTextKeys.DelayedExplosionRareSkillDescription), Magic.Level, Magic.Level == 0 ? Magic.Level1 : Magic.Level == 1 ? Magic.Level2 : Magic.Level == 2 ? Magic.Level3 : 0, Magic.BaseCost);
+                    break;
+                case Spell.ConcentrationRare:
+                    SkillButton.Hint = GameLanguage.ClientTextMap.GetLocalization((ClientTextKeys.ConcentrationRareSkillDescription), Magic.Level, Magic.Level == 0 ? Magic.Level1 : Magic.Level == 1 ? Magic.Level2 : Magic.Level == 2 ? Magic.Level3 : 0, Magic.BaseCost);
+                    break;
+                case Spell.ThunderStrikeRare:
+                    SkillButton.Hint = GameLanguage.ClientTextMap.GetLocalization((ClientTextKeys.ThunderStrikeRareSkillDescription), Magic.Level, Magic.Level == 0 ? Magic.Level1 : Magic.Level == 1 ? Magic.Level2 : Magic.Level == 2 ? Magic.Level3 : 0, Magic.BaseCost);
+                    break;
+                case Spell.HeavenlySecrets:
+                    SkillButton.Hint = GameLanguage.ClientTextMap.GetLocalization((ClientTextKeys.HeavenlySecretsSkillDescription), Magic.Level, Magic.Level == 0 ? Magic.Level1 : Magic.Level == 1 ? Magic.Level2 : Magic.Level == 2 ? Magic.Level3 : 0, Magic.BaseCost);
+                    break;
+
+                case Spell.CatTongue:
+                    SkillButton.Hint = GameLanguage.ClientTextMap.GetLocalization((ClientTextKeys.CatTongueSkillDescription), Magic.Level, Magic.Level == 0 ? Magic.Level1 : Magic.Level == 1 ? Magic.Level2 : Magic.Level == 2 ? Magic.Level3 : 0, Magic.BaseCost);
+                    break;
+
+                case Spell.WanXiaoFuRare:
+                    SkillButton.Hint = GameLanguage.ClientTextMap.GetLocalization((ClientTextKeys.WanXiaoFuRareSkillDescription), Magic.Level, Magic.Level == 0 ? Magic.Level1 : Magic.Level == 1 ? Magic.Level2 : Magic.Level == 2 ? Magic.Level3 : 0, Magic.BaseCost);
+                    break;
+
+                case Spell.SoulflameSiphonRare:
+                    SkillButton.Hint = GameLanguage.ClientTextMap.GetLocalization((ClientTextKeys.SoulflameSiphonRareSkillDescription), Magic.Level, Magic.Level == 0 ? Magic.Level1 : Magic.Level == 1 ? Magic.Level2 : Magic.Level == 2 ? Magic.Level3 : 0, Magic.BaseCost);
+                    break;
+
 
                 default:
 
                     break;
             }
+
+            //CustomMagic数据驱动: INI下发的技能描述优先于内置文案(未覆盖技能由此获得说明)
+            CustomMagicConfig cmCfg = CustomMagicSettings.Get(Magic.Spell);
+            if (cmCfg != null && !string.IsNullOrEmpty(cmCfg.Description))
+                SkillButton.Hint = cmCfg.Description.Replace("/r/n", "\n");
 
 
             SkillButton.Index = Magic.Icon * 2;

@@ -9,6 +9,8 @@ namespace Client.MirScenes
 {
     public class SelectScene : MirScene
     {
+        public static byte AllowedClasses = 0xFF;
+
         public MirImageControl Background, Title;
         private NewCharacterDialog _character;
 
@@ -621,16 +623,9 @@ namespace Client.MirScenes
 
                 Library = Libraries.Title;
 
-                if (info.Class == MirClass.Monk)
-                {
-                    Index = Selected ? 900 : 899; //synthesized monk entry images
-                }
-                else
-                {
-                    Index = 660 + (byte)info.Class;
+                Index = 658 + (byte)info.Class;
 
-                    if (Selected) Index += 5;
-                }
+                if (Selected) Index += 6;
 
 
 

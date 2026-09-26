@@ -1,4 +1,4 @@
-﻿using System.Drawing;
+using System.Drawing;
 
 public class InIReader
 {
@@ -18,13 +18,23 @@ public class InIReader
         }
 
         _contents = new List<string>();
-        try
+        if (!File.Exists(_fileName)) return; //全新环境无配置文件, 允许空内容
+
+        //文件存在却读取失败(典型: 另一实例正在保存同名文件被锁)时, 绝不能静默当作空文件——
+        //那会让Settings.Load把全部默认值立即回写, 整个配置被重置(语言翻转成英文/DB校验被打开的根因).
+        //重试数次后仍失败则抛出, 让问题显式暴露而不是悄悄毁掉配置.
+        for (int attempt = 0; ; attempt++)
         {
-            if (File.Exists(_fileName))
+            try
+            {
                 _contents.AddRange(File.ReadAllLines(_fileName));
-        }
-        catch
-        {
+                return;
+            }
+            catch (Exception)
+            {
+                if (attempt >= 5) throw;
+                System.Threading.Thread.Sleep(200);
+            }
         }
     }
     #endregion
@@ -35,10 +45,20 @@ public class InIReader
         for (int a = 0; a < _contents.Count; a++)
             if (String.CompareOrdinal(_contents[a], "[" + section + "]") == 0)
                 for (int b = a + 1; b < _contents.Count; b++)
-                    if (String.CompareOrdinal(_contents[b].Split('=')[0], key) == 0)
-                        return _contents[b].Split('=')[1];
-                    else if (_contents[b].StartsWith("[") && _contents[b].EndsWith("]"))
+                {
+                    string[] parts = _contents[b].Split('=');
+                    //防御: 跳过缺少'='的损坏行(如手动编辑/异常写出导致), 避免启动崩溃
+                    if (parts.Length < 2)
+                    {
+                        if (_contents[b].StartsWith("[") && _contents[b].EndsWith("]"))
+                            return null;
+                        continue;
+                    }
+                    if (String.CompareOrdinal(parts[0], key) == 0)
+                        return parts[1];
+                    if (_contents[b].StartsWith("[") && _contents[b].EndsWith("]"))
                         return null;
+                }
         return null;
     }
 
@@ -69,12 +89,19 @@ public class InIReader
 
     public void Save()
     {
+        //原子写: 先写临时文件再替换, 避免其他进程读到写了一半的配置文件
+        var tmp = _fileName + ".tmp";
         try
         {
-            File.WriteAllLines(_fileName, _contents);
+            File.WriteAllLines(tmp, _contents);
+            if (File.Exists(_fileName))
+                File.Replace(tmp, _fileName, null);
+            else
+                File.Move(tmp, _fileName);
         }
-        catch
+        catch (Exception)
         {
+            try { if (File.Exists(tmp)) File.Delete(tmp); } catch { }
         }
     }
     #endregion

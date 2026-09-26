@@ -32,6 +32,11 @@ namespace Client.MirObjects
 
         public BaseStats CoreStats = new BaseStats(0);
 
+        //天赋系统 - 服务端下发的天赋表与已学等级(由 TalentDialog 收包时维护)
+        //用于客户端本地计算属性显示, 与服务端战斗值保持一致
+        public List<S.ClientTalentInfo> TalentInfos = new List<S.ClientTalentInfo>();
+        public Dictionary<int, int> TalentLevels = new Dictionary<int, int>();
+
         public virtual BuffDialog GetBuffDialog => GameScene.Scene.BuffsDialog;
 
         public UserItem[] Inventory = new UserItem[46], Equipment = new UserItem[14], Trade = new UserItem[10], QuestInventory = new UserItem[40];
@@ -57,6 +62,8 @@ namespace Client.MirObjects
 
         public bool Slaying, Thrusting, HalfMoon, CrossHalfMoon, DoubleSlash, TwinDrakeBlade, FlamingSword;
         public bool LuoHanGunFa, DaMoGunFa;
+        public bool BloodDragon; //血龙震(印技能)
+        public HashSet<Spell> CustomToggles = new HashSet<Spell>(); //自定义攻击强化技能蓄力状态(服务端S.SpellToggle驱动)
         public ClientMagic NextMagic;
         public Point NextMagicLocation;
         public MapObject NextMagicObject;
@@ -154,6 +161,7 @@ namespace Client.MirObjects
             RefreshSkills();
             RefreshBuffs();
             RefreshGuildBuffs();
+            RefreshTalentStats();   //天赋系统 - 天赋属性加成(必须在百分比加成之前, 与服务端顺序一致)
 
             SetLibraries();
             SetEffects();
@@ -186,6 +194,25 @@ namespace Client.MirObjects
             foreach (var stat in CoreStats.Stats)
             {
                 Stats[stat.Type] = stat.Calculate(Class, Level);
+            }
+        }
+
+        /// <summary>
+        /// 天赋系统 - 天赋属性加成(客户端显示镜像).
+        /// 计算规则与服务端 PlayerObject.RefreshTalentStats 完全一致:
+        /// 每级属性 x 已学等级 逐条叠加, 保证角色窗口显示与服务端实际战斗值一致.
+        /// </summary>
+        private void RefreshTalentStats()
+        {
+            if (TalentLevels.Count == 0) return;    //没学任何天赋时直接跳过
+
+            foreach (var talent in TalentInfos)
+            {
+                //没学或天赋表里已删除的条目跳过
+                if (!TalentLevels.TryGetValue(talent.Id, out var level) || level <= 0) continue;
+
+                foreach (var pair in talent.Stats.Values)
+                    Stats[pair.Key] += pair.Value * level;
             }
         }
 

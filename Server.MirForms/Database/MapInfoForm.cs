@@ -1,4 +1,4 @@
-﻿using Server.MirDatabase;
+using Server.MirDatabase;
 using Server.MirEnvir;
 
 
@@ -101,6 +101,7 @@ namespace Server
                 NoDropPlayerCheckbox.Checked = false;
                 NoDropMonsterCheckbox.Checked = false;
                 NoNamesCheckbox.Checked = false;
+                NoPlayerNoSpawnCheckbox.Checked = false;
 
                 FightCheckbox.Checked = false;
                 FireCheckbox.Checked = false;
@@ -162,6 +163,7 @@ namespace Server
             NoDropPlayerCheckbox.Checked = mi.NoDropPlayer;
             NoDropMonsterCheckbox.Checked = mi.NoDropMonster;
             NoNamesCheckbox.Checked = mi.NoNames;
+            NoPlayerNoSpawnCheckbox.Checked = mi.NoPlayerNoSpawn;
             FightCheckbox.Checked = mi.Fight;
             NoFightCheckbox.Checked = mi.NoFight;
             FireCheckbox.Checked = mi.Fire;
@@ -215,6 +217,7 @@ namespace Server
                 if (NoDropPlayerCheckbox.Checked != mi.NoDropPlayer) NoDropPlayerCheckbox.Checked = false;
                 if (NoDropMonsterCheckbox.Checked != mi.NoDropMonster) NoDropMonsterCheckbox.Checked = false;
                 if (NoNamesCheckbox.Checked != mi.NoNames) NoNamesCheckbox.Checked = false;
+                if (NoPlayerNoSpawnCheckbox.Checked != mi.NoPlayerNoSpawn) NoPlayerNoSpawnCheckbox.Checked = false;
                 if (FightCheckbox.Checked != mi.Fight) FightCheckbox.Checked = false;
                 if (NoFightCheckbox.Checked != mi.NoFight) NoFightCheckbox.Checked = false;
                 if (FireCheckbox.Checked != mi.Fire) FireCheckbox.Checked = false;
@@ -1196,6 +1199,13 @@ namespace Server
 
             for (int i = 0; i < _selectedMapInfos.Count; i++)
                 _selectedMapInfos[i].NoTeleport = NoTeleportCheckbox.Checked;
+        }
+        private void NoPlayerNoSpawnCheckbox_CheckedChanged(object sender, EventArgs e)
+        {
+            if (ActiveControl != sender) return;
+
+            for (int i = 0; i < _selectedMapInfos.Count; i++)
+                _selectedMapInfos[i].NoPlayerNoSpawn = NoPlayerNoSpawnCheckbox.Checked;
         }
         private void NoReconnectCheckbox_CheckedChanged(object sender, EventArgs e)
         {

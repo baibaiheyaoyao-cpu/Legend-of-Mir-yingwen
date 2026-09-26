@@ -17,6 +17,7 @@
     public enum CheckType
     {
         IsAdmin,
+        CanGetBattleReward,
         Level,
         CheckItem,
         CheckGold,
@@ -65,6 +66,7 @@
         CheckHeroItem,
         HasGT,
         CheckBuff,
-        CheckMapLight
+        CheckMapLight,
+        HasHero
     }
 }

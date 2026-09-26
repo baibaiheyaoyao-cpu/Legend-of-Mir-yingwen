@@ -1,4 +1,4 @@
-﻿using Client.MirControls;
+using Client.MirControls;
 using Client.MirGraphics;
 using Client.MirScenes;
 using Client.MirSounds;
@@ -225,11 +225,17 @@ namespace Client.MirObjects
 
             switch (type)
             {
+                case BuffType.Exp: // [AI-Claude] 光之牌: 经验buff头顶循环光效(Magic3 3470-3477) buff消失自动移除
+                    Effects.Add(new BuffEffect(Libraries.Magic3, 3470, 8, 800, this, true, type) { Repeat = true });
+                    break;
                 case BuffType.Fury:
                     Effects.Add(new BuffEffect(Libraries.Magic3, 190, 7, 1400, this, true, type) { Repeat = true });
                     break;
                 case BuffType.ImmortalSkin:
                     Effects.Add(new BuffEffect(Libraries.Magic3, 570, 5, 1400, this, true, type) { Repeat = true });
+                    break;
+                case BuffType.CounterAttack: // 天务(天武): 火之气息附体——官方"往武器和身体灌注火之气息"(Magic3 140火苗闪烁循环, buff消自动灭)
+                    Effects.Add(new BuffEffect(Libraries.Magic3, 140, 2, 400, this, true, type) { Repeat = true });
                     break;
                 case BuffType.SwiftFeet:
                     if (ob != null) ob.Sprint = true;
@@ -464,6 +470,9 @@ namespace Client.MirObjects
         }
         public void DrawHealth()
         {
+            //显示血量(辅助面板基本页): 关闭时不绘制任何血条
+            if (!AssistSettings.ShowHealth) return;
+
             string name = Name;
             if (Name.Contains("(")) name = Name.Substring(Name.IndexOf("(") + 1, Name.Length - Name.IndexOf("(") - 2);
 

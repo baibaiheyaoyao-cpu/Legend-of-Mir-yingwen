@@ -15,14 +15,14 @@ namespace Launcher
 
         private void Config_Load(object sender, EventArgs e)
         {
-            this.label10.Text = GameLanguage.ClientTextMap.GetLocalization(ClientTextKeys.Resolution) ;
+            this.label10.Text = GameLanguage.ClientTextMap.GetLocalization(ClientTextKeys.Resolution);
             this.AutoStart_label.Text = GameLanguage.ClientTextMap.GetLocalization(ClientTextKeys.Autostart);
             this.ID_l.Text = GameLanguage.ClientTextMap.GetLocalization(ClientTextKeys.Usrname);
             this.Password_l.Text = GameLanguage.ClientTextMap.GetLocalization(ClientTextKeys.Password);
 
             DrawSupportedResolutions();
         }
-                                   
+
         private void Res1_pb_Click(object sender, EventArgs e)
         {
             resolutionChoice(eSupportedResolution.w1024h768);
@@ -93,7 +93,7 @@ namespace Launcher
                 this.ActiveControl = label4;
             }
             else
-            {             
+            {
                 Settings.AccountID = AccountLogin_txt.Text;
                 Settings.Password = AccountPass_txt.Text;
                 Settings.Save();
@@ -239,6 +239,11 @@ namespace Launcher
                         break;
                 }
             }
+        }
+
+        private void label9_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }

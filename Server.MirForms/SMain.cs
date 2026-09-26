@@ -23,6 +23,43 @@ namespace Server
             InitializeComponent();
 
             AutoResize();
+
+            //自定义技能管理入口: 挂到"高级设置"所在菜单(先定位再添加, 避免遍历中修改集合)
+            ToolStripMenuItem advancedMenu = null;
+            foreach (ToolStripItem topItem in MainMenu.Items)
+            {
+                if (topItem is not ToolStripMenuItem topMenu) continue;
+                foreach (ToolStripItem child in topMenu.DropDownItems)
+                {
+                    if (child.Name != "advancedConfigToolStripMenuItem") continue;
+                    advancedMenu = topMenu;
+                    break;
+                }
+                if (advancedMenu != null) break;
+            }
+            advancedMenu?.DropDownItems.Add(new ToolStripMenuItem("自定义技能管理", null, customSkillToolStripMenuItem_Click) { Name = "customSkillToolStripMenuItem" });
+            advancedMenu?.DropDownItems.Add(new ToolStripMenuItem("CustomMagic数据技能", null, customMagicToolStripMenuItem_Click) { Name = "customMagicToolStripMenuItem" });
+            //脚本模块中心入口: JS模块(登仙任务等)总控面板, 与上面两个管理面板并列
+            advancedMenu?.DropDownItems.Add(new ToolStripMenuItem("脚本模块中心", null, jsModuleCenterToolStripMenuItem_Click) { Name = "jsModuleCenterToolStripMenuItem" });
+        }
+
+        /// <summary>脚本模块中心: JS模块(Envir\JsScripts)的启停/热重载/绑定明细/错误日志总控</summary>
+        private void jsModuleCenterToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            JsModuleCenterForm form = new JsModuleCenterForm();
+            form.ShowDialog();
+        }
+
+        private void customSkillToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            CustomSkillForm form = new CustomSkillForm();
+            form.ShowDialog();
+        }
+
+        private void customMagicToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            CustomMagicForm form = new CustomMagicForm();
+            form.ShowDialog();
         }
 
         private void AutoResize()
@@ -107,6 +144,18 @@ namespace Server
         {
             try
             {
+                //生命周期状态刷新(轮询, 兼容重启/异常退出等各种状态变化)
+                UpdateLifecycleButtons();
+
+                //启动失败弹窗: 原先只写一行日志, 用户盯着面板毫无察觉
+                if (Envir.LastStartError != null)
+                {
+                    var err = Envir.LastStartError;
+                    Envir.LastStartError = null;
+                    MessageBox.Show(this, "服务器启动失败:\n\n" + err, "启动失败",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+
                 Text = $"总量: {Envir.LastCount}, 实际: {Envir.LastRealCount}";
                 PlayersLabel.Text = $"玩家: {Envir.Players.Count}";
                 MonsterLabel.Text = $"怪物: {Envir.MonsterCount}";
@@ -156,6 +205,7 @@ namespace Server
 
                 ProcessPlayersOnlineTab(false);
                 ProcessGuildViewTab(false);
+                ProcessScheduledAnnouncements();
             }
             catch (Exception ex)
             {
@@ -197,23 +247,71 @@ namespace Server
 
         private void startServerToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            if (Envir.Running)
+            {
+                Enqueue("服务器已在运行中, 无需再次启动。");
+                return;
+            }
+
             Envir.Start();
+            UpdateLifecycleButtons("启动中...");
         }
 
         private void stopServerToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Envir.Stop();
-            Envir.MonsterCount = 0;
+            if (!Envir.Running || _lifecycleBusy) return;
+
+            _lifecycleBusy = true;
+            UpdateLifecycleButtons("停止中(正在保存数据)...");
+
+            //异步停止: 保存玩家/行会/攻城数据可能耗时数秒, 不能卡死面板UI线程
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                try
+                {
+                    Envir.Stop();
+                    Envir.MonsterCount = 0;
+                }
+                finally
+                {
+                    BeginInvoke(new Action(() =>
+                    {
+                        _lifecycleBusy = false;
+                        UpdateLifecycleButtons();
+                    }));
+                }
+            });
         }
 
         private void SMain_FormClosing(object sender, FormClosingEventArgs e)
         {
+            //关闭前同步停止并保存(账号/行会/攻城落盘后进程才退出), 这里保持阻塞是刻意的
             Envir.Stop();
         }
 
         private void closeServerToolStripMenuItem_Click(object sender, EventArgs e)
         {
             Close();
+        }
+
+        private bool _lifecycleBusy; //异步停止进行中
+
+        /// <summary>按服务器实际状态刷新 启动/停止/重启 按钮的可用性(由界面定时器轮询调用)</summary>
+        private void UpdateLifecycleButtons(string busyText = null)
+        {
+            if (_lifecycleBusy)
+            {
+                startServerToolStripMenuItem.Enabled = false;
+                stopServerToolStripMenuItem.Enabled = false;
+                rebootServerToolStripMenuItem.Enabled = false;
+                return;
+            }
+
+            startServerToolStripMenuItem.Enabled = !Envir.Running;
+            stopServerToolStripMenuItem.Enabled = Envir.Running;
+            rebootServerToolStripMenuItem.Enabled = Envir.Running;
+
+            if (busyText != null) Enqueue(busyText);
         }
 
         private void itemInfoToolStripMenuItem_Click(object sender, EventArgs e)
@@ -255,6 +353,30 @@ namespace Server
         {
             ConfigForm form = new ConfigForm();
 
+            form.ShowDialog();
+        }
+
+        private void advancedConfigToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            AdvancedConfigForm form = new AdvancedConfigForm();
+            form.ShowDialog();
+        }
+
+        private void talentCenterToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            TalentCenterForm form = new TalentCenterForm();
+            form.ShowDialog();
+        }
+
+        private void battleFieldToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            BattleFieldForm form = new BattleFieldForm();
+            form.ShowDialog();
+        }
+
+        private void diagnosticsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            DiagnosticsForm form = new DiagnosticsForm();
             form.ShowDialog();
         }
 
@@ -310,6 +432,13 @@ namespace Server
         private void dragonSystemToolStripMenuItem_Click(object sender, EventArgs e)
         {
             DragonInfoForm form = new DragonInfoForm();
+
+            form.ShowDialog();
+        }
+
+        private void fieldBossSystemToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            FieldBossForm form = new FieldBossForm();
 
             form.ShowDialog();
         }
@@ -376,6 +505,20 @@ namespace Server
             form.ShowDialog();
         }
 
+        private void gmMailRewardToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (!Envir.Running)
+            {
+                MessageBox.Show("服务器必须在运行状态才能使用 GM 奖励邮件。", "提示",
+                MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+                return;
+            }
+
+            MailRewardForm form = new MailRewardForm();
+
+            form.ShowDialog();
+        }
+
         private void goodsToolStripMenuItem_Click(object sender, EventArgs e)
         {
             SystemInfoForm form = new SystemInfoForm(2);
@@ -419,6 +562,10 @@ namespace Server
                 Envir.Start();
             }
 
+            ScheduledAnnouncementManager.Load();
+            RefreshScheduledList();
+            RepeatComboBox.SelectedIndex = 0;
+
             AutoResize();
         }
 
@@ -438,7 +585,24 @@ namespace Server
 
         private void rebootServerToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            if (!Envir.Running)
+            {
+                Enqueue("服务器未在运行, 直接点'启动'即可。");
+                return;
+            }
+
+            if (MessageBox.Show(this,
+                    "重启会断开所有在线玩家(数据自动保存), 并重新读取 Setup.ini 配置。\n确定重启?",
+                    "重启服务器", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) != DialogResult.OK)
+                return;
+
             Envir.Reboot();
+        }
+
+        private void reloadCenterToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ReloadCenterForm form = new ReloadCenterForm();
+            form.Show(this);
         }
 
         private void respawnsToolStripMenuItem_Click(object sender, EventArgs e)
@@ -471,6 +635,13 @@ namespace Server
         private void itemNEWToolStripMenuItem_Click(object sender, EventArgs e)
         {
             ItemInfoFormNew form = new ItemInfoFormNew();
+
+            form.ShowDialog();
+        }
+
+        private void itemMgrToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ItemMgrForm form = new ItemMgrForm();
 
             form.ShowDialog();
         }
@@ -666,5 +837,132 @@ namespace Server
 
             PlayersOnlineListView.Sort();
         }
+
+        #region Scheduled Announcements 定时公告
+
+        private void RefreshScheduledList()
+        {
+            ScheduledListView.BeginUpdate();
+            ScheduledListView.Items.Clear();
+
+            foreach (var item in ScheduledAnnouncementManager.Items)
+            {
+                ListViewItem tempItem = new ListViewItem(item.Message) { Tag = item };
+
+                tempItem.SubItems.Add(item.NextRun.ToString("yyyy-MM-dd HH:mm:ss"));
+                tempItem.SubItems.Add(item.RepeatText);
+                tempItem.SubItems.Add(item.Repeat == ScheduledAnnouncementRepeat.Interval ? item.IntervalMinutes.ToString() : "-");
+
+                ScheduledListView.Items.Add(tempItem);
+            }
+
+            ScheduledListView.EndUpdate();
+        }
+
+        private void BroadcastAnnouncement(string message)
+        {
+            foreach (var player in Envir.Players)
+            {
+                player.ReceiveChat(message, ChatType.Announcement);
+            }
+
+            EnqueueChat(message);
+        }
+
+        private void ProcessScheduledAnnouncements()
+        {
+            if (!Envir.Running) return;
+
+            var fired = ScheduledAnnouncementManager.ProcessDue(DateTime.Now);
+
+            foreach (var item in fired)
+            {
+                BroadcastAnnouncement(item.Message);
+                Enqueue($"[定时公告] 已发送: {item.Message}");
+            }
+
+            if (fired.Count > 0)
+                RefreshScheduledList();
+        }
+
+        private void AddScheduledButton_Click(object sender, EventArgs e)
+        {
+            var message = ScheduledMessageTextBox.Text.Trim();
+
+            if (message.Length < 1)
+            {
+                MessageBox.Show("请输入公告内容。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+                return;
+            }
+
+            var repeat = (ScheduledAnnouncementRepeat)RepeatComboBox.SelectedIndex;
+            var nextRun = ScheduledTimePicker.Value;
+
+            if (repeat == ScheduledAnnouncementRepeat.Once && nextRun <= DateTime.Now)
+            {
+                MessageBox.Show("单次公告的发送时间必须晚于当前时间。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+                return;
+            }
+
+            if (repeat == ScheduledAnnouncementRepeat.Daily)
+                nextRun = DateTime.Today.Add(nextRun.TimeOfDay) <= DateTime.Now
+                    ? DateTime.Today.AddDays(1).Add(nextRun.TimeOfDay)
+                    : DateTime.Today.Add(nextRun.TimeOfDay);
+
+            var item = new ScheduledAnnouncement
+            {
+                Message = message,
+                NextRun = nextRun,
+                Repeat = repeat,
+                IntervalMinutes = (int)IntervalNumeric.Value,
+            };
+
+            ScheduledAnnouncementManager.Items.Add(item);
+            ScheduledAnnouncementManager.Save();
+            RefreshScheduledList();
+
+            ScheduledMessageTextBox.Text = string.Empty;
+
+            Enqueue($"[定时公告] 已加入队列: {message} | 下次发送: {item.NextRun:yyyy-MM-dd HH:mm:ss} | {item.RepeatText}");
+        }
+
+        private void RemoveScheduledButton_Click(object sender, EventArgs e)
+        {
+            if (ScheduledListView.SelectedItems.Count < 1) return;
+
+            foreach (ListViewItem sel in ScheduledListView.SelectedItems)
+            {
+                var item = sel.Tag as ScheduledAnnouncement;
+
+                if (item == null) continue;
+
+                ScheduledAnnouncementManager.Items.Remove(item);
+            }
+
+            ScheduledAnnouncementManager.Save();
+            RefreshScheduledList();
+        }
+
+        private void SendNowScheduledButton_Click(object sender, EventArgs e)
+        {
+            if (ScheduledListView.SelectedItems.Count < 1) return;
+
+            foreach (ListViewItem sel in ScheduledListView.SelectedItems)
+            {
+                var item = sel.Tag as ScheduledAnnouncement;
+
+                if (item == null) continue;
+
+                BroadcastAnnouncement(item.Message);
+                Enqueue($"[定时公告] 手动立即发送: {item.Message}");
+            }
+        }
+
+        private void RepeatComboBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            IntervalNumeric.Enabled = RepeatComboBox.SelectedIndex == (int)ScheduledAnnouncementRepeat.Interval;
+        }
+
+        #endregion
     }
 }

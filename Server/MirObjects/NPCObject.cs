@@ -37,6 +37,11 @@ namespace Server.MirObjects
 
         public ConquestObject Conq;
         public List<QuestInfo> Quests = new List<QuestInfo>();
+
+/// [任务交付修复 2026-09-25] 本NPC脚本[Quests]段中声明为交付(负数)的任务列表.
+/// FinishQuest就近校验用: 同一任务有多个交付NPC时(如311的老渔夫/钓鱼商都声明-311),
+/// 任何一个声明者处都可交付, 不再依赖"最后加载者赢"的FinishNpcIndex单值绑定.
+        public List<QuestInfo> FinishQuests = new List<QuestInfo>();
         public List<NPCSpeech> Speech = new List<NPCSpeech>();
 
         public List<UserItem> UsedGoods = new List<UserItem>();
@@ -200,6 +205,18 @@ namespace Server.MirObjects
         public override void ReceiveChat(string text, ChatType type)
         {
             throw new NotSupportedException();
+        }
+
+        public override void Despawn()
+        {
+            base.Despawn();
+
+            //地图卸载时同步清理两张全局表(本NPC仅经 Map.Unload 且 Node!=null 时被卸载, 无重复Despawn风险):
+            //1) Envir.NPCs 移除死NPC: 防常驻泄漏 + 按旧ObjectID查到脏实例;
+            //2) Envir.Scripts 移除对应脚本(含商品/配方缓存): 防卸载/重载循环按次泄漏,
+            //   重建NPC会以新ObjectID+新ScriptID重新解析脚本, 旧条目无保留价值
+            Envir.NPCs.Remove(this);
+            Envir.Scripts.Remove(ScriptID);
         }
 
         public void Turn(MirDirection dir)

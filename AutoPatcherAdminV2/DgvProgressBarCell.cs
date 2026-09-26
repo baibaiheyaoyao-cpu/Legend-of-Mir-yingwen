@@ -62,7 +62,7 @@ namespace AutoPatcherAdmin
     {
         public DgvProgressBarColumn() : base(new DgvProgressBarCell())
         {
-            HeaderText = "Progress";
+            HeaderText = "进度";
             Width = 80;
             MinimumWidth = 50;
             ReadOnly = true;

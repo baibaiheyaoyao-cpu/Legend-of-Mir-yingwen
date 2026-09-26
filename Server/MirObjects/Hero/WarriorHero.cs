@@ -1,4 +1,4 @@
-﻿using Server.MirDatabase;
+using Server.MirDatabase;
 using Server.MirEnvir;
 
 namespace Server.MirObjects
@@ -63,10 +63,13 @@ namespace Server.MirObjects
             {
                 Direction = Functions.DirectionFromPoint(CurrentLocation, Target.CurrentLocation);
                 var behindEnemyLocation = Functions.PointMove(Target.CurrentLocation, Direction, 1);
-                var thrustCell = CurrentMap.GetCell(behindEnemyLocation);
                 bool ThrustObject = false;
 
-                if (thrustCell.Objects != null && thrustCell.Objects.Count != 0) ThrustObject = true;
+                if (CurrentMap.ValidPoint(behindEnemyLocation))
+                {
+                    var thrustCell = CurrentMap.GetCell(behindEnemyLocation);
+                    if (thrustCell.Objects != null && thrustCell.Objects.Count != 0) ThrustObject = true;
+                }
 
                 Spell spell = Spell.None;
 
