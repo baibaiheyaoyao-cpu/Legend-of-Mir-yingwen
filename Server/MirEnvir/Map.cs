@@ -1003,6 +1003,13 @@ namespace Server.MirEnvir
                 #region 自定义技能(242-255): 范围伤害结算(半径可配)
 
                 default:
+                    //CustomMagic数据驱动: INI绑定技能的延迟结算(伤害+状态+吸怪), 参数包尾部带Profile定义
+                    if (data.Count > 5 && data[5] is CustomSkillDef magicDef)
+                    {
+                        CustomMagicProfileTick(player, magic, data, magicDef, ref train);
+                        break;
+                    }
+
                     if (Settings.IsCustomSpell(magic.Spell))
                     {
                         value = (int)data[2];
@@ -1474,9 +1481,16 @@ namespace Server.MirEnvir
 
                 #endregion
 
-                #region MoonMist
+                #region MoonMist    // 月影雾爆炸结算: 施法点5×5, DC全额走AC, 不死系未破防附眩晕; 由HumanObject.MoonMist()在1800ms(雾聚满)时触发
 
                 case Spell.MoonMist:
+
+                    //CustomMagic(INI伤害接管)路线的结算包(尾部带Profile)优先交通用结算(防显式case遮蔽default分发而崩溃)
+                    if (data.Count > 5 && data[5] is CustomSkillDef mistDef)
+                    {
+                        CustomMagicProfileTick(player, magic, data, mistDef, ref train);
+                        break;
+                    }
 
                     value = (int)data[2];
                     location = (Point)data[3];
@@ -1559,6 +1573,75 @@ namespace Server.MirEnvir
 
                     }
 
+                    break;
+
+                #endregion
+
+                #region LionRoarRare    // 狮子吼-秘籍(官方规格: 5×5[4级武功起7×7]DC伤害+压制; 基础版保持纯控制不动)
+
+                case Spell.LionRoarRare:
+                    {
+                        //CustomMagic(INI伤害接管)路线的结算包(尾部带Profile)优先交通用结算——
+                        //显式case会遮蔽default里的CustomMagic分发, 不在此分流会按引擎形状拆包而崩溃(23:00事故)
+                        if (data.Count > 5 && data[5] is CustomSkillDef roarDef)
+                        {
+                            CustomMagicProfileTick(player, magic, data, roarDef, ref train);
+                            break;
+                        }
+
+                        //引擎路线: 吼以施法者当前位置为中心(不再从data取坐标, 与排队形状解耦)
+                        HumanObject roarPlayer = (HumanObject)data[0];
+                        location = roarPlayer.CurrentLocation;
+
+                        int roarRadius = magic.Level >= 3 ? 3 : 2;   //4级武功(Level3)起 7×7
+                        int roarDamage = magic.GetDamage(roarPlayer.GetAttackPower(roarPlayer.Stats[Stat.MinDC], roarPlayer.Stats[Stat.MaxDC]));
+
+                        for (int y = location.Y - roarRadius; y <= location.Y + roarRadius; y++)
+                        {
+                            if (y < 0) continue;
+                            if (y >= Height) break;
+
+                            for (int x = location.X - roarRadius; x <= location.X + roarRadius; x++)
+                            {
+                                if (x < 0) continue;
+                                if (x >= Width) break;
+
+                                cell = GetCell(x, y);
+                                if (!cell.Valid || cell.Objects == null) continue;
+
+                                for (int i = 0; i < cell.Objects.Count; i++)
+                                {
+                                    MapObject target = cell.Objects[i];
+                                    if (target.Race != ObjectType.Monster && target.Race != ObjectType.Player) continue;
+                                    if (!target.IsAttackTarget(roarPlayer) || roarPlayer.Level + 5 < target.Level) continue;
+
+                                    int dmg = roarDamage;
+                                    var mob = target as MonsterObject;
+                                    if (mob != null && magic.Level >= 1) dmg *= 2; //2级武功起: 对怪物100%追加伤害
+
+                                    if (target.Attacked(roarPlayer, dmg, DefenceType.AC, false) > 0)
+                                        train = true;
+
+                                    //压制: 普通怪10秒(3级武功20秒), BOSS 2秒(3级武功起), 角色1秒
+                                    if (mob != null)
+                                    {
+                                        bool boss = mob.Info != null && mob.Info.IsBoss;
+                                        int dur = boss ? (magic.Level >= 2 ? 2 : 0) : (magic.Level >= 2 ? 20 : 10);
+                                        if (dur > 0)
+                                        {
+                                            target.ApplyPoison(new Poison { PType = PoisonType.LRParalysis, Duration = dur, TickSpeed = 1000 }, roarPlayer);
+                                            target.OperateTime = 0;
+                                        }
+                                    }
+                                    else if (target.Race == ObjectType.Player)
+                                    {
+                                        target.ApplyPoison(new Poison { PType = PoisonType.Paralysis, Duration = 1, TickSpeed = 1000 }, roarPlayer);
+                                        target.OperateTime = 0;
+                                    }
+                                }
+                            }
+                        }
+                    }
                     break;
 
                 #endregion
@@ -2706,6 +2789,99 @@ namespace Server.MirEnvir
                 player.LevelMagic(magic);
 
         }
+
+        #region CustomMagic数据驱动结算(路线甲P1)
+        /// <summary>
+        /// INI绑定技能的每跳结算: 范围伤害 + 状态四件套(八种) + 全屏吸怪.
+        /// data: [0]=player [1]=magic [2]=damage [3]=centre [4]=radius [5]=CustomSkillDef
+        /// </summary>
+        private void CustomMagicProfileTick(HumanObject player, UserMagic magic, IList<object> data, CustomSkillDef def, ref bool train)
+        {
+            int value = (int)data[2];
+            Point centre = (Point)data[3];
+            int radius = data.Count > 4 ? Math.Max(1, (int)data[4]) : 1;
+            Cell cell;
+
+            for (int y = centre.Y - radius; y <= centre.Y + radius; y++)
+            {
+                if (y < 0) continue;
+                if (y >= Height) break;
+
+                for (int x = centre.X - radius; x <= centre.X + radius; x++)
+                {
+                    if (x < 0) continue;
+                    if (x >= Width) break;
+
+                    cell = GetCell(x, y);
+                    if (!cell.Valid || cell.Objects == null) continue;
+
+                    for (int i = cell.Objects.Count - 1; i >= 0; i--)
+                    {
+                        MapObject target = cell.Objects[i];
+                        if (target == null || target.Node == null || target == player) continue;
+
+                        switch (target.Race)
+                        {
+                            case ObjectType.Monster:
+                            case ObjectType.Player:
+                                if (!target.IsAttackTarget(player)) break;
+
+                                //物理系(DamageStat=DC)走AC物防, 魔法/道术走MAC魔防(对齐引擎各技能switch用法)
+                                DefenceType defType = def.DamageStat == "DC" ? DefenceType.AC : DefenceType.MAC;
+                                if (target.Attacked(player, value, defType, false) > 0)
+                                    train = true;
+
+                                // 状态附加: AllowXxx 四件套(Chance已在解析时兜底100%)
+                                foreach (CustomStatusDef st in def.Statuses)
+                                {
+                                    if (st.Chance <= 0 || Envir.Random.Next(0, 100) >= st.Chance) continue;
+
+                                    PoisonType pt = MapProfileStatusType(st.Type);
+                                    if (pt == PoisonType.None) continue;
+
+                                    target.ApplyPoison(new Poison
+                                    {
+                                        PType = pt,
+                                        Duration = Math.Max(1, st.Time),   // 秒(对齐引擎Stun等用法)
+                                        Value = st.Damage,                 // 每跳伤害(毒/流血/灼烧)
+                                        TickSpeed = 1000,
+                                    }, player);
+                                }
+                                break;
+                        }
+
+                        // 全屏吸怪: 范围内怪向中心拖拽1格(BOSS按CanMoveBoss放行)
+                        if (def.PullMobs && target.Race == ObjectType.Monster && target.Node != null)
+                        {
+                            MonsterObject mob = (MonsterObject)target;
+                            if (!mob.Dead && (def.CanMoveBoss || !(mob.Info != null && mob.Info.IsBoss)))
+                            {
+                                MirDirection pullDir = Functions.DirectionFromPoint(target.CurrentLocation, centre);
+                                target.Pushed(player, pullDir, 1);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>INI状态类型 → 引擎PoisonType(BURN无独立类型, 按流血DOT实现)</summary>
+        private static PoisonType MapProfileStatusType(string type)
+        {
+            switch (type)
+            {
+                case "GREEN": return PoisonType.Green;
+                case "RED": return PoisonType.Red;
+                case "SLOW": return PoisonType.Slow;
+                case "FROZEN": return PoisonType.Frozen;
+                case "STUN": return PoisonType.Stun;
+                case "PARALYSIS": return PoisonType.Paralysis;
+                case "BLEEDING":
+                case "BURN": return PoisonType.Bleeding;
+                default: return PoisonType.None;
+            }
+        }
+        #endregion
 
         public void AddObject(MapObject ob)
         {

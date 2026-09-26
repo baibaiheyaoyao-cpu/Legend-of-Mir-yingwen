@@ -6,9 +6,9 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Client.Resolution
+namespace Client.Resolution                 
 {
-    internal static class DisplayResolutions
+    internal static class DisplayResolutions       // 显示器分辨率
     {
         internal static List<eSupportedResolution> DisplaySupportedResolutions = new List<eSupportedResolution>();
 

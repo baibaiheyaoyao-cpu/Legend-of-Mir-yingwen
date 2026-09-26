@@ -145,7 +145,7 @@ namespace Launcher
             Name_label.Name = "Name_label";
             Name_label.Size = new Size(217, 28);
             Name_label.TabIndex = 0;
-            Name_label.Text = "Crystal Mir 2";
+            Name_label.Text = "梦回米尔传说";
             Name_label.TextAlign = ContentAlignment.MiddleCenter;
             Name_label.Visible = false;
             // 

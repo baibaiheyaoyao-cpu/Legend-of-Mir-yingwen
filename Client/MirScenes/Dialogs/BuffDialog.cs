@@ -472,6 +472,8 @@ namespace Client.MirScenes.Dialogs
                     return 30114;
                 case BuffType.MagicBooster:
                     return 30146;
+                case BuffType.HeavenlySecrets: //天上秘术专属图标(MagIcon[148], 与深延术146区分; 不满意可换)
+                    return 30148;
                 case BuffType.ImmortalSkin:
                     return 30160;
                 case BuffType.MagicShield:

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Client.MirSounds
 {
-    public static class SoundList
+    public static class SoundList      // 声音列表 
     {
         public static Dictionary<int, string> Indexes = new Dictionary<int, string>();
 

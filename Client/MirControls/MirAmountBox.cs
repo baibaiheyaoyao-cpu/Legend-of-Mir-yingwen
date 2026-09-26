@@ -3,7 +3,7 @@ using Client.MirSounds;
 
 namespace Client.MirControls
 {
-    public sealed class MirAmountBox : MirImageControl
+    public sealed class MirAmountBox : MirImageControl            // 客户端 → 传奇控件模块
     {
         public MirLabel TitleLabel, TextLabel;
         public MirButton OKButton, CancelButton, CloseButton;

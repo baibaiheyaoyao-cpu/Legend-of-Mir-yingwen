@@ -1,4 +1,4 @@
-using Client.MirGraphics;
+using Client.MirGraphics;          
 using Client.MirScenes;
 using Client.MirSounds;
 using S = ServerPackets;
@@ -925,6 +925,10 @@ namespace Client.MirObjects
                         break;
                     case MirAction.AttackRange1:
                         PlayRangeSound();
+                        //道士宠物(月灵117/风灵615/幻灵616): 出手即播攻击音——原特效case挂在FrameIndex==4分支,
+                        //动画帧推进达不到时永不触发=弹道无声根因
+                        if (BaseImage == Monster.HolyDeva || (ushort)BaseImage == 615 || (ushort)BaseImage == 616)
+                            SoundManager.PlaySound(BaseSound + 6);
                         TargetID = (uint)action.Params[0];
                         CurrentActionLevel = (byte)action.Params[4];
                         switch (BaseImage)

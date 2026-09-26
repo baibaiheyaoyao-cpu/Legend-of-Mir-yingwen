@@ -6,7 +6,7 @@ using Client.Resolution;
 
 namespace Client
 {
-    internal static class Program
+    internal static class Program         // 
     {
         public static CMain Form;
         public static AMain PForm;
@@ -15,10 +15,10 @@ namespace Client
         public static bool Launch;
 
         [STAThread]
-        private static void Main(string[] args)
+        private static void Main(string[] args)         // 程序入口点。 
         {
 
-            // 加上这一行：强制关闭 WinForms 的高 DPI 自动缩放，保持 1:1 像素布局
+            // 加上这一行：强制关闭 WinForms 的高 DPI 自动缩放，保持 1:1 像素布局   // 我记得是解决登录器错位的 2026年9月21日
             Application.SetHighDpiMode(HighDpiMode.DpiUnaware);
 
             if (args.Length > 0)

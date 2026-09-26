@@ -708,13 +708,34 @@ namespace Server.MirObjects
 
                     if (info == null) return;
 
+                    // [任务绑定重推 2026-09-25] 记录旧绑定, 赋值后比较; 变化则向在线玩家重发任务资料
+                    uint oldNpcIndex = info.NpcIndex;
+                    uint oldFinishNpcIndex = info.FinishNpcIndex;
+
                     if (index > 0)
                         info.NpcIndex = LoadedObjectID;
                     else
+                    {
                         info.FinishNpcIndex = LoadedObjectID;
+
+                        // [交付多NPC支持] 记录到本NPC的"声明交付"列表(FinishQuest就近校验用)
+                        if (loadedNPC.FinishQuests.All(x => x != info))
+                            loadedNPC.FinishQuests.Add(info);
+                    }
 
                     if (loadedNPC.Quests.All(x => x != info))
                         loadedNPC.Quests.Add(info);
+
+                    // NPC重生(地图卸载重载/脚本重载)后ObjectID变化, 任务绑定随之刷新:
+                    // 客户端任务资料只在登录时全量推送一次, 不重推就会拿着过期ObjectID匹配不到NPC,
+                    // 表现为"必须下线重登才能接/交任务". 此处主动重推, 客户端按Index替换并刷新图标.
+                    if (info.NpcIndex != oldNpcIndex || info.FinishNpcIndex != oldFinishNpcIndex)
+                    {
+                        for (int p = Envir.Players.Count - 1; p >= 0; p--)
+                        {
+                            Envir.Players[p].RefreshQuestInfo(info);
+                        }
+                    }
 
                 }
             }

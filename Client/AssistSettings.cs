@@ -1,14 +1,15 @@
-using System.IO;
+using System.IO;           // 引入 System.IO  工具
 
-namespace Client
-{
-    //辅助系统独立配置(移植自 Crystal-Monk 的 Assist 功能)
-    //与 Settings.cs 完全解耦: 配置按角色存放在 .\Data\UserData\Assist_角色名.ini
-    public static class AssistSettings
+namespace Client          // 命名空间   客户端                 
+{    // =========================这是 ctrl+w 设置页面的 代码.
+    //辅助系统独立配置(移植自 Crystal-Monk 的 Assist 功能)   
+    //与 Settings.cs  F12 设置页面.    完全解耦: 配置按角色存放在 .\Data\UserData\Assist_角色名.ini
+     public static class AssistSettings     // 辅助系统配置类  static 是静态 ,  public 是公共的 assistSettings  英文辅助的意思   
+
     {
-        private static InIReader Reader;
+        private static InIReader Reader;       // 只声明，不赋值。Reader 是一个静态私有变量，类型是 InIReader，用于读取和写入 INI 文件。它用于处理辅助系统的配置文件。
 
-        public static string CharacterName = string.Empty;
+        public static string CharacterName = string.Empty;   // 空的 ,角色 
 
         //----------- 保护(自动喝药) -----------
         public static bool SmartProtect = true;                       //总开关
@@ -22,7 +23,7 @@ namespace Client
 
         //----------- 职业(自动技能) -----------
         public static bool FreeShift = false;             //免Shift攻击(玩家/保护名目标)
-        public static bool SmartFireHit = false;           //自动烈火剑法
+        public static bool SmartFireHit = false;           //自动烈火剑法   
         public static bool SmartDaMo = false;              //自动达摩棍法
         public static bool SmartSheild = false;            //自动魔法盾
         public static bool SmartElementalBarrier = false;  //自动金刚术(弓手元素盾)
@@ -39,7 +40,7 @@ namespace Client
         public static bool SmartConcentration = false;     //自动气流术(元素蓄力buff)
 
         //----------- 挂机 -----------
-        public static bool AutoHunt = false;               //自动打怪(找怪/寻路/攻击/拾取)
+        public static bool AutoHunt = false;               //自动打怪(找怪/寻路/攻击/拾取)  // - `= false`：初始化为 `false`，表示默认关闭
 
         //----------- 物品 -----------
         public static bool AutoPick = false;               //自动拾取(配合过滤表)
@@ -58,17 +59,20 @@ namespace Client
         public static bool ShowPing = false;               //显示Ping(新增视觉, 默认关)
         public static bool ShowHealth = true;              //名牌显示血量(维持现状)
 
-        public static void Load(string charName)
+
+        // 以上 是辅助系统的配置选项，下面是加载和保存配置的方法。  也就是说上面的都是变量 ,下面是方法  
+
+        public static void Load(string charName)       // 加载配置方法  Load 是加载的意思     load 方法接受一个字符串参数 charName，表示角色名。它用于加载指定角色的辅助系统配置。
         {
             CharacterName = charName ?? string.Empty;
 
             if (!Directory.Exists(Settings.UserDataPath))
-                Directory.CreateDirectory(Settings.UserDataPath);
+                Directory.CreateDirectory(Settings.UserDataPath);          // 如果用户数据路径不存在，则创建该目录。Settings.UserDataPath 是一个静态属性，表示用户数据的存储路径。
 
             Reader = new InIReader(Path.Combine(Settings.UserDataPath, "Assist_" + CharacterName + ".ini"));
 
-            //Protect
-            SmartProtect = Reader.ReadBoolean("Protect", "Enabled", SmartProtect);
+            //Protect 是 保护(自动喝药)  下面是读取配置文件中的各个选项的值，并赋值给对应的静态变量。  
+            SmartProtect = Reader.ReadBoolean("Protect", "Enabled", SmartProtect);    // 这是 读取 "Protect" 节下的 "Enabled" 键的布尔值，如果读取失败，则使用 SmartProtect 的当前值作为默认值。
             ProtectPercent0 = Reader.ReadInt32("Protect", "Percent0", ProtectPercent0);
             PercentItem0 = Reader.ReadString("Protect", "Item0", PercentItem0);
             ProtectPercent1 = Reader.ReadInt32("Protect", "Percent1", ProtectPercent1);
@@ -78,7 +82,7 @@ namespace Client
             UseItemInterval = Reader.ReadInt32("Protect", "UseItemInterval", UseItemInterval);
             if (PercentItem0 == "金创药") PercentItem0 = "金疮药"; //纠正旧配置错别字(NPC商店实际卖"金疮药")
 
-            //Class
+            //Class   是 职业(自动技能)  下面是读取职业相关的配置选项  Class 英文的意思是?     
             FreeShift = Reader.ReadBoolean("Class", "FreeShift", FreeShift);
             SmartFireHit = Reader.ReadBoolean("Class", "SmartFireHit", SmartFireHit);
             SmartDaMo = Reader.ReadBoolean("Class", "SmartDaMo", SmartDaMo);
@@ -88,13 +92,13 @@ namespace Client
             SpaceThrusting = Reader.ReadBoolean("Class", "SpaceThrusting", SpaceThrusting);
             AutoHunt = Reader.ReadBoolean("Class", "AutoHunt", AutoHunt);
 
-            //Assassin
+            //Assassin   刺客 
             SmartHaste = Reader.ReadBoolean("Class", "SmartHaste", SmartHaste);
             SmartLightBody = Reader.ReadBoolean("Class", "SmartLightBody", SmartLightBody);
             SmartSwiftFeet = Reader.ReadBoolean("Class", "SmartSwiftFeet", SmartSwiftFeet);
             SmartMoonLight = Reader.ReadBoolean("Class", "SmartMoonLight", SmartMoonLight);
 
-            //Archer
+            //Archer    弓箭手  
             SmartConcentration = Reader.ReadBoolean("Class", "SmartConcentration", SmartConcentration);
 
             //Item
@@ -114,7 +118,7 @@ namespace Client
             ShowHealth = Reader.ReadBoolean("Base", "ShowHealth", ShowHealth);
         }
 
-        public static void Save()
+        public static void Save()    // 保存配置方法  Save 是保存的意思
         {
             if (Reader == null || string.IsNullOrEmpty(CharacterName)) return;
 
@@ -144,7 +148,7 @@ namespace Client
             Reader.Write("Class", "SmartSwiftFeet", SmartSwiftFeet);
             Reader.Write("Class", "SmartMoonLight", SmartMoonLight);
 
-            //Archer
+            //Archer  
             Reader.Write("Class", "SmartConcentration", SmartConcentration);
 
             //Item
@@ -208,3 +212,5 @@ namespace Client
         }
     }
 }
+
+

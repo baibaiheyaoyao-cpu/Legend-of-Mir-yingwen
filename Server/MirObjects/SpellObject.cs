@@ -637,6 +637,8 @@ namespace Server.MirObjects
             {
                 case Spell.Healing:
                     return null;
+                case Spell.SoulflameSiphon:      //吸魔炎风/秘籍: 3×3九对象只广播首个(Show), 否则客户端九龙卷叠加="多重特效"根因(对齐参考源码GetInfo)
+                case Spell.SoulflameSiphonRare:
                 case Spell.PoisonCloud:
                 case Spell.Blizzard:
                 case Spell.MeteorStrike:

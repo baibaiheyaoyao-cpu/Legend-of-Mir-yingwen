@@ -1001,6 +1001,18 @@ namespace Server.MirObjects
             Enqueue(new S.NewQuestInfo { Info = info.CreateClientQuestInfo(this) });
             Connection.SentQuestInfo.Add(info);
         }
+
+        /// <summary>
+        /// [任务绑定重推 2026-09-25] 脚本加载线程在任务的接取/交付NPC绑定(ObjectID)变化时调用:
+        /// 清除本连接的"已发送"缓存并重发任务资料. 客户端NewQuestInfo处理器已支持按Index替换
+        /// 并刷新在场NPC的任务图标 —— 修复"NPC重生(地图重载)后绑定过期, 客户端图标消失,
+        /// 必须下线重登才能接/交任务"的问题.
+        /// </summary>
+        public void RefreshQuestInfo(QuestInfo info)
+        {
+            Connection.SentQuestInfo.Remove(info);
+            CheckQuestInfo(info);
+        }
         public void CheckRecipeInfo(RecipeInfo info)
         {
             if (Connection.SentRecipeInfo.Contains(info)) return;
@@ -1149,6 +1161,24 @@ namespace Server.MirObjects
             return p;
         }
 
+        /// <summary>构建CustomMagic数据驱动技能配置包(原版CustomMagic INI兼容, MagicID绑定的才下发)</summary>
+        public static S.CustomMagicConfigs BuildCustomMagicConfigsPacket()
+        {
+            var p = new S.CustomMagicConfigs();
+
+            foreach (CustomSkillDef def in CustomSkillProfile.All())
+            {
+                if (def.MagicId <= 0 || def.Client == null) continue;
+
+                def.Client.Spell = (Spell)def.MagicId;
+                def.Client.Name = def.Name;
+                def.Client.Description = def.Description;
+                p.Configs.Add(def.Client);
+            }
+
+            return p;
+        }
+
         private void StartGameSuccess()
         {
             Connection.Stage = GameStage.Game;
@@ -1158,6 +1188,9 @@ namespace Server.MirObjects
 
             //自定义技能配置下发(客户端按表渲染特效/音效/动作)
             Enqueue(BuildCustomSkillConfigsPacket());
+
+            //CustomMagic数据驱动技能配置下发(特效段/描述/音效, 旧客户端收到未知包ID自动忽略)
+            Enqueue(BuildCustomMagicConfigsPacket());
 
             if (Settings.TestServer)
             {
@@ -2207,6 +2240,12 @@ namespace Server.MirObjects
 
                 switch (parts[0].ToUpper())
                 {
+                    case "RELOADJS": // [JS模块] 热重载全部JS脚本模块(与SMain"脚本模块中心"面板的重载同源)
+                        if (!IsGM) return;
+                        Server.MirScripting.JsScriptHost.ReloadAllModules();
+                        ReceiveChat("[JS模块] 全部脚本模块已重载.", ChatType.Hint);
+                        return;
+
                     case "LOGIN":
                         GMLogin = true;
                         ReceiveChat(GameLanguage.ServerTextMap.GetLocalization(ServerTextKeys.EnterGmPassword), ChatType.Hint);
@@ -2424,6 +2463,10 @@ namespace Server.MirObjects
                                     item.GMMade = true;
                                     item.Count = itemCount;
 
+                                    // [GM命令任务路由 2026-09-25] 匹配当前任务需要的物品优先进入任务物品栏并计数
+                                    // (与掉落捕获同链路) —— 否则@Make进普通背包, 任务物品进度恒为0
+                                    if (CheckNeedQuestItem(item)) return;
+
                                     if (CanGainItem(item)) GainItem(item);
 
                                     return;
@@ -2432,6 +2475,9 @@ namespace Server.MirObjects
                                 item.GMMade = true;
                                 item.Count = iInfo.StackSize;
                                 itemCount -= iInfo.StackSize;
+
+                                // [GM命令任务路由] 同上: 任务物品进任务栏
+                                if (CheckNeedQuestItem(item)) continue;
 
                                 if (!CanGainItem(item)) return;
                                 GainItem(item);
@@ -5899,6 +5945,28 @@ namespace Server.MirObjects
                 return;
             }
 
+            // [JS模块钩子] 物品被JS模块接管时优先转交JS脚本(如登仙任务道具: 碎片合成等),
+            // 脚本返回true = 已处理且消耗1个; false = 不处理/不消耗, 继续走经典UseItem.
+            var jsItemBinding = Server.MirScripting.JsModuleRegistry.FindItem(item.Info.FriendlyName);
+            if (jsItemBinding != null)
+            {
+                if (Server.MirScripting.JsScriptHost.CallItemUse(jsItemBinding, this, item))
+                {
+                    // 与经典UseItem尾部相同的消耗逻辑(见本方法末尾): 扣1个+发包
+                    if (item.Count > 1) item.Count--;
+                    else Info.Inventory[index] = null;
+                    RefreshBagWeight();
+                    Report.ItemChanged(item, 1, 1);
+                    p.Success = true;
+                    Enqueue(p);
+                }
+                else
+                {
+                    Enqueue(p); // 未消耗, Success保持false
+                }
+                return;
+            }
+
             switch (item.Info.Type)
             {
                 case ItemType.Potion:
@@ -8261,6 +8329,15 @@ namespace Server.MirObjects
                 ob.CheckVisible(this);
 
                 if (!ob.VisibleLog[Info.Index] || !ob.Visible) return;
+
+                // [JS模块钩子] 该NPC被JS模块接管时, 整个对话转交JS引擎(优先于经典@@脚本).
+                // 经典txt脚本仍照常加载(提供任务图标/商店等数据), 仅对话分发走JS —— 两套脚本互通旗标与物品.
+                var jsBinding = Server.MirScripting.JsModuleRegistry.FindNpc(ob.Info.FileName);
+                if (jsBinding != null)
+                {
+                    Server.MirScripting.JsScriptHost.CallNpcFunction(jsBinding, this, ob, key);
+                    return;
+                }
 
                 var scriptID = NPCScriptID;
                 if (objectID != NPCObjectID || key == NPCScript.MainKey)
@@ -11629,7 +11706,7 @@ namespace Server.MirObjects
 
         #region Quests
 
-        public void AcceptQuest(int index)
+        public void AcceptQuest(int index, uint npcIndex)
         {
             bool canAccept = true;
 
@@ -11651,7 +11728,9 @@ namespace Server.MirObjects
 
             for (int i = CurrentMap.NPCs.Count - 1; i >= 0; i--)
             {
-                if (CurrentMap.NPCs[i].ObjectID != info.NpcIndex) continue;
+                // [任务接取修复] 按客户端上报的NPC运行时ObjectID匹配(而非任务表静态NpcIndex) —— 
+                // 任务在哪接由NPC脚本[Quests]决定(图标在哪就在哪接), 与任务表里过时的NpcIndex解耦
+                if (CurrentMap.NPCs[i].ObjectID != npcIndex) continue;
                 if (!Functions.InRange(CurrentMap.NPCs[i].CurrentLocation, CurrentLocation, Globals.DataRange)) break;
                 npc = CurrentMap.NPCs[i];
                 break;
@@ -11768,13 +11847,24 @@ namespace Server.MirObjects
 
             NPCObject npc = null;
 
-            //2026-09-18 修复: 恢复官方写法(CurrentMap), 此前误改为Envir全服查找,
-            //而Functions.InRange只比XY坐标不比地图, 导致交付NPC坐标巧合时可以跨图原地交任务
+            // [任务交付修复 2026-09-25] 原校验 ObjectID==FinishNpcIndex 有两个缺陷:
+            //   ① FinishNpcIndex 由脚本加载时记录为NPC运行时ObjectID, 且每个声明该任务的NPC都会
+            //      覆盖它(最后加载者赢) —— 同一任务有多个交付NPC时(如311的老渔夫/钓鱼商都声明-311),
+            //      只有"最后加载"的那个能交, 玩家找另一个就报"交付NPC不在身边";
+            //   ② NPC重新生成后ObjectID变化, 绑定即过期。
+            // 现改为"就近+脚本成员关系"校验: 身边NPC的任务列表(来自其脚本[Quests]段)包含本任务
+            // 即视为合法交付点, 与任务图标的显示逻辑(NPC QuestIDs)保持一致; 保留ObjectID等值兼容分支。
+            // 仍限定当前地图+DataRange范围, 不允许跨图交付(维持2026-09-18修复的约束)。
             for (int i = CurrentMap.NPCs.Count - 1; i >= 0; i--)
             {
-                if (CurrentMap.NPCs[i].ObjectID != quest.Info.FinishNpcIndex) continue;
-                if (!Functions.InRange(CurrentMap.NPCs[i].CurrentLocation, CurrentLocation, Globals.DataRange)) break;
-                npc = CurrentMap.NPCs[i];
+                NPCObject candidate = CurrentMap.NPCs[i];
+
+                bool isQuestNpc = candidate.ObjectID == quest.Info.FinishNpcIndex      // 兼容: 原绑定的交付NPC
+                                  || candidate.FinishQuests.Contains(quest.Info);     // 脚本[Quests]声明过交付(-N)的NPC
+
+                if (!isQuestNpc) continue;
+                if (!Functions.InRange(candidate.CurrentLocation, CurrentLocation, Globals.DataRange)) continue;
+                npc = candidate;
                 break;
             }
             if (npc == null)

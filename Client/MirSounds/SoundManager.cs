@@ -4,8 +4,8 @@ using NAudio.Wave.SampleProviders;
 
 namespace Client.MirSounds
 {
-    public static class SoundManager
-    {
+    public static class SoundManager    // 声音
+    { 
         private static Dictionary<int, string> _indexList => SoundList.Indexes;
         private static List<KeyValuePair<long, int>> _delayList = new List<KeyValuePair<long, int>>();
         private static Dictionary<int, CachedSound> _cachedOneShots = new Dictionary<int, CachedSound>();

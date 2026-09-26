@@ -234,6 +234,9 @@ namespace Client.MirObjects
                 case BuffType.ImmortalSkin:
                     Effects.Add(new BuffEffect(Libraries.Magic3, 570, 5, 1400, this, true, type) { Repeat = true });
                     break;
+                case BuffType.CounterAttack: // 天务(天武): 火之气息附体——官方"往武器和身体灌注火之气息"(Magic3 140火苗闪烁循环, buff消自动灭)
+                    Effects.Add(new BuffEffect(Libraries.Magic3, 140, 2, 400, this, true, type) { Repeat = true });
+                    break;
                 case BuffType.SwiftFeet:
                     if (ob != null) ob.Sprint = true;
                     break;

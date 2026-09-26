@@ -1526,6 +1526,12 @@ public enum BuffType : byte
     LuckAid,
     AccuracyAid,
     AgilityAid,
+    HeavenlySecrets, //天上秘术专属buff(与深延术MagicBooster分离: 独立图标/时长/互不覆盖; 参考源码BuffType=76同构)
+
+    // [登仙后期系统 2026-09-25] 羽化登仙阶段Buff: 属性随阶段成长(战/法/道/刺/弓/僧各30阶),
+    // 数据源 Custom\CustomBuffList.txt(作者原版格式), 挂在JS模块(年轻破关虎/月灵)使用;
+    // Buff.Values[0] 存 CustomBuffList 行Id 作为阶段身份(HASBUFF/REMOVEBUFF按名匹配用)
+    Ascension,
 }
 
 [Flags]
@@ -1857,6 +1863,7 @@ public enum ServerPacketIds : short
 
     //自定义技能系统 - 服务端下发技能配置表(登录+面板保存时广播; 旧客户端收到未知包ID会忽略)
     CustomSkillConfigs,  //全部已启用自定义技能定义(Spell 242-255), 客户端按表渲染特效/音效/动作
+    CustomMagicConfigs,  //CustomMagic数据驱动技能配置表(原版CustomMagic INI兼容), 客户端按段渲染特效/描述/音效
 }
 
 public enum ClientPacketIds : short

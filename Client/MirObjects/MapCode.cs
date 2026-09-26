@@ -219,7 +219,7 @@
                 return;
             }
             //shanda's 2012 format and one of shandas(wemades) older formats share same header info, only difference is the filesize
-            if ((Bytes[4] == 0x0F) || (Bytes[4] == 0x03) && (Bytes[18] == 0x0D) && (Bytes[19] == 0x0A))
+            if (((Bytes[4] == 0x0F) || (Bytes[4] == 0x03)) && (Bytes[18] == 0x0D) && (Bytes[19] == 0x0A))
             {
                 int W = Bytes[0] + (Bytes[1] << 8);
                 int H = Bytes[2] + (Bytes[3] << 8);
@@ -240,6 +240,27 @@
             {
                 LoadMapType7();
                 return;
+            }
+
+            //size based fallback for maps with custom headers (author signature etc.): identify 14/36 byte formats by exact filesize
+            {
+                int fw = Bytes[0] + (Bytes[1] << 8);
+                int fh = Bytes[2] + (Bytes[3] << 8);
+                if (fw > 0 && fh > 0)
+                {
+                    long cells = (long)fw * fh;
+                    if (Bytes.Length == 52 + cells * 14)
+                    {
+                        LoadMapType2();
+                        return;
+                    }
+
+                    if (Bytes.Length == 52 + cells * 36)
+                    {
+                        LoadMapType3();
+                        return;
+                    }
+                }
             }
 
             //if it's none of the above load the default old school format
@@ -328,7 +349,7 @@
                         offSet++;
 
                         if (MapCells[x, y].FrontIndex == 102)
-                            MapCells[x, y].FrontIndex = 90;
+                            MapCells[x, y].FrontIndex = 91;
 
                         if (MapCells[x, y].FrontIndex >= 255)
                             MapCells[x, y].FrontIndex = -1;
@@ -360,6 +381,8 @@
                         MapCells[x, y].BackImage = (short)BitConverter.ToInt16(Bytes, offset);
                         offset += 2;
                         MapCells[x, y].MiddleImage = (short)BitConverter.ToInt16(Bytes, offset);
+                        if ((MapCells[x, y].MiddleImage & 0x8000) != 0)
+                            MapCells[x, y].MiddleImage = (short)(MapCells[x, y].MiddleImage & 0x7FFF);
                         offset += 2;
                         MapCells[x, y].FrontImage = (short)BitConverter.ToInt16(Bytes, offset);
                         offset += 2;

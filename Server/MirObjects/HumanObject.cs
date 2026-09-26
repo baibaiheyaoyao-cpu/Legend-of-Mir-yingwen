@@ -3669,6 +3669,19 @@ namespace Server.MirObjects
 
             bool cast = true;
             byte level = magic.Level;
+
+            //CustomMagic数据驱动钩子: INI绑定(MagicID=)且显式配置过伤害键(DamageStat/DamageRate)的技能才按INI执行,
+            //否则回落引擎硬编码实现. 原版水晶端特效INI(无伤害键)只下发客户端特效, 不再接管伤害(防零伤害).
+            CustomSkillDef magicProfile = CustomSkillProfile.Get((int)spell);
+            if (magicProfile != null && magicProfile.HasDamageOverride)
+            {
+                cast = CastCustomMagicProfile(magic, target, location, magicProfile);
+                if (cast) magic.CastTime = Envir.Time;
+                Enqueue(new S.Magic { Spell = spell, TargetID = targetID, Target = location, Cast = cast, Level = level });
+                Broadcast(new S.ObjectMagic { ObjectID = ObjectID, Direction = Direction, Location = CurrentLocation, Spell = spell, TargetID = targetID, Target = location, Cast = cast, Level = level });
+                return;
+            }
+
             switch (spell)
             {
                 case Spell.FireBall:
@@ -3927,7 +3940,7 @@ namespace Server.MirObjects
                     FlashDash(magic);
                     return;
                 case Spell.FlashDashRare:
-                    FlashDashRare(target, magic, out cast);
+                    FlashDashRare(magic);
                     return;
                 case Spell.CrescentSlash:
                     CrescentSlash(magic);
@@ -3936,10 +3949,10 @@ namespace Server.MirObjects
                     CrescentSlashRare(magic);
                     break;
                 case Spell.ShadowCombo:
-                    ShadowCombo(magic, 2);
+                    ShadowCombo(magic, 6);      
                     break;
                 case Spell.ShadowComboRare:
-                    ShadowCombo(magic, 3);
+                    ShadowCombo(magic, 10);
                     break;
                 case Spell.StraightShot:
                     if (!StraightShot(target, magic)) targetID = 0;
@@ -4052,6 +4065,91 @@ namespace Server.MirObjects
             Enqueue(new S.Magic { Spell = spell, TargetID = targetID, Target = location, Cast = cast, Level = level });
             Broadcast(new S.ObjectMagic { ObjectID = ObjectID, Direction = Direction, Location = CurrentLocation, Spell = spell, TargetID = targetID, Target = location, Cast = cast, Level = level });
         }
+
+        #region CustomMagic数据驱动技能(原版CustomMagic INI兼容)
+        /// <summary>
+        /// 按 CustomMagic INI 执行技能行为: 伤害(属性/倍率/模式/范围/延迟) + 持续多跳
+        /// + 状态四件套(毒/红/缓/冻/晕/麻痹/流血/灼烧) + 自增益(XxxAdd+BuffTime) + 全屏吸怪
+        /// </summary>
+        private bool CastCustomMagicProfile(UserMagic magic, MapObject target, Point location, CustomSkillDef def)
+        {
+            if (def == null) return false;
+
+            Point centre;
+            if (def.AttackMode == "SINGLE")
+            {
+                if (target == null || target.Dead) return false; // 单体模式必须有合法目标
+                centre = target.CurrentLocation;
+            }
+            else
+            {
+                centre = location;
+                if (target != null && !target.Dead && centre.X == 0 && centre.Y == 0) centre = target.CurrentLocation;
+                if (centre.X == 0 && centre.Y == 0) centre = CurrentLocation;
+            }
+
+            // 半径防呆: 原版模板存在"100=不限制"占位, 方阵结算必须限界, 超限截断并记日志
+            int radius = Math.Max(1, def.Range);
+            if (radius > 10)
+            {
+                MessageQueue.Enqueue(string.Format("[CustomMagic] {0} 伤害半径{1}格超限, 截断为10 (请检查INI ATTACKNEARRANGE/ATTACKGROUPRANGE)", def.Name, radius));
+                radius = 10;
+            }
+
+            int damage = CustomMagicProfileDamage(magic, def);
+            long firstDelay = Math.Max(200, def.DamageDelay);
+
+            if (def.MagicExpireTime > 0 && def.MagicTickTime > 0)
+            {
+                // 持续型(如吸魔炎风旋风): DamageDelay 首跳, 之后每 MagicTickTime 一跳直至 MagicExpireTime
+                long step = Math.Max(200, def.MagicTickTime);
+                for (long t = firstDelay; t <= def.MagicExpireTime + firstDelay; t += step)
+                {
+                    DelayedAction action = new DelayedAction(DelayedType.Magic, Envir.Time + t, this, magic, damage, centre, radius, def);
+                    CurrentMap.ActionList.Add(action);
+                }
+            }
+            else
+            {
+                DelayedAction action = new DelayedAction(DelayedType.Magic, Envir.Time + firstDelay, this, magic, damage, centre, radius, def);
+                CurrentMap.ActionList.Add(action);
+            }
+
+            ApplyCustomMagicProfileBuff(def);
+            return true;
+        }
+
+        /// <summary>伤害 = 引擎同款公式(攻击力全额 + DB字段 + 等级倍率) × DamageRate%</summary>
+        private int CustomMagicProfileDamage(UserMagic magic, CustomSkillDef def)
+        {
+            int basePower;
+            switch (def.DamageStat)
+            {
+                case "DC": basePower = GetAttackPower(Stats[Stat.MinDC], Stats[Stat.MaxDC]); break;
+                case "SC": basePower = GetAttackPower(Stats[Stat.MinSC], Stats[Stat.MaxSC]); break;
+                default: basePower = GetAttackPower(Stats[Stat.MinMC], Stats[Stat.MaxMC]); break;
+            }
+            //magic.GetDamage = (攻击力 + MPower/4×(等级+1)+Power) × (MultiplierBase+等级×MultiplierBonus), 与引擎switch路线一字不差
+            return magic.GetDamage(basePower) * Math.Max(1, def.DamageRate) / 100;
+        }
+
+        /// <summary>自增益: INI 的 XxxAdd 数值键 + BuffTime 秒(经 WonderDrug 通用属性Buff承载)</summary>
+        private void ApplyCustomMagicProfileBuff(CustomSkillDef def)
+        {
+            if (def.BuffAdds.Count == 0 || def.BuffTime <= 0) return;
+
+            Stats stats = new Stats();
+            foreach (KeyValuePair<string, int> pair in def.BuffAdds)
+            {
+                Stat stat;
+                if (CustomSkillProfile.TryMapStat(pair.Key, out stat))
+                    stats[stat] += pair.Value;
+            }
+
+            if (stats.Count > 0)
+                AddBuff(BuffType.WonderDrug, this, def.BuffTime * Settings.Second, stats);
+        }
+        #endregion
 
         #region 自定义技能引擎(242-255)
         /// <summary>自定义技能施放入口, 参数全部来自 Configs\CustomSkills.ini(面板编辑)</summary>
@@ -5089,7 +5187,7 @@ namespace Server.MirObjects
         }
 
 
-        private void MoonMist(UserMagic magic)
+        private void MoonMist(UserMagic magic)    //   月影雾基础版  秘籍 在下面.
         {
             for (int i = 0; i < Buffs.Count; i++)
                 if (Buffs[i].Type == BuffType.MoonLight) return;
@@ -5098,9 +5196,13 @@ namespace Server.MirObjects
 
             AddBuff(BuffType.MoonLight, this, (time + (magic.Level + 1) * 5) * 500, new Stats());
 
-            CurrentMap.Broadcast(new S.ObjectEffect { ObjectID = ObjectID, Effect = SpellEffect.MoonMist }, CurrentLocation);
+            //原版: 施法瞬间广播爆炸特效(SpellEffect.MoonMist→客户端GameScene:5067播705帧)——
+            //与"雾聚满再爆"时序冲突(t=0和1.8s各炸一次), 注释掉; 爆炸画面改由客户端施法动作
+            //统一延迟1.8s播放(所有人可见且只播一次); 5067源码保留不动
+            //CurrentMap.Broadcast(new S.ObjectEffect { ObjectID = ObjectID, Effect = SpellEffect.MoonMist }, CurrentLocation);
             int damage = magic.GetDamage(GetAttackPower(Stats[Stat.MinDC], Stats[Stat.MaxDC]));
-            DelayedAction action = new DelayedAction(DelayedType.Magic, Envir.Time + 500, this, magic, damage, CurrentLocation, Direction);
+            //1800ms=雾(24帧/1.8s)聚满之时, 爆炸画面与伤害数字同落(官方"一段时间后雾爆")
+            DelayedAction action = new DelayedAction(DelayedType.Magic, Envir.Time + 1800, this, magic, damage, CurrentLocation, Direction);
             CurrentMap.ActionList.Add(action);
             LevelMagic(magic);
 
@@ -5125,56 +5227,77 @@ namespace Server.MirObjects
         }
 
         //战士: 时空剑(极时空神剑, 瞬身到目标背后攻击)
+        //距离门读DB施法距离(魔法编辑器可调); 落点兜底: 背格优先→目标周身空格→全堵原地出刀, 不再无声失败
         private void DimensionalSword(MapObject target, UserMagic magic, out bool cast)
         {
             cast = false;
             if (target == null || !target.IsAttackTarget(this)) return;
             if (target.CurrentMap != CurrentMap) return;
-            if (Functions.MaxDistance(CurrentLocation, target.CurrentLocation) > 2) return;
+            int dsRange = magic.Info == null ? 2 : Math.Max(1, (int)magic.Info.Range);
+            if (Functions.MaxDistance(CurrentLocation, target.CurrentLocation) > dsRange) return;
 
             int damageFinal = magic.GetDamage(GetAttackPower(Stats[Stat.MinDC], Stats[Stat.MaxDC]));
 
-            Point backLocation = Functions.PointMove(target.CurrentLocation, Functions.ReverseDirection(target.Direction), 1);
-            if (CurrentMap.ValidPoint(backLocation))
+            Point strikeFrom = FindStrikeCell(target);
+            if (strikeFrom != CurrentLocation)
             {
-                Teleport(CurrentMap, backLocation, false);
-
-                Direction = Functions.DirectionFromPoint(CurrentLocation, target.CurrentLocation);
-                Enqueue(new S.UserAttackMove { Direction = Direction, Location = CurrentLocation });
-
-                target.Attacked(this, damageFinal, DefenceType.AC, false);
-                LevelMagic(magic);
-                cast = true;
+                CurrentMap.GetCell(CurrentLocation).Remove(this);
+                RemoveObjects(Direction, 1);
+                CurrentLocation = strikeFrom;
+                CurrentMap.GetCell(CurrentLocation).Add(this);
+                AddObjects(Direction, 1);
             }
+
+            Direction = Functions.DirectionFromPoint(CurrentLocation, target.CurrentLocation);
+            Enqueue(new S.UserAttackMove { Direction = Direction, Location = CurrentLocation }); //参考源码同款: 瞬闪封包, 特效挂人物身上被一起带走="直接冲出去"的观感
+
+            target.Attacked(this, damageFinal, DefenceType.AC, false);
+            LevelMagic(magic);
+            cast = true;
         }
 
-        //战士: 时空剑-秘籍(更远距离+直接改格站位)
+        /// <summary>时空剑落点: 目标背后一格优先, 被堵则扫目标周身空格, 全堵返回施法者当前位置(原地出刀)</summary>
+        private Point FindStrikeCell(MapObject target)
+        {
+            Point back = Functions.PointMove(target.CurrentLocation, Functions.ReverseDirection(target.Direction), 1);
+            if (CurrentMap.ValidPoint(back)) return back;
+
+            for (int d = 0; d < 8; d++)
+            {
+                Point p = Functions.PointMove(target.CurrentLocation, (MirDirection)d, 1);
+                if (CurrentMap.ValidPoint(p)) return p;
+            }
+            return CurrentLocation;
+        }
+
+        //战士: 时空剑-秘籍(更远距离+直接改格站位; 距离门同读DB, 落点同兜底)
         private void DimensionalSwordRare(MapObject target, UserMagic magic, out bool cast)
         {
             cast = false;
             if (target == null || !target.IsAttackTarget(this)) return;
             if (target.CurrentMap != CurrentMap) return;
-            if (Functions.MaxDistance(CurrentLocation, target.CurrentLocation) > 3) return;
+            int dsRange = magic.Info == null ? 3 : Math.Max(1, (int)magic.Info.Range);
+            if (Functions.MaxDistance(CurrentLocation, target.CurrentLocation) > dsRange) return;
 
             int damageFinal = magic.GetDamage(GetAttackPower(Stats[Stat.MinDC], Stats[Stat.MaxDC]));
 
-            Point backLocation = Functions.PointMove(target.CurrentLocation, Functions.ReverseDirection(target.Direction), 1);
-            if (CurrentMap.ValidPoint(backLocation))
+            Point strikeFrom = FindStrikeCell(target);
+            if (strikeFrom != CurrentLocation)
             {
                 CurrentMap.GetCell(CurrentLocation).Remove(this);
                 RemoveObjects(Direction, 1);
 
-                CurrentLocation = backLocation;
+                CurrentLocation = strikeFrom;
                 CurrentMap.GetCell(CurrentLocation).Add(this);
                 AddObjects(Direction, 1);
-
-                Direction = Functions.DirectionFromPoint(CurrentLocation, target.CurrentLocation);
-                Enqueue(new S.UserAttackMove { Direction = Direction, Location = CurrentLocation });
-
-                target.Attacked(this, damageFinal, DefenceType.AC, false);
-                LevelMagic(magic);
-                cast = true;
             }
+
+            Direction = Functions.DirectionFromPoint(CurrentLocation, target.CurrentLocation);
+            Enqueue(new S.UserAttackMove { Direction = Direction, Location = CurrentLocation }); //参考源码同款(秘笈原实现即手动改格+此封包)
+
+            target.Attacked(this, damageFinal, DefenceType.AC, false);
+            LevelMagic(magic);
+            cast = true;
         }
 
         //道士: 治愈术-秘籍(大计量恢复, 结算并入 CompleteMagic 的 Healing)
@@ -5213,31 +5336,108 @@ namespace Server.MirObjects
             if (any) LevelMagic(magic);
         }
 
-        //刺客: 拔刀术-秘籍(瞬身背刺+概率眩晕)
-        private void FlashDashRare(MapObject target, UserMagic magic, out bool cast)
+        //刺客: 拔刀术-秘籍(// 废弃 这个 瞬身背刺+概率眩晕)
+        //拔刀术秘籍: 基础拔刀术强化(原版规格: 最大2格突进, 冲击路径第一目标, 概率麻痹且BOSS时长减半, 伤害/麻痹率/持续时间随等级成长)
+        private void FlashDashRare(UserMagic magic)
         {
-            cast = false;
-            if (target == null || !target.IsAttackTarget(this)) return;
-            if (target.CurrentMap != CurrentMap) return;
-            if (Functions.MaxDistance(CurrentLocation, target.CurrentLocation) > 3) return;
+            ActionTime = Envir.Time;
 
-            int damageFinal = magic.GetDamage(GetAttackPower(Stats[Stat.MinDC], Stats[Stat.MaxDC]));
+            int travel = 0;
+            MapObject strikeTarget = null;
+            Point location = CurrentLocation;
 
-            Point backLocation = Functions.PointMove(target.CurrentLocation, Functions.ReverseDirection(target.Direction), 1);
-            if (CurrentMap.ValidPoint(backLocation))
+            // 最大2格突进, 遇阻挡截断; 路径上的可攻击目标即"冲击第一目标", 停在其前一格
+            for (int i = 0; i < 2; i++)
             {
-                Teleport(CurrentMap, backLocation, false);
+                Point next = Functions.PointMove(location, Direction, 1);
+                if (!CurrentMap.ValidPoint(next)) break;
 
-                Direction = Functions.DirectionFromPoint(CurrentLocation, target.CurrentLocation);
-                Enqueue(new S.UserDashAttack { Direction = Direction, Location = CurrentLocation });
-                Broadcast(new S.ObjectDashAttack { ObjectID = ObjectID, Direction = Direction, Location = CurrentLocation, Distance = 1 });
+                Cell cInfo = CurrentMap.GetCell(next);
+                MapObject blocker = null;
+                if (cInfo.Objects != null)
+                {
+                    for (int c = 0; c < cInfo.Objects.Count; c++)
+                    {
+                        MapObject ob = cInfo.Objects[c];
+                        if (!ob.Blocking) continue;
+                        blocker = ob;
+                        if ((ob.Race == ObjectType.Monster || ob.Race == ObjectType.Player) && ob.IsAttackTarget(this))
+                            strikeTarget = ob;
+                        break;
+                    }
+                }
 
-                target.Attacked(this, damageFinal, DefenceType.AC, false);
-                if (Envir.Random.Next(100) < 30 + magic.Level * 10)
-                    target.ApplyPoison(new Poison { PType = PoisonType.Stun, Duration = 1 + magic.Level, TickSpeed = 1000 }, this);
-                LevelMagic(magic);
-                cast = true;
+                if (blocker != null) break;
+                location = next;
+                travel++;
             }
+
+            if (travel > 0)
+            {
+                CurrentMap.GetCell(CurrentLocation).Remove(this);
+                RemoveObjects(Direction, 1); //与基础拔刀术一致(观察者刷新步长固定1)
+                CurrentLocation = Functions.PointMove(CurrentLocation, Direction, travel);
+                CurrentMap.GetCell(CurrentLocation).Add(this);
+                AddObjects(Direction, 1);
+                Enqueue(new S.UserDashAttack { Direction = Direction, Location = CurrentLocation });
+                Broadcast(new S.ObjectDashAttack { ObjectID = ObjectID, Direction = Direction, Location = CurrentLocation, Distance = travel });
+            }
+            else
+            {
+                Broadcast(new S.ObjectAttack { ObjectID = ObjectID, Direction = Direction, Location = CurrentLocation });
+            }
+
+            // 未在移动中撞到目标时, 检查最终面前一格
+            if (strikeTarget == null)
+            {
+                Point front = Functions.PointMove(CurrentLocation, Direction, 1);
+                if (CurrentMap.ValidPoint(front))
+                {
+                    Cell cInfo = CurrentMap.GetCell(front);
+                    if (cInfo.Objects != null)
+                    {
+                        for (int c = 0; c < cInfo.Objects.Count; c++)
+                        {
+                            MapObject ob = cInfo.Objects[c];
+                            if ((ob.Race == ObjectType.Monster || ob.Race == ObjectType.Player) && ob.IsAttackTarget(this))
+                            {
+                                strikeTarget = ob;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            int attackDelay = (AttackSpeed - 120) <= 300 ? 300 : (AttackSpeed - 120);
+            AttackTime = Envir.Time + attackDelay;
+            SpellTime = Envir.Time + 300;
+
+            bool success = false;
+            if (strikeTarget != null)
+            {
+                int damage = magic.GetDamage(GetAttackPower(Stats[Stat.MinDC], Stats[Stat.MaxDC]));
+                if (strikeTarget.Attacked(this, damage, DefenceType.AC, false) > 0)
+                {
+                    success = true;
+
+                    var mob = strikeTarget as MonsterObject;
+                    bool isBoss = mob != null && mob.Info != null && mob.Info.IsBoss;
+
+                    if (Envir.Random.Next(100) < 30 + magic.Level * 10) //麻痹率随等级: L1=40%...L4=70%
+                    {
+                        int duration = 1 + magic.Level;
+                        if (isBoss) duration = Math.Max(1, duration / 2); //对BOSS麻痹持续时间减少50%
+                        strikeTarget.ApplyPoison(new Poison { PType = PoisonType.Stun, Duration = duration, TickSpeed = 1000 }, this);
+                    }
+                }
+            }
+
+            if (success)
+                LevelMagic(magic);
+
+            magic.CastTime = Envir.Time;
+            Enqueue(new S.MagicCast { Spell = magic.Spell });
         }
 
         //刺客: 月影雾-秘籍(原效果+双倍时长+周身2格减速)
@@ -5269,7 +5469,7 @@ namespace Server.MirObjects
             }
         }
 
-        //刺客: 月华乱舞-秘籍(月华乱舞+眩晕+双段伤害)
+        //刺客: 月华乱舞-秘籍(月华乱舞+眩晕+双段伤害)       
         private void CrescentSlashRare(UserMagic magic)
         {
             int damageBase = GetAttackPower(Stats[Stat.MinDC], Stats[Stat.MaxDC]);
@@ -6400,7 +6600,7 @@ namespace Server.MirObjects
 
             int travel = 0;
             bool blocked = false;
-            int jumpDistance = (magic.Level <= 1) ? 0 : 1;//3 max
+            int jumpDistance = Math.Min(Math.Max((int)magic.Level, 1), 3);//按等级突进1-3格(原版设计上限3)
             Point location = CurrentLocation;
             for (int i = 0; i < jumpDistance; i++)
             {
@@ -6446,36 +6646,39 @@ namespace Server.MirObjects
             AttackTime = Envir.Time + attackDelay;
             SpellTime = Envir.Time + 300;
 
-            location = Functions.PointMove(location, Direction, 1);
-            if (CurrentMap.ValidPoint(location))
+            //路径扫击: 起点后1格起到落点前1格, 突进路径上的敌人全部受击(原只打落点前1格)
+            for (int step = 1; step <= jumpDistance + 1; step++)
             {
-                Cell cInfo = CurrentMap.GetCell(location);
-                if (cInfo.Objects != null)
+                Point hitLocation = Functions.PointMove(CurrentLocation, Direction, step);
+                if (!CurrentMap.ValidPoint(hitLocation)) break;
+
+                Cell cInfo = CurrentMap.GetCell(hitLocation);
+                if (cInfo.Objects == null) continue;
+
+                for (int c = 0; c < cInfo.Objects.Count; c++)
                 {
-                    for (int c = 0; c < cInfo.Objects.Count; c++)
+                    MapObject ob = cInfo.Objects[c];
+                    switch (ob.Race)
                     {
-                        MapObject ob = cInfo.Objects[c];
-                        switch (ob.Race)
-                        {
-                            case ObjectType.Monster:
-                            case ObjectType.Player:
-                                //Only targets
-                                if (ob.IsAttackTarget(this))
+                        case ObjectType.Monster:
+                        case ObjectType.Player:
+                            //Only targets
+                            if (ob.IsAttackTarget(this))
+                            {
+                                DelayedAction action = new DelayedAction(DelayedType.Damage, AttackTime, ob, magic.GetDamage(GetAttackPower(Stats[Stat.MinDC], Stats[Stat.MaxDC])), DefenceType.AC, true);
+                                ActionList.Add(action);
+                                success = true;
+                                if ((((ob.Race != ObjectType.Player) || Settings.PvpCanResistPoison) && (Envir.Random.Next(Settings.PoisonAttackWeight) >= ob.Stats[Stat.PoisonResist])) && (Envir.Random.Next(15) <= magic.Level + 1))
                                 {
-                                    DelayedAction action = new DelayedAction(DelayedType.Damage, AttackTime, ob, magic.GetDamage(GetAttackPower(Stats[Stat.MinDC], Stats[Stat.MaxDC])), DefenceType.AC, true);
-                                    ActionList.Add(action);
-                                    success = true;
-                                    if ((((ob.Race != ObjectType.Player) || Settings.PvpCanResistPoison) && (Envir.Random.Next(Settings.PoisonAttackWeight) >= ob.Stats[Stat.PoisonResist])) && (Envir.Random.Next(15) <= magic.Level + 1))
-                                    {
-                                        DelayedAction pa = new DelayedAction(DelayedType.Poison, AttackTime, ob, PoisonType.Stun, SpellEffect.TwinDrakeBlade, magic.Level + 1, 1000);
-                                        ActionList.Add(pa);
-                                    }
+                                    DelayedAction pa = new DelayedAction(DelayedType.Poison, AttackTime, ob, PoisonType.Stun, SpellEffect.TwinDrakeBlade, magic.Level + 1, 1000);
+                                    ActionList.Add(pa);
                                 }
-                                break;
-                        }
+                            }
+                            break;
                     }
                 }
             }
+
             if (success) //technicaly this makes flashdash lvl when it casts rather then when it hits (it wont lvl if it's not hitting!)
                 LevelMagic(magic);
 
@@ -6918,10 +7121,10 @@ namespace Server.MirObjects
 
                 #region 法师奥义
 
-                case Spell.HeavenlySecrets: //天上秘术: 魔力增益(原版法力消耗率 引擎差异改MaxMC)
+                case Spell.HeavenlySecrets: //天上秘术: 自身buff(参考源码行为: 专属BuffType, 30秒+10/级, 与深延术共存互不顶)
                     {
                         var stats = new Stats { [Stat.MaxMC] = 17 + magic.Level * 3 };
-                        AddBuff(BuffType.MagicBooster, this, Settings.Second * 30 + magic.Level * 10000, stats, true);
+                        AddBuff(BuffType.HeavenlySecrets, this, Settings.Second * 30 + magic.Level * 10000, stats, true);
                         LevelMagic(magic);
                     }
                     break;

@@ -984,6 +984,8 @@ public abstract class Packet
                 return new S.ClassAvailability();
             case (short)ServerPacketIds.CustomSkillConfigs:
                 return new S.CustomSkillConfigs();
+            case (short)ServerPacketIds.CustomMagicConfigs:
+                return new S.CustomMagicConfigs();
             default:
                 return null;
         }

@@ -1,5 +1,6 @@
 ﻿using Client.MirGraphics;
 using Client.MirNetwork;
+using Client.MirObjects;
 using Client.MirScenes;
 using SlimDX.Direct3D9;
 using S = ServerPackets;
@@ -247,15 +248,31 @@ namespace Client.MirControls
         {
             //按Index替换: 服务端重载脚本后会重发任务信息(接/交付NPC绑定可能已变),
             //盲目Add会产生重复条目且旧条目仍优先命中查找, 导致任务显示/交付错乱
+            bool replaced = false;
             for (int i = 0; i < GameScene.QuestInfoList.Count; i++)
             {
                 if (GameScene.QuestInfoList[i].Index != info.Info.Index) continue;
 
                 GameScene.QuestInfoList[i] = info.Info;
-                return;
+                replaced = true;
+                break;
             }
 
-            GameScene.QuestInfoList.Add(info.Info);
+            if (!replaced)
+                GameScene.QuestInfoList.Add(info.Info);
+
+            //服务端重建NPC(地图卸载重载/脚本重载)后, 任务-NPC绑定(ObjectID)可能已变,
+            //已存在于场景中的NPC对象其任务列表在创建时生成, 须按新绑定重算并刷新任务图标
+            if (GameScene.User == null) return;
+
+            foreach (var ob in MapControl.Objects.Values)
+            {
+                NPCObject npc = ob as NPCObject;
+                if (npc == null) continue;
+
+                npc.Quests = GameScene.QuestInfoList.Where(c => c.NPCIndex == npc.ObjectID).ToList();
+                npc.UpdateBestQuestIcon();
+            }
         }
 
         private void NewRecipeInfo(S.NewRecipeInfo info)

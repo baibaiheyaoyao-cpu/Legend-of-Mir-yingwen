@@ -2,7 +2,7 @@
 using Client.MirScenes;
 using Client.MirSounds;
 
-namespace Client.MirObjects
+namespace Client.MirObjects       //传奇客户端里的"游戏对象"
 {
     public class Effect
     {

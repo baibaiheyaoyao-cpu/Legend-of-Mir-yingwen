@@ -37,6 +37,10 @@ namespace Server.MirDatabase
                 new BuffInfo { Type = BuffType.MentalState, Properties = BuffProperty.None, StackType = BuffStackType.Infinite },
                 new BuffInfo { Type = BuffType.EnergyShield, Properties = BuffProperty.None, StackType = BuffStackType.ResetDuration, Visible = true },
                 new BuffInfo { Type = BuffType.MagicBooster, Properties = BuffProperty.None, StackType = BuffStackType.ResetDuration, Visible = true },
+                new BuffInfo { Type = BuffType.HeavenlySecrets, Properties = BuffProperty.None, StackType = BuffStackType.ResetDuration, Visible = true },
+
+                // [登仙后期系统] 羽化登仙阶段Buff: 永久(duration=0惯例)+可见; 属性来自CustomBuffList.txt
+                new BuffInfo { Type = BuffType.Ascension, Properties = BuffProperty.None, StackType = BuffStackType.Infinite, Visible = true },
                 new BuffInfo { Type = BuffType.PetEnhancer, Properties = BuffProperty.None, StackType = BuffStackType.ResetDuration, Visible = true },
                 new BuffInfo { Type = BuffType.ImmortalSkin, Properties = BuffProperty.None, StackType = BuffStackType.ResetDuration, Visible = true },
                 new BuffInfo { Type = BuffType.MagicShield, Properties = BuffProperty.None, StackType = BuffStackType.ResetDuration },

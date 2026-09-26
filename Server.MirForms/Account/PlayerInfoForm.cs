@@ -7,7 +7,7 @@ using System.Numerics;
 
 namespace Server
 {
-    public partial class PlayerInfoForm : Form
+    public partial class PlayerInfoForm : Form            // 此面板,还没有翻译 待办 2026年9月21日0.59分
     {
         CharacterInfo Character = null;
 

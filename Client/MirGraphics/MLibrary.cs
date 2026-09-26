@@ -29,10 +29,12 @@ namespace Client.MirGraphics
             Magic2 = new MLibrary(Settings.DataPath + "Magic2"),
             Magic3 = new MLibrary(Settings.DataPath + "Magic3"),
             Magic4 = new MLibrary(Settings.DataPath + "Magic4"),
+            Magic5 = new MLibrary(Settings.DataPath + "Magic5"),   //原版CustomMagic库索引5
             Magic_32bit = new MLibrary(Settings.DataPath + "Magic_32bit"), //奥义技能素材库(万效符1700/1730)
             Effect = new MLibrary(Settings.DataPath + "Effect"),
             MagicC = new MLibrary(Settings.DataPath + "MagicC"),
             MagicD = new MLibrary(Settings.DataPath + "MagicD"), //印技能素材库(血龙震1010起8方向×20帧)
+            MagicMW = new MLibrary(Settings.DataPath + "MagicMW"), //原版CustomMagic库索引8
             GuildSkill = new MLibrary(Settings.DataPath + "GuildSkill"),
             Weather = new MLibrary(Settings.DataPath + "Weather");
 
@@ -139,28 +141,19 @@ namespace Client.MirGraphics
             MapLibs[0] = new MLibrary(Settings.DataPath + "Map\\WemadeMir2\\Tiles");
             MapLibs[1] = new MLibrary(Settings.DataPath + "Map\\WemadeMir2\\Smtiles");
             MapLibs[2] = new MLibrary(Settings.DataPath + "Map\\WemadeMir2\\Objects");
-            for (int i = 2; i < 28; i++)
-            {
-                MapLibs[i + 1] = new MLibrary(Settings.DataPath + "Map\\WemadeMir2\\Objects" + i.ToString());
-            }
+            LoadMapLibs(Settings.DataPath + "Map\\WemadeMir2", "objects", 2, 90);
             MapLibs[90] = new MLibrary(Settings.DataPath + "Map\\WemadeMir2\\Objects_32bit");
+            MapLibs[91] = new MLibrary(Settings.DataPath + "Map\\WemadeMir2\\Objects_32bitH"); //korean full set (different image order, used by Type1 maps with FrontIndex 102)
 
             //shanda mir2 (allowed from 100-199)
             MapLibs[100] = new MLibrary(Settings.DataPath + "Map\\ShandaMir2\\Tiles");
-            for (int i = 1; i < 10; i++)
-            {
-                MapLibs[100 + i] = new MLibrary(Settings.DataPath + "Map\\ShandaMir2\\Tiles" + (i + 1));
-            }
             MapLibs[110] = new MLibrary(Settings.DataPath + "Map\\ShandaMir2\\SmTiles");
-            for (int i = 1; i < 10; i++)
-            {
-                MapLibs[110 + i] = new MLibrary(Settings.DataPath + "Map\\ShandaMir2\\SmTiles" + (i + 1));
-            }
             MapLibs[120] = new MLibrary(Settings.DataPath + "Map\\ShandaMir2\\Objects");
-            for (int i = 1; i < 31; i++)
-            {
-                MapLibs[120 + i] = new MLibrary(Settings.DataPath + "Map\\ShandaMir2\\Objects" + (i + 1));
-            }
+            //scan order mirrors the author's loader: where slots overlap, smtiles win over objects, objects win over tiles
+            LoadMapLibs(Settings.DataPath + "Map\\ShandaMir2", "smtiles", 110, 190);
+            LoadMapLibs(Settings.DataPath + "Map\\ShandaMir2", "objects", 120, 190);
+            LoadMapLibs(Settings.DataPath + "Map\\ShandaMir2", "tiles", 100, 190);
+            MapLibs[116] = new MLibrary(Settings.DataPath + "Map\\ShandaMir2\\Tiles14"); //bing01 dedicated slot (113 belongs to SmTiles4)
             MapLibs[190] = new MLibrary(Settings.DataPath + "Map\\ShandaMir2\\AniTiles1");
             //wemade mir3 (allowed from 200-299)
             string[] Mapstate = { "", "wood\\", "sand\\", "snow\\", "forest\\"};
@@ -206,6 +199,29 @@ namespace Client.MirGraphics
 
             Thread thread = new Thread(LoadGameLibraries) { IsBackground = true };
             thread.Start();
+        }
+
+        private static void LoadMapLibs(string folder, string prefix, int baseSlot, int maxSlot)
+        {
+            if (!Directory.Exists(folder)) return;
+
+            foreach (string file in Directory.GetFiles(folder, "*" + MLibrary.Extention))
+            {
+                string name = Path.GetFileNameWithoutExtension(file).ToLower();
+                if (!name.StartsWith(prefix)) continue;
+
+                string number = name.Substring(prefix.Length);
+                int slot = baseSlot;
+                if (number.Length > 0)
+                {
+                    if (!int.TryParse(number, out int n)) continue;
+                    slot = baseSlot + n - 1;
+                }
+
+                if (slot < 0 || slot >= maxSlot || slot == baseSlot) continue;
+                if (MapLibs[slot] != null) continue; //keep first assignment (explicit bases / earlier prefixes win)
+                MapLibs[slot] = new MLibrary(file);
+            }
         }
 
         static void InitLibrary(ref MLibrary[] library, string path, string toStringValue, string suffix = "")
@@ -286,11 +302,15 @@ namespace Client.MirGraphics
             Progress++;
             Magic4.Initialize();
             Progress++;
+            Magic5.Initialize();
+            Progress++;
             Magic_32bit.Initialize();
             Progress++;
             MagicC.Initialize();
             Progress++;
             MagicD.Initialize();
+            Progress++;
+            MagicMW.Initialize();
             Progress++;
 
             Effect.Initialize();

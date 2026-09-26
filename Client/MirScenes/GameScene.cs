@@ -15,7 +15,7 @@ using Client.MirGraphics.Particles;
 
 namespace Client.MirScenes
 {
-    public sealed class GameScene : MirScene
+    public sealed class GameScene : MirScene      //MirScene：继承自 MirScene，因此 GameScene 获得 MirScene 中定义的行为、属性和方法，并在此基础上实现或扩展游戏特有的逻辑（例如 UI 对话框、地图控制、事件处理等）。 
     {
         public static GameScene Scene;
         public static bool Observing;
@@ -1708,6 +1708,9 @@ namespace Client.MirScenes
                     break;
                 case (short)ServerPacketIds.CustomSkillConfigs:
                     CustomSkillSettings.Set(((S.CustomSkillConfigs)p).Skills);
+                    break;
+                case (short)ServerPacketIds.CustomMagicConfigs:
+                    CustomMagicSettings.Set(((S.CustomMagicConfigs)p).Configs);
                     break;
                 case (short)ServerPacketIds.NewMagic:
                     NewMagic((S.NewMagic)p);
@@ -10558,6 +10561,28 @@ namespace Client.MirScenes
             return new Point((p.X - MapObject.User.Movement.X + OffSetX) * CellWidth, (p.Y - MapObject.User.Movement.Y + OffSetY) * CellHeight).Add(MapObject.User.OffSetMove);
         }
 
+        //复活术辅助: 鼠标地图格±2(5×5)内找死亡玩家——命中测试默认滤掉尸体(TargetDead关), 仅复活术取目标时调用
+        public MapObject FindDeadPlayerNearMouse()
+        {
+            Point ml = MapLocation;
+            for (int y = ml.Y + 2; y >= ml.Y - 2; y--)
+            {
+                if (y < 0 || y >= Height) continue;
+                for (int x = ml.X + 2; x >= ml.X - 2; x--)
+                {
+                    if (x < 0 || x >= Width) continue;
+                    CellInfo cell = M2CellInfo[x, y];
+                    if (cell == null || cell.CellObjects == null) continue;
+                    for (int i = cell.CellObjects.Count - 1; i >= 0; i--)
+                    {
+                        MapObject ob = cell.CellObjects[i];
+                        if (ob != null && ob.Dead && ob.Race == ObjectType.Player) return ob;
+                    }
+                }
+            }
+            return null;
+        }
+
         public static MouseButtons MapButtons;
         public static Point MouseLocation;
         public static long InputDelay;
@@ -12087,12 +12112,12 @@ namespace Client.MirScenes
                 case Spell.DarkBody:
                 case Spell.FireBounce:
                 case Spell.MeteorShower:
-                case Spell.GreatFireBallRare: // [AI-Claude] 大火球秘籍
+                case Spell.GreatFireBallRare: // [AI-Claude] 大火球秘籍              // ai 写的代码
                 case Spell.ThunderBoltRare:   // [AI-Claude] 强击秘籍
-                case Spell.EntrapmentRare:    // 技能书补全: 捕绳剑秘籍(目标技)
+                case Spell.EntrapmentRare:    // 技能书补全: 捕绳剑秘籍(目标技)          
                 case Spell.DimensionalSword:  // 技能书补全: 时空剑
                 case Spell.DimensionalSwordRare:
-                case Spell.FlashDashRare:     // 技能书补全: 拔刀术秘籍(背刺, 需目标)
+                    // 拔刀术秘籍(FlashDashRare)已改为方向突进技, 与基础拔刀术同构, 不再需要目标
                     if (actor.NextMagicObject != null)
                     {
                         if (!actor.NextMagicObject.Dead && actor.NextMagicObject.Race != ObjectType.Item && actor.NextMagicObject.Race != ObjectType.Merchant)
@@ -12155,7 +12180,7 @@ namespace Client.MirScenes
                             target = User.NextMagicObject;
                     }
 
-                    //if(magic.Spell == Spell.ElementalShot)
+                    //if(magic.Spell == Spell.ElementalShot)      注释掉:如果法术是元素箭,是否目标法术看有没有元素
                     //{
                     //    isTargetSpell = User.HasElements;
                     //}
@@ -12215,6 +12240,9 @@ namespace Client.MirScenes
                 case Spell.Reincarnation:
                     if (actor == Hero && actor.NextMagicObject == null)
                         actor.NextMagicObject = User;
+                    //复活术免TargetDead开关: 命中测试(10746)默认滤尸体→NextMagicObject为空, 补扫鼠标点5×5找死亡玩家
+                    if (actor.NextMagicObject == null)
+                        actor.NextMagicObject = GameScene.Scene.MapControl.FindDeadPlayerNearMouse();
                     if (actor.NextMagicObject != null)
                     {
                         if (actor.NextMagicObject.Dead && actor.NextMagicObject.Race == ObjectType.Player)
@@ -12229,12 +12257,9 @@ namespace Client.MirScenes
                     }
                     break;
                 case Spell.FlashDash:
-                    if (actor.GetMagic(Spell.FlashDash).Level <= 1 && actor.IsDashAttack() == false)
-                    {
-                        actor.ClearMagic();
-                        return;
-                    }
-                    //isTargetSpell = false;
+                case Spell.FlashDashRare:
+                    //低等级(0-1级)不再拦截: 突进1格照常施放(基础拔刀术功能补全); 两技能均为方向技, 不锁定目标
+                    target = null;
                     break;
                 default:
                     //isTargetSpell = false;
@@ -12247,7 +12272,7 @@ namespace Client.MirScenes
 
             uint targetID = target != null ? target.ObjectID : 0;
 
-            if (magic.Spell == Spell.FlashDash)
+            if (magic.Spell == Spell.FlashDash || magic.Spell == Spell.FlashDashRare)
                 dir = actor.Direction;
 
             if ((magic.Range != 0) && (!Functions.InRange(actor.CurrentLocation, location, magic.Range)))

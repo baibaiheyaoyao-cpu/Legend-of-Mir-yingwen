@@ -38,11 +38,27 @@ namespace Server
                 if (advancedMenu != null) break;
             }
             advancedMenu?.DropDownItems.Add(new ToolStripMenuItem("自定义技能管理", null, customSkillToolStripMenuItem_Click) { Name = "customSkillToolStripMenuItem" });
+            advancedMenu?.DropDownItems.Add(new ToolStripMenuItem("CustomMagic数据技能", null, customMagicToolStripMenuItem_Click) { Name = "customMagicToolStripMenuItem" });
+            //脚本模块中心入口: JS模块(登仙任务等)总控面板, 与上面两个管理面板并列
+            advancedMenu?.DropDownItems.Add(new ToolStripMenuItem("脚本模块中心", null, jsModuleCenterToolStripMenuItem_Click) { Name = "jsModuleCenterToolStripMenuItem" });
+        }
+
+        /// <summary>脚本模块中心: JS模块(Envir\JsScripts)的启停/热重载/绑定明细/错误日志总控</summary>
+        private void jsModuleCenterToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            JsModuleCenterForm form = new JsModuleCenterForm();
+            form.ShowDialog();
         }
 
         private void customSkillToolStripMenuItem_Click(object sender, EventArgs e)
         {
             CustomSkillForm form = new CustomSkillForm();
+            form.ShowDialog();
+        }
+
+        private void customMagicToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            CustomMagicForm form = new CustomMagicForm();
             form.ShowDialog();
         }
 

@@ -6898,4 +6898,32 @@ namespace ServerPackets
                 Skills[i].Save(writer);
         }
     }
+
+    /// <summary>
+    /// CustomMagic数据驱动技能配置表(原版CustomMagic INI兼容, 路线甲P2).
+    /// 服务端解析 Custom\CustomMagic\*.ini 后下发, 客户端按段渲染特效/描述/音效.
+    /// </summary>
+    public sealed class CustomMagicConfigs : Packet
+    {
+        public override short Index
+        {
+            get { return (short)ServerPacketIds.CustomMagicConfigs; }
+        }
+
+        public List<CustomMagicConfig> Configs = new List<CustomMagicConfig>();
+
+        protected override void ReadPacket(BinaryReader reader)
+        {
+            int count = reader.ReadInt32();
+            for (int i = 0; i < count; i++)
+                Configs.Add(new CustomMagicConfig(reader));
+        }
+
+        protected override void WritePacket(BinaryWriter writer)
+        {
+            writer.Write(Configs.Count);
+            for (int i = 0; i < Configs.Count; i++)
+                Configs[i].Save(writer);
+        }
+    }
 }

@@ -6,7 +6,7 @@ using C = ClientPackets;
 
 namespace Client.MirNetwork
 {
-    static class Network
+    static class Network        // 网络.
     {
         private static TcpClient _client;
         public static int ConnectAttempt = 0;

@@ -15,7 +15,7 @@ using S = ServerPackets;
 
 namespace Server.MirEnvir
 {
-    public class MobThread
+    public class MobThread  //  
     {
         public int Id = 0;
         public long LastRunTime = 0;
@@ -1344,88 +1344,26 @@ namespace Server.MirEnvir
                     Range = 9
                 });
 
-            //万效符(87): 护符投掷 7x7友方4Buff 数值移植自angelk727
-            //注意用"找到即覆写"— 清理DB里实验残留的同Spell旧记录
-            MagicInfo wxInfo = MagicInfoList.FirstOrDefault(t => t.Spell == Spell.WanXiaoFu);
-            if (wxInfo == null) MagicInfoList.Add(wxInfo = new MagicInfo { Spell = Spell.WanXiaoFu });
-            wxInfo.Name = "万效符";
-            wxInfo.Icon = 120;
-            wxInfo.Level1 = 90; wxInfo.Level2 = 92; wxInfo.Level3 = 94;
-            wxInfo.Need1 = 18500; wxInfo.Need2 = 29900; wxInfo.Need3 = 43200;
-            wxInfo.BaseCost = 2; wxInfo.LevelCost = 2;
-            wxInfo.DelayBase = 3000; wxInfo.DelayReduction = 250;
-            wxInfo.Range = 9;
-
-            //万效符秘笈(88)
-            MagicInfo wxrInfo = MagicInfoList.FirstOrDefault(t => t.Spell == Spell.WanXiaoFuRare);
-            if (wxrInfo == null) MagicInfoList.Add(wxrInfo = new MagicInfo { Spell = Spell.WanXiaoFuRare });
-            wxrInfo.Name = "万效符秘笈";
-            wxrInfo.Icon = 125;
-            wxrInfo.Level1 = 100; wxrInfo.Level2 = 105; wxrInfo.Level3 = 110;
-            wxrInfo.Need1 = 23600; wxrInfo.Need2 = 38900; wxrInfo.Need3 = 57600;
-            wxrInfo.BaseCost = 2; wxrInfo.LevelCost = 2;
-            wxrInfo.DelayBase = 3000; wxrInfo.DelayReduction = 250;
-            wxrInfo.Range = 9;
-
-            //---- 法师奥义x6 (数值移植自angelk727, 找到即覆写) ----
-            MagicInfo hsInfo = MagicInfoList.FirstOrDefault(t => t.Spell == Spell.HeavenlySecrets);
-            if (hsInfo == null) MagicInfoList.Add(hsInfo = new MagicInfo { Spell = Spell.HeavenlySecrets });
-            hsInfo.Name = "天上秘术"; hsInfo.Icon = 77;
-            hsInfo.Level1 = 50; hsInfo.Level2 = 63; hsInfo.Level3 = 56;
-            hsInfo.Need1 = 1000; hsInfo.Need2 = 2000; hsInfo.Need3 = 3500;
-            hsInfo.BaseCost = 28; hsInfo.LevelCost = 2;
-            hsInfo.DelayBase = 600000; hsInfo.DelayReduction = 100000;
-            hsInfo.Range = 0;
-
-            MagicInfo gfbrInfo = MagicInfoList.FirstOrDefault(t => t.Spell == Spell.GreatFireBallRare);
-            if (gfbrInfo == null) MagicInfoList.Add(gfbrInfo = new MagicInfo { Spell = Spell.GreatFireBallRare });
-            gfbrInfo.Name = "大火球秘籍"; gfbrInfo.Icon = 108;
-            gfbrInfo.Level1 = 55; gfbrInfo.Level2 = 60; gfbrInfo.Level3 = 65;
-            gfbrInfo.Need1 = 17000; gfbrInfo.Need2 = 22000; gfbrInfo.Need3 = 27000;
-            gfbrInfo.BaseCost = 5; gfbrInfo.LevelCost = 1;
-            gfbrInfo.MPowerBase = 15; gfbrInfo.PowerBase = 18;
-            gfbrInfo.DelayBase = 5000; gfbrInfo.DelayReduction = 1000;
-            gfbrInfo.Range = 9;
-
-            MagicInfo tbrInfo = MagicInfoList.FirstOrDefault(t => t.Spell == Spell.ThunderBoltRare);
-            if (tbrInfo == null) MagicInfoList.Add(tbrInfo = new MagicInfo { Spell = Spell.ThunderBoltRare });
-            tbrInfo.Name = "强击秘籍"; tbrInfo.Icon = 114;
-            tbrInfo.Level1 = 95; tbrInfo.Level2 = 97; tbrInfo.Level3 = 102;
-            tbrInfo.Need1 = 7410; tbrInfo.Need2 = 12540; tbrInfo.Need3 = 19200;
-            tbrInfo.BaseCost = 9; tbrInfo.LevelCost = 2;
-            tbrInfo.MPowerBase = 8; tbrInfo.MPowerBonus = 20; tbrInfo.PowerBase = 9;
-            tbrInfo.DelayBase = 8000; tbrInfo.DelayReduction = 2000;
-            tbrInfo.Range = 9;
-
-            MagicInfo serInfo = MagicInfoList.FirstOrDefault(t => t.Spell == Spell.StormEscapeRare);
-            if (serInfo == null) MagicInfoList.Add(serInfo = new MagicInfo { Spell = Spell.StormEscapeRare });
-            serInfo.Name = "雷仙风秘籍"; serInfo.Icon = 85;
-            serInfo.Level1 = 62; serInfo.Level2 = 64; serInfo.Level3 = 66;
-            serInfo.Need1 = 2200; serInfo.Need2 = 3300; serInfo.Need3 = 4400;
-            serInfo.BaseCost = 65; serInfo.LevelCost = 8;
-            serInfo.MPowerBase = 30; serInfo.PowerBase = 10;
-            serInfo.DelayBase = 300000; serInfo.DelayReduction = 40000;
-            serInfo.Range = 9;
-
-            MagicInfo sfsInfo = MagicInfoList.FirstOrDefault(t => t.Spell == Spell.SoulflameSiphon);
-            if (sfsInfo == null) MagicInfoList.Add(sfsInfo = new MagicInfo { Spell = Spell.SoulflameSiphon });
-            sfsInfo.Name = "吸魔炎风"; sfsInfo.Icon = 119;
-            sfsInfo.Level1 = 90; sfsInfo.Level2 = 92; sfsInfo.Level3 = 94;
-            sfsInfo.Need1 = 6300; sfsInfo.Need2 = 9300; sfsInfo.Need3 = 15200;
-            sfsInfo.BaseCost = 30; sfsInfo.LevelCost = 5;
-            sfsInfo.MPowerBase = 3; sfsInfo.PowerBase = 3;
-            sfsInfo.DelayBase = 12000; sfsInfo.DelayReduction = 3000;
-            sfsInfo.Range = 9;
-
-            MagicInfo sfsrInfo = MagicInfoList.FirstOrDefault(t => t.Spell == Spell.SoulflameSiphonRare);
-            if (sfsrInfo == null) MagicInfoList.Add(sfsrInfo = new MagicInfo { Spell = Spell.SoulflameSiphonRare });
-            sfsrInfo.Name = "吸魔炎风秘籍"; sfsrInfo.Icon = 124;
-            sfsrInfo.Level1 = 100; sfsrInfo.Level2 = 105; sfsrInfo.Level3 = 110;
-            sfsrInfo.Need1 = 8800; sfsrInfo.Need2 = 13000; sfsrInfo.Need3 = 21600;
-            sfsrInfo.BaseCost = 30; sfsrInfo.LevelCost = 5;
-            sfsrInfo.MPowerBase = 3; sfsrInfo.PowerBase = 3;
-            sfsrInfo.DelayBase = 12000; sfsrInfo.DelayReduction = 3000;
-            sfsrInfo.Range = 9;
+            //万效符(87)/秘笈(88) + 法师奥义x6: 数值移植自angelk727
+            //(20260922改) 原为"找到即覆写"式启动覆写(清理实验期DB残留用), 迁移已完成,
+            //副作用是魔法编辑器/DbTool对这些技能的修改每次启动被无声回滚——现改为
+            //"缺则补"式注册, DB为唯一权威, 面板改完点"保存DB"即长期生效。
+            if (!MagicExists(Spell.WanXiaoFu))
+                MagicInfoList.Add(new MagicInfo { Spell = Spell.WanXiaoFu, Name = "万效符", Icon = 120, Level1 = 90, Level2 = 92, Level3 = 94, Need1 = 18500, Need2 = 29900, Need3 = 43200, BaseCost = 2, LevelCost = 2, DelayBase = 3000, DelayReduction = 250, Range = 9 });
+            if (!MagicExists(Spell.WanXiaoFuRare))
+                MagicInfoList.Add(new MagicInfo { Spell = Spell.WanXiaoFuRare, Name = "万效符秘笈", Icon = 125, Level1 = 100, Level2 = 105, Level3 = 110, Need1 = 23600, Need2 = 38900, Need3 = 57600, BaseCost = 2, LevelCost = 2, DelayBase = 3000, DelayReduction = 250, Range = 9 });
+            if (!MagicExists(Spell.HeavenlySecrets))
+                MagicInfoList.Add(new MagicInfo { Spell = Spell.HeavenlySecrets, Name = "天上秘术", Icon = 77, Level1 = 50, Level2 = 63, Level3 = 56, Need1 = 1000, Need2 = 2000, Need3 = 3500, BaseCost = 28, LevelCost = 2, DelayBase = 600000, DelayReduction = 100000, Range = 0 });
+            if (!MagicExists(Spell.GreatFireBallRare))
+                MagicInfoList.Add(new MagicInfo { Spell = Spell.GreatFireBallRare, Name = "大火球秘籍", Icon = 108, Level1 = 55, Level2 = 60, Level3 = 65, Need1 = 17000, Need2 = 22000, Need3 = 27000, BaseCost = 5, LevelCost = 1, MPowerBase = 15, PowerBase = 18, DelayBase = 5000, DelayReduction = 1000, Range = 9 });
+            if (!MagicExists(Spell.ThunderBoltRare))
+                MagicInfoList.Add(new MagicInfo { Spell = Spell.ThunderBoltRare, Name = "强击秘籍", Icon = 114, Level1 = 95, Level2 = 97, Level3 = 102, Need1 = 7410, Need2 = 12540, Need3 = 19200, BaseCost = 9, LevelCost = 2, MPowerBase = 8, MPowerBonus = 20, PowerBase = 9, DelayBase = 8000, DelayReduction = 2000, Range = 9 });
+            if (!MagicExists(Spell.StormEscapeRare))
+                MagicInfoList.Add(new MagicInfo { Spell = Spell.StormEscapeRare, Name = "雷仙风秘籍", Icon = 85, Level1 = 62, Level2 = 64, Level3 = 66, Need1 = 2200, Need2 = 3300, Need3 = 4400, BaseCost = 65, LevelCost = 8, MPowerBase = 30, PowerBase = 10, DelayBase = 300000, DelayReduction = 40000, Range = 9 });
+            if (!MagicExists(Spell.SoulflameSiphon))
+                MagicInfoList.Add(new MagicInfo { Spell = Spell.SoulflameSiphon, Name = "吸魔炎风", Icon = 119, Level1 = 90, Level2 = 92, Level3 = 94, Need1 = 6300, Need2 = 9300, Need3 = 15200, BaseCost = 30, LevelCost = 5, MPowerBase = 3, PowerBase = 3, DelayBase = 12000, DelayReduction = 3000, Range = 9 });
+            if (!MagicExists(Spell.SoulflameSiphonRare))
+                MagicInfoList.Add(new MagicInfo { Spell = Spell.SoulflameSiphonRare, Name = "吸魔炎风秘籍", Icon = 124, Level1 = 100, Level2 = 105, Level3 = 110, Need1 = 8800, Need2 = 13000, Need3 = 21600, BaseCost = 30, LevelCost = 5, MPowerBase = 3, PowerBase = 3, DelayBase = 12000, DelayReduction = 3000, Range = 9 });
 
             //---- 道士宠物召唤: 风灵(615)/幻灵(616) [AI-Claude 2026-08-30] ----
             //宠物MonsterInfo: find-or-create + 每次启动覆写可调参数(DB会持久化旧记录 直接改创建代码不生效)
@@ -2306,41 +2244,15 @@ namespace Server.MirEnvir
                     PowerBase = 4,
                     Range = 9
                 });
-
-            //==== 秘籍技能CD强制同步(找到即覆写) ====
-            //原因: 上面的注册是"缺则添加"式, DB里已存在的旧记录(无CD/默认1800ms)会优先于代码,
-            //导致高级技能无CD. 此处启动时强制覆写, 下次SaveDB即持久化为正确值.
-            SyncRareSkillCooldowns();
         }
 
         /// <summary>
-        /// 秘籍/高级技能冷却强制同步: 不管DB里是什么值, 启动时一律按此表覆写.
+        /// (已移除 20260922) 原SyncRareSkillCooldowns: 7技能(捕绳剑/狮子吼/治愈术/血龙水/月影雾/
+        /// 月华乱舞/爆闪-秘籍)启动时按硬编码表强制覆写DelayBase/DelayReduction——历史上为修复
+        /// "旧DB记录无CD"的迁移逻辑, 副作用是魔法编辑器/DbTool对这些技能的修改在下次启动被
+        /// 无声回滚("DB改不动"假象的根因, 排查记录见更新日志20260922)。现已删除, DB为唯一权威,
+        /// 这些技能的冷却请在魔法编辑器面板修改后点"保存DB"。
         /// </summary>
-        private void SyncRareSkillCooldowns()
-        {
-            var delayTable = new Dictionary<Spell, KeyValuePair<uint, uint>>
-            {
-                //战士
-                { Spell.EntrapmentRare,        new KeyValuePair<uint, uint>(15000, 3000) },  //捕绳剑-秘籍
-                { Spell.LionRoarRare,          new KeyValuePair<uint, uint>(30000, 5000) },  //狮子吼-秘籍
-                //道士
-                { Spell.HealingRare,           new KeyValuePair<uint, uint>(3000, 500) },    //治愈术-秘籍
-                { Spell.PetEnhancerRare,       new KeyValuePair<uint, uint>(60000, 10000) }, //血龙水-秘籍
-                //刺客
-                { Spell.MoonMistRare,          new KeyValuePair<uint, uint>(20000, 4000) },  //月影雾-秘籍
-                { Spell.CrescentSlashRare,     new KeyValuePair<uint, uint>(13000, 3000) },  //月华乱舞-秘籍
-                //弓手
-                { Spell.DelayedExplosionRare,  new KeyValuePair<uint, uint>(12000, 3000) },  //爆闪-秘籍
-            };
-
-            foreach (var pair in delayTable)
-            {
-                MagicInfo info = MagicInfoList.FirstOrDefault(t => t.Spell == pair.Key);
-                if (info == null) continue;
-                info.DelayBase = pair.Value.Key;
-                info.DelayReduction = pair.Value.Value;
-            }
-        }
 
         /// <summary>
         /// 自定义技能槽(242-255)MagicInfo同步: 缺则播种, 有则按面板配置刷新名称/图标/耗蓝/冷却.
@@ -3464,6 +3376,8 @@ namespace Server.MirEnvir
                         MonsterInfoList.Add(new MonsterInfo(reader));
 
                     EnsureMonkCloneExists();
+                    EnsureArcherSummonsExists();
+                    EnsurePetSkillBooks();
 
                     count = reader.ReadInt32();
                     NPCInfoList.Clear();
@@ -4001,6 +3915,9 @@ namespace Server.MirEnvir
             {
                 MapInfo info = MapInfoList[i];
 
+                //地图卸载开启时仅延迟加载 GT/安全区之外的地图, 带NPC的野外/任务图允许
+                //运行期懒加载+过期卸载(保内存); 任务NPC绑定随重建变化的失配问题由
+                //LoadMap 重建后检测并 RefreshPlayersQuestInfo 刷新在线客户端, 无需重登
                 if (Settings.MapUnloadEnabled && !info.GT && !info.SafeZones.Any(sz => sz.StartPoint))
                     continue;
 
@@ -4218,6 +4135,9 @@ namespace Server.MirEnvir
 
             long threshold = Time - (long)Settings.MapUnloadDelay * Settings.Minute;
 
+            //所有非保护地图均可卸载(含挂任务NPC的地图):
+            //任务NPC绑定随重建变化的失配由 LoadMap 的变化检测 + RefreshPlayersQuestInfo 处理,
+            //在此保留常驻保护会把大量带NPC的野外图锁在内存里, 卸载机制失去意义
             for (var i = MapList.Count - 1; i >= 0; i--)
             {
                 Map map = MapList[i];
@@ -5346,9 +5266,38 @@ namespace Server.MirEnvir
             Map map = MapList.FirstOrDefault(m => m.Info == info);
             if (map != null) return map;
 
+            //快照全部任务的接取/交付NPC绑定(ObjectID), CreateMap重建NPC后对比,
+            //仅绑定真变化时才重发在线玩家任务缓存, 避免无变化也全服重发
+            int questCount = QuestInfoList.Count;
+            uint[] questBindings = new uint[questCount * 2];
+            for (var i = 0; i < questCount; i++)
+            {
+                questBindings[i * 2] = QuestInfoList[i].NpcIndex;
+                questBindings[i * 2 + 1] = QuestInfoList[i].FinishNpcIndex;
+            }
+
             info.CreateMap();
 
             map = MapList.FirstOrDefault(m => m.Info == info);
+
+            //运行期重建了NPC(懒加载/副本): NPC脚本重新解析后, 任务的接取/交付NPC绑定可能已变,
+            //检测到变化才刷新在线客户端(新客户端即时生效; 旧客户端出地图视野再进即恢复), 无需重登
+            if (map != null && map.NPCs.Count > 0)
+            {
+                bool bindingsChanged = false;
+                for (var i = 0; i < QuestInfoList.Count && i < questCount; i++)
+                {
+                    if (QuestInfoList[i].NpcIndex != questBindings[i * 2] ||
+                        QuestInfoList[i].FinishNpcIndex != questBindings[i * 2 + 1])
+                    {
+                        bindingsChanged = true;
+                        break;
+                    }
+                }
+
+                if (bindingsChanged)
+                    RefreshPlayersQuestInfo();
+            }
             if (map != null && info.GT)
             {
                 GTMap gt = GTMapList.FirstOrDefault(x => x.Index == info.GTIndex);
@@ -5549,6 +5498,150 @@ namespace Server.MirEnvir
             MessageQueue.Enqueue("MonkClone monster created automatically (LuoHanZhen summon).");
         }
 
+        // [AI-Claude] 弓手召唤系怪物兜底: fuwu的MirDB无VampireSpider/SpittingToad/SnakeTotem/StoneTrap
+        // (字节级验证缺失, 原版水晶端DB同样没有), 施法处GetMonsterInfo==null静默return="放了没反应"根因;
+        // 且CanStartEnvir校验这三个怪存在、缺失会拒绝启动——注入必须在MonsterInfoList加载后立即(先于校验)。
+        private void EnsureArcherSummonsExists()
+        {
+            if (GetMonsterInfo(Settings.VampireName, true) == null)
+            {
+                MonsterInfo info = new MonsterInfo
+                {
+                    Index = ++MonsterIndex,
+                    Name = Settings.VampireName,
+                    Image = Monster.VampireSpider,
+                    AI = 60,            //工厂60=VampireSpider类(吸血压主近战)
+                    Effect = 0,
+                    Level = 30,
+                    ViewRange = 8,
+                    CoolEye = 0,
+                    Light = 0,
+                    AttackSpeed = 1400,
+                    MoveSpeed = 1200,
+                    Experience = 0,
+                    CanTame = false,
+                    CanPush = false,
+                    AutoRev = false,
+                    Undead = false,
+                    CanRecall = true,
+                    IsBoss = false
+                };
+                info.Stats = new Stats();
+                info.Stats[Stat.HP] = 400;
+                info.Stats[Stat.MinAC] = 10;
+                info.Stats[Stat.MaxAC] = 20;
+                info.Stats[Stat.MinMAC] = 10;
+                info.Stats[Stat.MaxMAC] = 20;
+                info.Stats[Stat.MinDC] = 18;
+                info.Stats[Stat.MaxDC] = 30;
+                info.Stats[Stat.Accuracy] = 15;
+                info.Stats[Stat.Agility] = 15;
+                MonsterInfoList.Add(info);
+                MessageQueue.Enqueue("Archer summon monster created automatically: " + Settings.VampireName);
+            }
+
+            if (GetMonsterInfo(Settings.ToadName, true) == null)
+            {
+                MonsterInfo info = new MonsterInfo
+                {
+                    Index = ++MonsterIndex,
+                    Name = Settings.ToadName,
+                    Image = Monster.SpittingToad,
+                    AI = 61,            //工厂61=SpittingToad类(远程喷毒, 不可移动, 主人离开视野自爆)
+                    Effect = 0,
+                    Level = 40,
+                    ViewRange = 8,
+                    CoolEye = 0,
+                    Light = 0,
+                    AttackSpeed = 1600,
+                    MoveSpeed = 1800,
+                    Experience = 0,
+                    CanTame = false,
+                    CanPush = false,
+                    AutoRev = false,
+                    Undead = false,
+                    CanRecall = true,
+                    IsBoss = false
+                };
+                info.Stats = new Stats();
+                info.Stats[Stat.HP] = 500;
+                info.Stats[Stat.MinAC] = 12;
+                info.Stats[Stat.MaxAC] = 22;
+                info.Stats[Stat.MinMAC] = 12;
+                info.Stats[Stat.MaxMAC] = 22;
+                info.Stats[Stat.MinDC] = 20;
+                info.Stats[Stat.MaxDC] = 35;
+                info.Stats[Stat.Accuracy] = 15;
+                info.Stats[Stat.Agility] = 10;
+                MonsterInfoList.Add(info);
+                MessageQueue.Enqueue("Archer summon monster created automatically: " + Settings.ToadName);
+            }
+
+            if (GetMonsterInfo(Settings.SnakeTotemName, true) == null)
+            {
+                MonsterInfo info = new MonsterInfo
+                {
+                    Index = ++MonsterIndex,
+                    Name = Settings.SnakeTotemName,
+                    Image = Monster.SnakeTotem,
+                    AI = 62,            //工厂62=SnakeTotem类(图腾, 定期生成CharmedSnake蛇群引怪)
+                    Effect = 0,
+                    Level = 45,
+                    ViewRange = 9,
+                    CoolEye = 0,
+                    Light = 0,
+                    AttackSpeed = 2000,
+                    MoveSpeed = 1800,
+                    Experience = 0,
+                    CanTame = false,
+                    CanPush = false,
+                    AutoRev = false,
+                    Undead = false,
+                    CanRecall = true,
+                    IsBoss = false
+                };
+                info.Stats = new Stats();
+                info.Stats[Stat.HP] = 600;
+                info.Stats[Stat.MinAC] = 15;
+                info.Stats[Stat.MaxAC] = 25;
+                info.Stats[Stat.MinMAC] = 15;
+                info.Stats[Stat.MaxMAC] = 25;
+                info.Stats[Stat.MinDC] = 0;
+                info.Stats[Stat.MaxDC] = 0;   //图腾不攻击, 战斗交给蛇群
+                MonsterInfoList.Add(info);
+                MessageQueue.Enqueue("Archer summon monster created automatically: " + Settings.SnakeTotemName);
+            }
+
+            if (GetMonsterInfo(Settings.StoneName, true) == null)
+            {
+                MonsterInfo info = new MonsterInfo
+                {
+                    Index = ++MonsterIndex,
+                    Name = Settings.StoneName,
+                    Image = Monster.StoningSpider,   //StoneTrap类GetInfo固定用此图
+                    AI = 255,           //工厂255=StoneTrap类(Stonetrap技能的放置陷阱)
+                    Effect = 0,
+                    Level = 1,
+                    ViewRange = 3,
+                    CoolEye = 0,
+                    Light = 0,
+                    AttackSpeed = 2500,
+                    MoveSpeed = 1800,
+                    Experience = 0,
+                    CanTame = false,
+                    CanPush = false,
+                    AutoRev = false,
+                    Undead = false,
+                    CanRecall = false,
+                    IsBoss = false
+                };
+                info.Stats = new Stats();
+                info.Stats[Stat.HP] = 1;      //陷阱一碰即碎
+                MonsterInfoList.Add(info);
+                MessageQueue.Enqueue("Archer summon monster created automatically: " + Settings.StoneName);
+            }
+        }
+
         private void EnsureMonkSkillBooks()
         {
             Spell[] monkSpells = { Spell.JiBenGunFa, Spell.LuoHanGunFa, Spell.JinGangGunFa, Spell.DaMoGunFa, Spell.XiangLongGunFa, Spell.Taunt, Spell.TianLeiZhen, Spell.ShiBuYiSha, Spell.LuoHanZhen };
@@ -5594,6 +5687,55 @@ namespace Server.MirEnvir
 
             if (created > 0)
                 MessageQueue.Enqueue(created + " Monk skill books created automatically.");
+        }
+
+        // [AI-Claude] 道士特殊召唤技能书兜底: 召唤风灵/幻灵/上古神谕(技能MagicInfo已注册但DB无书, "幻灵学不了"根因)
+        private void EnsurePetSkillBooks()
+        {
+            Spell[] petSpells = { Spell.Yling, Spell.Hling, Spell.AncientOracle };
+            string[] bookNames = { "召唤风灵", "召唤幻灵", "召唤上古神谕" };
+            byte[] reqLevels = { 45, 75, 55 };
+
+            ushort bookImage = 631;
+            ItemInfo template = ItemInfoList.Find(i => i.Type == ItemType.Book);
+            if (template != null) bookImage = template.Image;
+
+            int created = 0;
+            for (int s = 0; s < petSpells.Length; s++)
+            {
+                Spell spell = petSpells[s];
+
+                bool exists = false;
+                for (int i = 0; i < ItemInfoList.Count; i++)
+                    if (ItemInfoList[i].Type == ItemType.Book && ItemInfoList[i].Shape == (short)spell)
+                    {
+                        exists = true;
+                        break;
+                    }
+                if (exists) continue;
+
+                ItemInfo info = new ItemInfo
+                {
+                    Index = ++ItemIndex,
+                    Name = bookNames[s],
+                    Type = ItemType.Book,
+                    Grade = ItemGrade.None,
+                    RequiredType = RequiredType.Level,
+                    RequiredClass = RequiredClass.Taoist,
+                    RequiredGender = RequiredGender.None,
+                    Shape = (short)spell,
+                    Weight = 1,
+                    RequiredAmount = reqLevels[s],
+                    Image = bookImage,
+                    StackSize = 1,
+                    Price = 5000
+                };
+                ItemInfoList.Add(info);
+                created++;
+            }
+
+            if (created > 0)
+                MessageQueue.Enqueue(created + " Taoist pet skill books created automatically.");
         }
 
         private void EnsureMonkEquipment()

@@ -1,7 +1,7 @@
 namespace Client
 {
 
-    public enum KeybindOptions : int
+    public enum KeybindOptions : int       // 按键功能枚举      //2026年9月20日 同理 这里是一个枚举类型, 里面的值是按键功能的索引值, 不能随意更改顺序, 否则会导致按键设置错乱
     {
         Bar1Skill1 = 0,
         Bar1Skill2,
@@ -103,10 +103,10 @@ namespace Client
         PetmodeFocusMasterTarget,
         Talent,     //天赋系统 - 天赋窗口开关(追加在枚举末尾, 不影响现有按键的索引值)
         GroupHealthPanel,    //组队血条面板开关(追加在枚举末尾, 默认Ctrl+P)
-        AssistPanel          //辅助面板开关(追加在枚举末尾, 默认Ctrl+U) - 自动喝药/自动技能/挂机
+        AssistPanel          //辅助面板开关(追加在枚举末尾, 默认Ctrl+w - 自动喝药/自动技能/挂机
     }
 
-    public class KeyBind
+    public class KeyBind             // 公告 职业 案件绑定 class 类声明/
     {
         public KeybindOptions function = KeybindOptions.Bar1Skill1;
         public string Group = "", Description = "";
