@@ -12,6 +12,7 @@ https://mirfiles.co.uk/resources/mir2/crystal/  水晶英文客户端,需要配�
 
 参考源码有很多，。https://github.com/JevLOMCN  
 
+<img width="792" height="544" alt="image" src="https://github.com/user-attachments/assets/2be8375a-6ee1-4a7b-aa0d-b6060b9f7264" />
 
 
 ## 水晶端 ,几个好资料链接 ：
