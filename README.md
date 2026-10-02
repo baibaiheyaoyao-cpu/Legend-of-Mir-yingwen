@@ -1,12 +1,9 @@
 2026年8月28日前后一月有余，接触到这个源码，之后，联系到了jev,感谢指点。<br>
 
 
-个人研究测试版本，在此感谢 ,@大白兔 ,@皮皮鲁. @ 真心为你 @ 念念不忘 @ 射吉峰 
+个人研究测试版本，在此感谢 ,@大白兔 ,@皮皮鲁. @ 真心为你 @ 念念不忘 @ 射吉峰  @嘻嘻
 
-以及 C#游戏群各位大佬, 各位前辈 
-
-
-有感 对传奇2的热爱.
+以及 C#游戏群各位大佬, 各位前辈 有感 对韩2的热爱.
 ##  项目日志 
 
 一,本端来自开源的 https://github.com/Suprcode/Crystal  米尔传说2 C#引擎作为基座，
@@ -19,19 +16,16 @@ https://mirfiles.co.uk/resources/mir2/crystal/  水晶英文客户端,需要配�
 
 ## 水晶端 ,几个好资料链接 ：
 
-https://github.com/angelk727/mir2 应该是国内2开，时间线 很长了,搞不清 到底是那个大佬. 技能没写完 ,有几个BUG.但是怪物 数据，刷怪系统不行，有7G客户端 。源码  最近又更新的白龙潭 海底地图.
+https://github.com/angelk727/mir2 
 
 
-https://github.com/AndrewChien/LyoCrystal 另外一个大佬的.三端,很多人参考其的源码改造. 
+https://github.com/AndrewChien/LyoCrystal 
 
 
 水晶的意思来源于：Crystal  英文的翻译，作者希望这个引擎是干净永恒可靠的意思。
 
+#更多消息请查看[最新日志](https://liujiangme.xyz/shuijing/)
 
-## 以上三个 链接 均有源码.
 
 
-#更新日志
-## 2026年8月28日首次提交，
-## 故事开始于 ,一次 不抛弃,也不放弃.
 
